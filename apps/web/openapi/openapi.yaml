@@ -1,0 +1,400 @@
+openapi: 3.1.0
+info:
+  title: RICER Ifrane API
+  version: 1.0.0
+servers:
+  - url: http://localhost:3000
+paths:
+  /api/auth/signin:
+    post:
+      responses:
+        '200':
+          description: Signed in
+        '400':
+          $ref: '#/components/responses/ApiError'
+        '401':
+          $ref: '#/components/responses/ApiError'
+        '422':
+          $ref: '#/components/responses/ApiError'
+        '429':
+          $ref: '#/components/responses/ApiError'
+        '500':
+          $ref: '#/components/responses/ApiError'
+  /api/auth/signup:
+    post:
+      responses:
+        '200':
+          description: Signed up
+        '400':
+          $ref: '#/components/responses/ApiError'
+        '409':
+          $ref: '#/components/responses/ApiError'
+        '422':
+          $ref: '#/components/responses/ApiError'
+        '429':
+          $ref: '#/components/responses/ApiError'
+        '500':
+          $ref: '#/components/responses/ApiError'
+  /api/auth/logout:
+    post:
+      responses:
+        '200':
+          description: Logged out
+        '500':
+          $ref: '#/components/responses/ApiError'
+  /api/auth/me:
+    get:
+      responses:
+        '200':
+          description: Current user
+        '401':
+          $ref: '#/components/responses/ApiError'
+        '404':
+          $ref: '#/components/responses/ApiError'
+        '500':
+          $ref: '#/components/responses/ApiError'
+  /api/reports:
+    get:
+      responses:
+        '200':
+          description: Reports list
+        '401':
+          $ref: '#/components/responses/ApiError'
+        '500':
+          $ref: '#/components/responses/ApiError'
+    post:
+      responses:
+        '200':
+          description: Report created
+        '401':
+          $ref: '#/components/responses/ApiError'
+        '422':
+          $ref: '#/components/responses/ApiError'
+        '500':
+          $ref: '#/components/responses/ApiError'
+  /api/reports/{id}:
+    patch:
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Report updated
+        '401':
+          $ref: '#/components/responses/ApiError'
+        '403':
+          $ref: '#/components/responses/ApiError'
+        '422':
+          $ref: '#/components/responses/ApiError'
+        '500':
+          $ref: '#/components/responses/ApiError'
+  /api/analytics:
+    get:
+      responses:
+        '200':
+          description: Analytics
+        '401':
+          $ref: '#/components/responses/ApiError'
+        '500':
+          $ref: '#/components/responses/ApiError'
+  /api/incidents:
+    get:
+      responses:
+        '200':
+          description: Incidents
+        '401':
+          $ref: '#/components/responses/ApiError'
+        '500':
+          $ref: '#/components/responses/ApiError'
+  /api/equipment:
+    get:
+      responses:
+        '200':
+          description: Equipment dashboard data
+        '401':
+          $ref: '#/components/responses/ApiError'
+        '403':
+          $ref: '#/components/responses/ApiError'
+        '500':
+          $ref: '#/components/responses/ApiError'
+  /api/equipment/{id}:
+    patch:
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Equipment updated
+        '401':
+          $ref: '#/components/responses/ApiError'
+        '403':
+          $ref: '#/components/responses/ApiError'
+        '422':
+          $ref: '#/components/responses/ApiError'
+        '500':
+          $ref: '#/components/responses/ApiError'
+  /api/weather:
+    get:
+      responses:
+        '200':
+          description: Weather snapshot
+        '502':
+          $ref: '#/components/responses/ApiError'
+  /api/auth/token:
+    post:
+      responses:
+        '200':
+          description: Rotated access token issued
+        '400':
+          $ref: '#/components/responses/ApiError'
+        '401':
+          $ref: '#/components/responses/ApiError'
+        '429':
+          $ref: '#/components/responses/ApiError'
+        '500':
+          $ref: '#/components/responses/ApiError'
+  /api/map/layers:
+    get:
+      responses:
+        '200':
+          description: Mapping layer catalog
+        '401':
+          $ref: '#/components/responses/ApiError'
+        '403':
+          $ref: '#/components/responses/ApiError'
+        '500':
+          $ref: '#/components/responses/ApiError'
+  /api/map/batch:
+    post:
+      responses:
+        '200':
+          description: NDJSON stream of batch results
+        '400':
+          $ref: '#/components/responses/ApiError'
+        '401':
+          $ref: '#/components/responses/ApiError'
+        '403':
+          $ref: '#/components/responses/ApiError'
+        '500':
+          $ref: '#/components/responses/ApiError'
+  /api/tiles/gibs:
+    get:
+      responses:
+        '200':
+          description: Proxied GIBS WMS tile
+        '401':
+          $ref: '#/components/responses/ApiError'
+        '403':
+          $ref: '#/components/responses/ApiError'
+        '429':
+          $ref: '#/components/responses/ApiError'
+        '502':
+          $ref: '#/components/responses/ApiError'
+  /api/tiles/firms:
+    get:
+      responses:
+        '200':
+          description: Proxied FIRMS WMS tile
+        '401':
+          $ref: '#/components/responses/ApiError'
+        '403':
+          $ref: '#/components/responses/ApiError'
+        '429':
+          $ref: '#/components/responses/ApiError'
+        '502':
+          $ref: '#/components/responses/ApiError'
+  /api/tiles/effis:
+    get:
+      responses:
+        '200':
+          description: Proxied EFFIS WMS tile
+        '401':
+          $ref: '#/components/responses/ApiError'
+        '403':
+          $ref: '#/components/responses/ApiError'
+        '429':
+          $ref: '#/components/responses/ApiError'
+        '502':
+          $ref: '#/components/responses/ApiError'
+  /api/tiles/osm/{z}/{x}/{y}:
+    get:
+      parameters:
+        - in: path
+          name: z
+          required: true
+          schema:
+            type: integer
+        - in: path
+          name: x
+          required: true
+          schema:
+            type: integer
+        - in: path
+          name: y
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Proxied OSM raster tile
+        '401':
+          $ref: '#/components/responses/ApiError'
+        '403':
+          $ref: '#/components/responses/ApiError'
+        '429':
+          $ref: '#/components/responses/ApiError'
+        '502':
+          $ref: '#/components/responses/ApiError'
+  /api/tiles/osm/warm:
+    post:
+      responses:
+        '200':
+          description: Cache warm result
+        '401':
+          $ref: '#/components/responses/ApiError'
+        '403':
+          $ref: '#/components/responses/ApiError'
+        '500':
+          $ref: '#/components/responses/ApiError'
+  /api/pmtiles/{name}:
+    get:
+      parameters:
+        - in: path
+          name: name
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: PMTiles file (Range supported)
+        '206':
+          description: Partial PMTiles file (Range supported)
+        '401':
+          $ref: '#/components/responses/ApiError'
+        '403':
+          $ref: '#/components/responses/ApiError'
+        '404':
+          $ref: '#/components/responses/ApiError'
+  /api/graphql:
+    post:
+      responses:
+        '200':
+          description: GraphQL response
+        '400':
+          $ref: '#/components/responses/ApiError'
+        '401':
+          $ref: '#/components/responses/ApiError'
+        '403':
+          $ref: '#/components/responses/ApiError'
+components:
+  responses:
+    ApiError:
+      description: Standardized API error
+      headers:
+        X-Request-Id:
+          schema:
+            type: string
+        X-Response-Time-Ms:
+          schema:
+            type: string
+        Retry-After:
+          schema:
+            type: string
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiErrorResponse'
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ApiErrorResponse'
+  schemas:
+    ApiErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
+        error:
+          $ref: '#/components/schemas/ApiErrorEnvelope'
+    ApiErrorEnvelope:
+      type: object
+      required:
+        - code
+        - message
+        - userMessage
+        - severity
+        - timestamp
+        - requestId
+      properties:
+        code:
+          type: integer
+          example: 1001
+        message:
+          type: string
+          example: Validation failed
+        userMessage:
+          type: string
+          example: Please correct the highlighted fields.
+        severity:
+          type: string
+          enum: [LOW, MEDIUM, HIGH, CRITICAL]
+        timestamp:
+          type: string
+          format: date-time
+        requestId:
+          type: string
+        hint:
+          type: array
+          items:
+            $ref: '#/components/schemas/RemediationHint'
+        fields:
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldError'
+        meta:
+          type: object
+          additionalProperties: true
+        debug:
+          type: object
+          properties:
+            stack:
+              type: string
+            cause:
+              nullable: true
+    RemediationHint:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+        steps:
+          type: array
+          items:
+            type: string
+        url:
+          type: string
+    FieldError:
+      type: object
+      required: [field]
+      properties:
+        field:
+          type: string
+        code:
+          type: string
+        message:
+          type: string
+

@@ -1,0 +1,95 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-4.94, 33.73]
+      },
+      "properties": {
+        "name": "Barrage Allal El Fassi",
+        "nameAr": "سد علال الفاسي",
+        "nameFr": "Barrage Allal El Fassi",
+        "capacity": 81.6,
+        "capacityUnit": "Mm³",
+        "type": "dam"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-5.12, 33.88]
+      },
+      "properties": {
+        "name": "Barrage Sidi Chahed",
+        "nameAr": "سد سيدي شاهد",
+        "nameFr": "Barrage Sidi Chahed",
+        "capacity": 170,
+        "capacityUnit": "Mm³",
+        "type": "dam"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-4.65, 34.10]
+      },
+      "properties": {
+        "name": "Barrage Idriss 1er",
+        "nameAr": "سد إدريس الأول",
+        "nameFr": "Barrage Idriss 1er",
+        "capacity": 1186,
+        "capacityUnit": "Mm³",
+        "type": "dam"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-5.92, 33.92]
+      },
+      "properties": {
+        "name": "Barrage El Kansera",
+        "nameAr": "سد القنصرة",
+        "nameFr": "Barrage El Kansera",
+        "capacity": 266,
+        "capacityUnit": "Mm³",
+        "type": "dam"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-4.88, 33.42]
+      },
+      "properties": {
+        "name": "Barrage Ait Youb",
+        "nameAr": "سد آيت يوب",
+        "nameFr": "Barrage Ait Youb",
+        "capacity": 30,
+        "capacityUnit": "Mm³",
+        "type": "dam"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-4.40, 34.35]
+      },
+      "properties": {
+        "name": "Barrage Sahla",
+        "nameAr": "سد سهلة",
+        "nameFr": "Barrage Sahla",
+        "capacity": 64,
+        "capacityUnit": "Mm³",
+        "type": "dam"
+      }
+    }
+  ]
+}

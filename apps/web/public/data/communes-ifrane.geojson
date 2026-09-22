@@ -1,0 +1,165 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-5.18, 33.46],
+          [-5.11, 33.46],
+          [-5.11, 33.60],
+          [-5.18, 33.60],
+          [-5.18, 33.46]
+        ]]
+      },
+      "properties": {
+        "name": "Ifrane",
+        "nameAr": "إفران",
+        "code": "51.01.03",
+        "areaKm2": 100.6,
+        "forestedAreaHa": 6540
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-5.30, 33.37],
+          [-5.18, 33.37],
+          [-5.18, 33.51],
+          [-5.30, 33.51],
+          [-5.30, 33.37]
+        ]]
+      },
+      "properties": {
+        "name": "Azrou",
+        "nameAr": "أزرو",
+        "code": "51.01.01",
+        "areaKm2": 172.4,
+        "forestedAreaHa": 12070
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-5.42, 33.22],
+          [-5.26, 33.22],
+          [-5.26, 33.37],
+          [-5.42, 33.37],
+          [-5.42, 33.22]
+        ]]
+      },
+      "properties": {
+        "name": "Ain Leuh",
+        "nameAr": "عين اللوح",
+        "code": "51.03.01",
+        "areaKm2": 246.8,
+        "forestedAreaHa": 16040
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-5.11, 33.51],
+          [-4.99, 33.51],
+          [-4.99, 33.65],
+          [-5.11, 33.65],
+          [-5.11, 33.51]
+        ]]
+      },
+      "properties": {
+        "name": "Dayet Aoua",
+        "nameAr": "ضاية عوا",
+        "code": "51.03.03",
+        "areaKm2": 172.3,
+        "forestedAreaHa": 8610
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-5.12, 33.22],
+          [-4.97, 33.22],
+          [-4.97, 33.37],
+          [-5.12, 33.37],
+          [-5.12, 33.22]
+        ]]
+      },
+      "properties": {
+        "name": "Sidi El Makhfi",
+        "nameAr": "سيدي المخفي",
+        "code": "51.03.05",
+        "areaKm2": 231.4,
+        "forestedAreaHa": 12730
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-5.14, 33.08],
+          [-4.99, 33.08],
+          [-4.99, 33.22],
+          [-5.14, 33.22],
+          [-5.14, 33.08]
+        ]]
+      },
+      "properties": {
+        "name": "Timahdit",
+        "nameAr": "تيمحضيت",
+        "code": "51.03.07",
+        "areaKm2": 216.3,
+        "forestedAreaHa": 8650
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-5.18, 33.37],
+          [-5.04, 33.37],
+          [-5.04, 33.46],
+          [-5.18, 33.46],
+          [-5.18, 33.37]
+        ]]
+      },
+      "properties": {
+        "name": "Ben Smim",
+        "nameAr": "بن صميم",
+        "code": "51.03.02",
+        "areaKm2": 129.5,
+        "forestedAreaHa": 6470
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-5.28, 33.51],
+          [-5.18, 33.51],
+          [-5.18, 33.63],
+          [-5.28, 33.63],
+          [-5.28, 33.51]
+        ]]
+      },
+      "properties": {
+        "name": "Tizguit",
+        "nameAr": "تيزكيت",
+        "code": "51.03.06",
+        "areaKm2": 123.1,
+        "forestedAreaHa": 7390
+      }
+    }
+  ]
+}

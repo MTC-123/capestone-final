@@ -1,0 +1,95 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-4.97, 33.83]
+      },
+      "properties": {
+        "name": "Barrage Sidi Said",
+        "nameAr": "سد سيدي سعيد",
+        "nameFr": "Barrage Sidi Said",
+        "capacity": 10,
+        "capacityUnit": "Mm³",
+        "type": "dam"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-4.94, 33.73]
+      },
+      "properties": {
+        "name": "Barrage Allal El Fassi",
+        "nameAr": "سد علال الفاسي",
+        "nameFr": "Barrage Allal El Fassi",
+        "capacity": 81.6,
+        "capacityUnit": "Mm³",
+        "type": "dam"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-6.46, 32.10]
+      },
+      "properties": {
+        "name": "Barrage Bin El Ouidane",
+        "nameAr": "سد بين الويدان",
+        "nameFr": "Barrage Bin El Ouidane",
+        "capacity": 1500,
+        "capacityUnit": "Mm³",
+        "type": "dam"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-4.37, 31.94]
+      },
+      "properties": {
+        "name": "Barrage Hassan Addakhil",
+        "nameAr": "سد الحسن الداخل",
+        "nameFr": "Barrage Hassan Addakhil",
+        "capacity": 347,
+        "capacityUnit": "Mm³",
+        "type": "dam"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-6.59, 32.42]
+      },
+      "properties": {
+        "name": "Barrage Ahmed El Hansali",
+        "nameAr": "سد أحمد الحنصالي",
+        "nameFr": "Barrage Ahmed El Hansali",
+        "capacity": 740,
+        "capacityUnit": "Mm³",
+        "type": "dam"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-8.19, 31.12]
+      },
+      "properties": {
+        "name": "Barrage Moulay Youssef",
+        "nameAr": "سد مولاي يوسف",
+        "nameFr": "Barrage Moulay Youssef",
+        "capacity": 175,
+        "capacityUnit": "Mm³",
+        "type": "dam"
+      }
+    }
+  ]
+}

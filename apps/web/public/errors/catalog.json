@@ -1,0 +1,335 @@
+{
+  "1000": {
+    "code": 1000,
+    "name": "CLIENT_BAD_REQUEST",
+    "severity": "LOW",
+    "httpStatus": 400,
+    "developerMessage": "Bad request",
+    "userMessageKey": "errorBadRequest",
+    "remediationHints": [
+      {
+        "title": "Check request payload and retry."
+      }
+    ],
+    "rootCauses": [
+      "Malformed JSON",
+      "Missing required parameters"
+    ],
+    "resolutionSteps": [
+      "Validate request payload format",
+      "Ensure required fields are provided"
+    ]
+  },
+  "1001": {
+    "code": 1001,
+    "name": "CLIENT_VALIDATION_FAILED",
+    "severity": "LOW",
+    "httpStatus": 422,
+    "developerMessage": "Validation failed",
+    "userMessageKey": "errorValidationFailed",
+    "remediationHints": [
+      {
+        "title": "Fix the highlighted fields and retry."
+      }
+    ],
+    "rootCauses": [
+      "Invalid field values",
+      "Missing required fields"
+    ],
+    "resolutionSteps": [
+      "Review field-level errors",
+      "Provide valid values for all required fields"
+    ]
+  },
+  "1002": {
+    "code": 1002,
+    "name": "CLIENT_RATE_LIMITED",
+    "severity": "MEDIUM",
+    "httpStatus": 429,
+    "developerMessage": "Too many requests",
+    "userMessageKey": "errorRateLimited",
+    "remediationHints": [
+      {
+        "title": "Wait a moment and retry."
+      }
+    ],
+    "rootCauses": [
+      "Repeated requests in a short time window"
+    ],
+    "resolutionSteps": [
+      "Back off and retry later",
+      "Avoid repeated submissions"
+    ]
+  },
+  "1003": {
+    "code": 1003,
+    "name": "CLIENT_NOT_FOUND",
+    "severity": "LOW",
+    "httpStatus": 404,
+    "developerMessage": "Resource not found",
+    "userMessageKey": "errorNotFound",
+    "remediationHints": [
+      {
+        "title": "Refresh the page or return to a valid screen."
+      }
+    ],
+    "rootCauses": [
+      "Invalid resource identifier",
+      "Resource deleted"
+    ],
+    "resolutionSteps": [
+      "Verify the identifier",
+      "Check that the resource exists"
+    ]
+  },
+  "2000": {
+    "code": 2000,
+    "name": "AUTH_UNAUTHENTICATED",
+    "severity": "MEDIUM",
+    "httpStatus": 401,
+    "developerMessage": "Authentication required",
+    "userMessageKey": "errorUnauthenticated",
+    "remediationHints": [
+      {
+        "title": "Sign in and retry."
+      }
+    ],
+    "rootCauses": [
+      "Missing token",
+      "Invalid token"
+    ],
+    "resolutionSteps": [
+      "Re-authenticate",
+      "Clear cookies and sign in again"
+    ]
+  },
+  "2001": {
+    "code": 2001,
+    "name": "AUTH_FORBIDDEN",
+    "severity": "MEDIUM",
+    "httpStatus": 403,
+    "developerMessage": "Not authorized",
+    "userMessageKey": "errorForbidden",
+    "remediationHints": [
+      {
+        "title": "Contact an administrator if you believe this is incorrect."
+      }
+    ],
+    "rootCauses": [
+      "Insufficient role/permissions"
+    ],
+    "resolutionSteps": [
+      "Verify user role",
+      "Grant permissions if appropriate"
+    ]
+  },
+  "2002": {
+    "code": 2002,
+    "name": "AUTH_INVALID_CREDENTIALS",
+    "severity": "LOW",
+    "httpStatus": 401,
+    "developerMessage": "Invalid credentials",
+    "userMessageKey": "errorInvalidCredentials",
+    "remediationHints": [
+      {
+        "title": "Verify your CIN and password and retry."
+      }
+    ],
+    "rootCauses": [
+      "Wrong CIN",
+      "Wrong password"
+    ],
+    "resolutionSteps": [
+      "Ensure CIN is correct",
+      "Reset password if necessary"
+    ]
+  },
+  "2003": {
+    "code": 2003,
+    "name": "AUTH_SESSION_EXPIRED",
+    "severity": "LOW",
+    "httpStatus": 401,
+    "developerMessage": "Session expired",
+    "userMessageKey": "errorSessionExpired",
+    "remediationHints": [
+      {
+        "title": "Sign in again."
+      }
+    ],
+    "rootCauses": [
+      "Expired token",
+      "Revoked session"
+    ],
+    "resolutionSteps": [
+      "Re-authenticate",
+      "Update token expiration policy if needed"
+    ]
+  },
+  "3000": {
+    "code": 3000,
+    "name": "BUSINESS_RULE_VIOLATION",
+    "severity": "LOW",
+    "httpStatus": 409,
+    "developerMessage": "Business rule violation",
+    "userMessageKey": "errorBusinessRule",
+    "remediationHints": [
+      {
+        "title": "Review the action and try again."
+      }
+    ],
+    "rootCauses": [
+      "Action not allowed in current state"
+    ],
+    "resolutionSteps": [
+      "Validate state transitions",
+      "Update UI to prevent invalid actions"
+    ]
+  },
+  "3001": {
+    "code": 3001,
+    "name": "BUSINESS_ALREADY_EXISTS",
+    "severity": "LOW",
+    "httpStatus": 409,
+    "developerMessage": "Resource already exists",
+    "userMessageKey": "errorAlreadyExists",
+    "remediationHints": [
+      {
+        "title": "Use a different identifier or sign in."
+      }
+    ],
+    "rootCauses": [
+      "Unique constraint violation"
+    ],
+    "resolutionSteps": [
+      "Check existing resources",
+      "Handle duplicates gracefully"
+    ]
+  },
+  "4000": {
+    "code": 4000,
+    "name": "EXTERNAL_SERVICE_FAILED",
+    "severity": "HIGH",
+    "httpStatus": 502,
+    "developerMessage": "External service failure",
+    "userMessageKey": "errorExternalService",
+    "remediationHints": [
+      {
+        "title": "Try again later."
+      }
+    ],
+    "rootCauses": [
+      "Third-party API outage",
+      "Network errors"
+    ],
+    "resolutionSteps": [
+      "Check provider status",
+      "Retry with backoff",
+      "Use fallback if available"
+    ]
+  },
+  "4001": {
+    "code": 4001,
+    "name": "EXTERNAL_TWILIO_FAILED",
+    "severity": "HIGH",
+    "httpStatus": 502,
+    "developerMessage": "Twilio notification failed",
+    "userMessageKey": "errorNotificationFailed",
+    "remediationHints": [
+      {
+        "title": "Try again later; the report may still be saved."
+      }
+    ],
+    "rootCauses": [
+      "Twilio API error",
+      "Invalid credentials",
+      "Provider outage"
+    ],
+    "resolutionSteps": [
+      "Verify Twilio config",
+      "Inspect provider error code",
+      "Retry later"
+    ]
+  },
+  "4002": {
+    "code": 4002,
+    "name": "EXTERNAL_WEATHER_FAILED",
+    "severity": "MEDIUM",
+    "httpStatus": 502,
+    "developerMessage": "Weather provider failed",
+    "userMessageKey": "errorWeatherFailed",
+    "remediationHints": [
+      {
+        "title": "Refresh later."
+      }
+    ],
+    "rootCauses": [
+      "Weather API timeout",
+      "Provider outage"
+    ],
+    "resolutionSteps": [
+      "Check provider status",
+      "Retry later"
+    ]
+  },
+  "5000": {
+    "code": 5000,
+    "name": "SYSTEM_UNEXPECTED",
+    "severity": "CRITICAL",
+    "httpStatus": 500,
+    "developerMessage": "Unexpected server error",
+    "userMessageKey": "errorServer",
+    "remediationHints": [
+      {
+        "title": "Try again later."
+      }
+    ],
+    "rootCauses": [
+      "Unhandled exception"
+    ],
+    "resolutionSteps": [
+      "Inspect logs using requestId",
+      "Add handling for the failure mode"
+    ]
+  },
+  "5001": {
+    "code": 5001,
+    "name": "SYSTEM_CONFIG_MISSING",
+    "severity": "CRITICAL",
+    "httpStatus": 500,
+    "developerMessage": "Missing server configuration",
+    "userMessageKey": "errorConfigMissing",
+    "remediationHints": [
+      {
+        "title": "Create .env.local from .env.example and restart the server."
+      }
+    ],
+    "rootCauses": [
+      "Missing required environment variables"
+    ],
+    "resolutionSteps": [
+      "Set DATABASE_URL and JWT_SECRET",
+      "Restart the server"
+    ]
+  },
+  "5002": {
+    "code": 5002,
+    "name": "SYSTEM_DATABASE_FAILED",
+    "severity": "CRITICAL",
+    "httpStatus": 500,
+    "developerMessage": "Database operation failed",
+    "userMessageKey": "errorServer",
+    "remediationHints": [
+      {
+        "title": "Try again later."
+      }
+    ],
+    "rootCauses": [
+      "Database connectivity issue",
+      "Query error"
+    ],
+    "resolutionSteps": [
+      "Check database connection",
+      "Inspect Prisma errors in logs"
+    ]
+  }
+}

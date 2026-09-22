@@ -1,0 +1,343 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --topbar-height: 4rem;
+    --mobile-tabbar-base-height: 3.5rem;
+    --mobile-tabbar-height: calc(var(--mobile-tabbar-base-height) + env(safe-area-inset-bottom));
+    --background: 0 0% 97.5%;
+    --foreground: 224 50% 10%;
+    --surface: 0 0% 100%;
+    --surface-2: 220 16% 96%;
+    --muted: 220 12% 91%;
+    --muted-foreground: 220 10% 44%;
+    --border: 220 18% 88%;
+    --input: 220 18% 88%;
+    --ring: 145 72% 34%;
+    --primary: 145 72% 34%;
+    --primary-foreground: 0 0% 100%;
+    --success: 145 72% 40%;
+    --warning: 38 92% 42%;
+    --danger: 0 72% 42%;
+    --success-muted: 145 50% 94%;
+    --warning-muted: 38 60% 94%;
+    --danger-muted: 0 50% 94%;
+    --primary-muted: 145 50% 94%;
+    --success-foreground: 145 72% 22%;
+    --warning-foreground: 38 92% 22%;
+    --danger-foreground: 0 72% 25%;
+    --accent-fire: 0 84% 60%;
+    --info: 210 80% 50%;
+    --info-muted: 210 60% 94%;
+    --info-foreground: 210 80% 25%;
+    --radius: 10px;
+  }
+
+  .dark {
+    --background: 224 50% 7%;
+    --foreground: 210 40% 96%;
+    --surface: 224 44% 11%;
+    --surface-2: 224 38% 15%;
+    --muted: 224 24% 20%;
+    --muted-foreground: 215 16% 56%;
+    --border: 224 22% 17%;
+    --input: 224 22% 17%;
+    --ring: 145 72% 48%;
+    --primary: 145 72% 48%;
+    --primary-foreground: 0 0% 100%;
+    --success: 145 72% 48%;
+    --warning: 38 92% 55%;
+    --danger: 0 72% 55%;
+    --success-muted: 145 50% 13%;
+    --warning-muted: 38 50% 13%;
+    --danger-muted: 0 50% 13%;
+    --primary-muted: 145 50% 13%;
+    --success-foreground: 145 72% 80%;
+    --warning-foreground: 38 92% 80%;
+    --danger-foreground: 0 72% 82%;
+    --accent-fire: 0 84% 60%;
+    --info: 210 80% 60%;
+    --info-muted: 210 50% 15%;
+    --info-foreground: 210 80% 80%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    overflow-x: hidden;
+    min-height: 100dvh;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Smooth base transitions */
+  button, a, input, select, textarea {
+    @apply transition-colors duration-150;
+  }
+}
+
+/* ── Scrollbar ─────────────────────────────────────────── */
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.25);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.4);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: hsl(215 20% 30% / 0.5);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: hsl(215 20% 40% / 0.6);
+}
+
+/* ── Glassmorphism ─────────────────────────────────────── */
+
+.glass {
+  background: hsl(var(--surface) / 0.80);
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  border: 1px solid hsl(var(--foreground) / 0.06);
+}
+
+.dark .glass {
+  background: hsl(var(--surface) / 0.65);
+  border-color: hsl(0 0% 100% / 0.06);
+}
+
+/* ── Map Popup ─────────────────────────────────────────── */
+
+.incident-popup .maplibregl-popup-content {
+  border-radius: var(--radius);
+  box-shadow:
+    0 10px 25px -5px rgb(0 0 0 / 0.15),
+    0 4px 6px -2px rgb(0 0 0 / 0.08);
+  padding: 0;
+  background-color: hsl(var(--surface));
+  color: hsl(var(--foreground));
+  overflow: hidden;
+  animation: popup-enter 0.2s ease-out;
+}
+
+.maplibregl-popup-content {
+  max-width: calc(100vw - 2rem);
+}
+
+.incident-popup .maplibregl-popup-tip {
+  border-top-color: hsl(var(--surface));
+}
+
+@keyframes popup-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ── Fullscreen map ────────────────────────────────────── */
+
+div[data-ricer-map-ready]:fullscreen {
+  background: hsl(var(--background));
+}
+
+/* ── MapLibre controls ─────────────────────────────────── */
+
+.maplibregl-ctrl-group {
+  border-radius: calc(var(--radius) - 2px) !important;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.12) !important;
+  overflow: hidden;
+}
+
+.maplibregl-ctrl-group button {
+  width: 44px !important;
+  height: 44px !important;
+}
+
+@media (max-width: 767px) {
+  .maplibregl-ctrl-top-right {
+    top: 4.75rem !important;
+    right: 0.75rem !important;
+  }
+
+  .maplibregl-ctrl-bottom-left {
+    display: none !important;
+  }
+
+  .maplibregl-ctrl-attrib {
+    max-width: calc(100vw - 1rem) !important;
+  }
+
+  .maplibregl-popup-content {
+    max-width: calc(100vw - 1.5rem) !important;
+  }
+}
+
+/* ── Shimmer / Skeleton ────────────────────────────────── */
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    hsl(var(--muted-foreground) / 0.06) 25%,
+    hsl(var(--muted-foreground) / 0.14) 50%,
+    hsl(var(--muted-foreground) / 0.06) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.8s ease-in-out infinite;
+}
+
+/* ── Geolocate ─────────────────────────────────────────── */
+
+.maplibregl-user-location-accuracy-circle {
+  background-color: hsl(var(--primary) / 0.12) !important;
+}
+
+.maplibregl-user-location-dot::before {
+  background-color: hsl(var(--primary)) !important;
+}
+
+.maplibregl-user-location-dot::after {
+  border-color: hsl(var(--primary)) !important;
+}
+
+/* ── Keyframe animations ───────────────────────────────── */
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slide-up {
+  from { transform: translateY(12px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes slide-in-right {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+@keyframes scale-in {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+@keyframes pulse-subtle {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 8px hsl(var(--primary) / 0.3); }
+  50% { box-shadow: 0 0 20px hsl(var(--primary) / 0.5); }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.2s ease-out both;
+}
+
+.animate-slide-up {
+  animation: slide-up 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.animate-scale-in {
+  animation: scale-in 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* ── Page enter ────────────────────────────────────────── */
+
+.page-enter {
+  animation: slide-up 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* ── Stagger children animation ────────────────────────── */
+
+.stagger-children > * {
+  animation: slide-up 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.stagger-children > *:nth-child(1) { animation-delay: 0ms; }
+.stagger-children > *:nth-child(2) { animation-delay: 50ms; }
+.stagger-children > *:nth-child(3) { animation-delay: 100ms; }
+.stagger-children > *:nth-child(4) { animation-delay: 150ms; }
+.stagger-children > *:nth-child(5) { animation-delay: 200ms; }
+.stagger-children > *:nth-child(6) { animation-delay: 250ms; }
+
+/* ── Dot grid background ───────────────────────────────── */
+
+.bg-dot-grid {
+  background-image: radial-gradient(
+    circle,
+    hsl(var(--muted-foreground) / 0.08) 1px,
+    transparent 1px
+  );
+  background-size: 24px 24px;
+}
+
+/* ── Active indicator pill (for tabs) ──────────────────── */
+
+.tab-indicator {
+  position: relative;
+}
+
+.tab-indicator::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 2px;
+  background: hsl(var(--primary));
+  border-radius: 999px;
+  transition: width 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.tab-indicator[data-active="true"]::after,
+.tab-indicator.active::after {
+  width: 60%;
+}

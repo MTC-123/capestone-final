@@ -1,0 +1,756 @@
+// This is your Prisma schema file
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  cin        String   @unique
+  phone      String
+  password   String
+  role       Role
+  department String?
+  position   String?
+  reports    Report[]
+  refreshTokens RefreshToken[]
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([role])
+}
+
+enum Role {
+  CIVILIAN
+  OFFICIAL
+}
+
+model RefreshToken {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId       String   @db.ObjectId
+  user         User     @relation(fields: [userId], references: [id])
+  jti          String   @unique
+  tokenHash    String   @unique
+  scopes       String[]
+  expiresAt    DateTime
+  rotatedAt    DateTime?
+  revokedAt    DateTime?
+  replacedByJti String?
+  ip           String?
+  userAgent    String?
+  createdAt    DateTime @default(now())
+
+  @@index([userId, expiresAt])
+  @@index([expiresAt])
+}
+
+model Report {
+  id              String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId          String    @db.ObjectId
+  user            User      @relation(fields: [userId], references: [id])
+  latitude        Float
+  longitude       Float
+  description     String
+  images          String[]
+  status          Status    @default(PENDING)
+  cause           String?
+  incidentId      String?   @db.ObjectId
+  anonymous       Boolean   @default(false)
+  contactPhone    String?
+  characteristics Json?
+  referenceNumber String?   @unique
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([createdAt])
+  @@index([userId])
+  @@index([status])
+  @@index([status, createdAt])
+  @@index([incidentId])
+}
+
+enum Status {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum IncidentStatus {
+  PENDING
+  VIGILANCE
+  ALERTE
+  INTERVENTION
+  MAITRISE
+  ETEINT
+  COMPLETED
+  IN_PROGRESS
+}
+
+enum InvestigationStatusEnum {
+  NOT_INVESTIGATED
+  UNDER_INVESTIGATION
+  CAUSE_DETERMINED
+  INCONCLUSIVE
+}
+
+model Incident {
+  id                    String                   @id @default(auto()) @map("_id") @db.ObjectId
+  location              Json?
+  cause                 String
+  severity              Int
+  status                IncidentStatus           @default(VIGILANCE)
+  description           String?
+  reportId              String?                  @db.ObjectId
+  investigationStatus   InvestigationStatusEnum? @default(NOT_INVESTIGATED)
+  investigationNotes    String?
+  legalFollowUp         Boolean?
+  createdAt             DateTime                 @default(now())
+  updatedAt             DateTime                 @updatedAt
+
+  @@index([status])
+  @@index([createdAt])
+  @@index([reportId])
+  @@index([investigationStatus])
+}
+
+model Equipment {
+  id              String    @id @default(auto()) @map("_id") @db.ObjectId
+  type            String
+  name            String
+  status          String    @default("OPERATIONNEL")
+  quantity        Int       @default(1)
+  department      String?
+  latitude        Float?
+  longitude       Float?
+  lastMaintenance DateTime?
+  notes           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([type])
+  @@index([status])
+  @@index([type, status])
+  @@index([lastMaintenance])
+}
+
+model RetardantProduct {
+  id              String    @id @default(auto()) @map("_id") @db.ObjectId
+  name            String
+  type            String    @default("MOUSSE")
+  quantity        Int
+  unit            String    @default("L")
+  storageLocation String
+  storageLat      Float?
+  storageLng      Float?
+  expiryDate      DateTime?
+  acquisitionDate DateTime
+  notes           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([type])
+}
+
+model Infrastructure {
+  id                 String    @id @default(auto()) @map("_id") @db.ObjectId
+  type               String
+  name               String
+  latitude           Float?
+  longitude          Float?
+  status             String    @default("OPERATIONNEL")
+  capacity           Int?
+  capacityUnit       String?
+  lastInspectionDate DateTime?
+  notes              String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  @@index([type])
+  @@index([status])
+}
+
+enum ResourceType {
+  TRUCK
+  AIRCRAFT
+  PERSONNEL
+  EQUIPMENT
+}
+
+model Resource {
+  id          String       @id @default(auto()) @map("_id") @db.ObjectId
+  type        ResourceType
+  name        String
+  location    Json?
+  status      String
+  assignedTo  String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([type])
+  @@index([status])
+}
+
+model RiskBasin {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  geometry    Json?
+  riskLevel   Int
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([riskLevel])
+}
+
+model TruckDeployment {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  truckId    String
+  truckName  String
+  latitude   Float
+  longitude  Float
+  status     String
+  assignedTo String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+// ============================================
+// Dispatch System Models
+// ============================================
+
+enum TeamType {
+  GROUND_CREW
+  AERIAL_SUPPORT
+  COMMAND_UNIT
+  MEDICAL
+}
+
+enum TeamStatus {
+  AVAILABLE
+  EN_ROUTE
+  ON_SCENE
+  RETURNING
+  UNAVAILABLE
+}
+
+model Team {
+  id          String      @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  type        TeamType
+  status      TeamStatus  @default(AVAILABLE)
+  location    Json?       // GeoJSON Point
+  assignedTo  String?     @db.ObjectId  // Incident ID
+  capacity    Int         @default(5)   // Personnel count
+  equipment   String[]    // Equipment IDs or types
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@index([status])
+  @@index([type])
+  @@index([status, type])
+  @@index([assignedTo])
+}
+
+enum DispatchStatus {
+  ASSIGNED
+  EN_ROUTE
+  ARRIVED
+  COMPLETED
+  CANCELLED
+}
+
+model Dispatch {
+  id          String         @id @default(auto()) @map("_id") @db.ObjectId
+  incidentId  String         @db.ObjectId
+  teamId      String?        @db.ObjectId    // Optional — team dispatch
+  vehicleId   String?        @db.ObjectId    // Optional — vehicle dispatch
+  status      DispatchStatus @default(ASSIGNED)
+  route       Json?          // GeoJSON LineString
+  distance    Float?         // km
+  duration    Float?         // minutes
+  eta         DateTime?      // Estimated time of arrival
+  assignedBy  String?        @db.ObjectId  // User ID
+  assignedAt  DateTime       @default(now())
+  arrivedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([incidentId])
+  @@index([teamId])
+  @@index([vehicleId])
+  @@index([status])
+  @@index([assignedAt])
+}
+
+// ============================================
+// Vehicle Dispatch Models
+// ============================================
+
+enum VehicleType {
+  FIRE_TRUCK
+  WATER_TANKER
+  COMMAND
+  AMBULANCE
+  HELICOPTER
+}
+
+enum VehicleStatus {
+  AVAILABLE
+  EN_ROUTE
+  ON_SCENE
+  RETURNING
+  OUT_OF_SERVICE
+}
+
+model Vehicle {
+  id            String        @id @default(auto()) @map("_id") @db.ObjectId
+  callSign      String        @unique    // e.g., "FT-001"
+  type          VehicleType
+  status        VehicleStatus @default(AVAILABLE)
+  capabilities  String[]                 // e.g., ["water_pump", "ladder", "foam"]
+  baseLocation  Json?                    // GeoJSON Point — home station
+  location      Json?                    // GeoJSON Point — current position
+  assignedTo    String?       @db.ObjectId  // Incident ID
+  capacity      Int           @default(0)   // Liters / seats depending on type
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([status])
+  @@index([type])
+  @@index([status, type])
+  @@index([assignedTo])
+}
+
+model VehicleTelemetry {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  vehicleId  String   @db.ObjectId
+  position   Json     // GeoJSON Point [lon, lat]
+  speed      Float?   // km/h
+  heading    Float?   // degrees 0-360
+  engineOn   Boolean?
+  fuelLevel  Float?   // 0-100%
+  timestamp  DateTime @default(now())
+
+  @@index([vehicleId, timestamp])
+  @@index([timestamp])
+}
+
+// ============================================
+// Fire Event Record Models
+// ============================================
+
+enum AlertSource {
+  FIRMS_SATELLITE
+  CITIZEN_REPORT
+  PATROL
+  PHONE_CALL
+  RADIO
+  OTHER
+}
+
+enum RecordStatus {
+  DRAFT
+  VERIFIED
+  LOCKED
+}
+
+model FireEventRecord {
+  id                String       @id @default(auto()) @map("_id") @db.ObjectId
+  incidentId        String       @unique @db.ObjectId
+
+  // Timeline
+  alertSource       AlertSource  @default(OTHER)
+  ignitionAt        DateTime?
+  alertReceivedAt   DateTime?
+  verifiedAt        DateTime?
+  firstResponseAt   DateTime?
+  onSceneAt         DateTime?
+  containedAt       DateTime?
+  extinguishedAt    DateTime?
+
+  // Embedded complex data (Json for MongoDB)
+  agencyArrivals    Json?        // AgencyArrival[]
+  meansEngaged      Json?        // MeansEngaged (legacy)
+  economicLoss      Json?        // EconomicLoss (legacy)
+
+  // New structured Json fields
+  locationDetail    Json?        // LocationDetail
+  causeDetail       Json?        // CauseDetail
+  damageDetail      Json?        // DamageDetail
+  responseDetail    Json?        // ResponseDetail
+  weatherAtTime     Json?        // WeatherAtTime
+  postFire          Json?        // PostFireDetail
+
+  // Burn perimeter + computed stats
+  burnPerimeter     Json?        // GeoJSON Polygon
+  burnAreaHa        Float?
+  burnCentroid      Json?        // [lng, lat]
+  burnBoundingBox   Json?        // [minLng, minLat, maxLng, maxLat]
+
+  // Workflow
+  recordStatus      RecordStatus @default(DRAFT)
+  lockedSections    String[]     // e.g., ["location", "cause"]
+  auditTrail        Json[]       // AuditEntry[]
+
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  @@index([recordStatus])
+  @@index([alertSource])
+  @@index([createdAt])
+}
+
+model RouteCache {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  cacheKey    String   @unique  // format: "route:{origin}:{dest}:{profile}"
+  origin      Json     // [lon, lat]
+  destination Json     // [lon, lat]
+  profile     String   // "fire_truck", "car", etc.
+  response    Json     // Full routing response
+  provider    String   // "graphhopper", "mapbox"
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+
+  @@index([expiresAt])
+}
+
+// ============================================
+// Coordination & Communication Models
+// ============================================
+
+enum MoroccanAgency {
+  DEF
+  PROTECTION_CIVILE
+  GENDARMERIE_ROYALE
+  FORCES_AUXILIAIRES
+  FORCES_ROYALES_AIR
+  FAR
+  AUTORITES_LOCALES
+}
+
+enum AgencyPresenceStatus {
+  ONLINE
+  OFFLINE
+  STANDBY
+}
+
+enum CommLogCategory {
+  ALERT_SENT
+  ORDER_GIVEN
+  STATUS_UPDATE
+  RESOURCE_REQUEST
+  ESCALATION
+  DE_ESCALATION
+  AVIATION_REQUEST
+  MUTUAL_AID
+  GENERAL
+}
+
+enum POIActivationLevel {
+  POI_1
+  POI_2
+  POI_3
+}
+
+enum ICSRole {
+  INCIDENT_COMMANDER
+  OPERATIONS_CHIEF
+  LOGISTICS_CHIEF
+  PLANNING_CHIEF
+  COMMUNICATIONS_OFFICER
+  SAFETY_OFFICER
+  LIAISON_OFFICER
+}
+
+enum MutualAidStatus {
+  REQUESTED
+  APPROVED
+  EN_ROUTE
+  ON_SCENE
+  COMPLETED
+  DENIED
+}
+
+enum PMAStep {
+  DETECTION
+  VERIFICATION
+  ASSESSMENT
+  POI_ACTIVATION
+  PMA_REQUEST
+  PROVINCIAL_APPROVAL
+  NATIONAL_RELAY
+  AIRCRAFT_DISPATCH
+  AIRCRAFT_ON_SCENE
+}
+
+model AgencyStatus {
+  id              String               @id @default(auto()) @map("_id") @db.ObjectId
+  agency          MoroccanAgency       @unique
+  status          AgencyPresenceStatus @default(OFFLINE)
+  unitsAvailable  Int                  @default(0)
+  unitsDeployed   Int                  @default(0)
+  aviationStatus  String?
+  reserveStatus   String?
+  contactName     String?
+  contactPhone    String?
+  contactEmail    String?
+  notes           String?
+  lastHeartbeat   DateTime?
+  updatedBy       String?
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  @@index([status])
+}
+
+model CommunicationLog {
+  id          String          @id @default(auto()) @map("_id") @db.ObjectId
+  incidentId  String?         @db.ObjectId
+  category    CommLogCategory @default(GENERAL)
+  fromAgency  MoroccanAgency?
+  toAgency    MoroccanAgency?
+  message     String
+  metadata    Json?
+  authorId    String
+  authorCin   String
+  createdAt   DateTime        @default(now())
+
+  @@index([incidentId, createdAt])
+  @@index([category])
+  @@index([createdAt])
+  @@index([fromAgency])
+}
+
+model POIActivation {
+  id            String             @id @default(auto()) @map("_id") @db.ObjectId
+  incidentId    String             @db.ObjectId
+  level         POIActivationLevel
+  activatedBy   String
+  activatedAt   DateTime           @default(now())
+  deactivatedAt DateTime?
+  notes         String?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  @@index([incidentId])
+  @@index([level])
+}
+
+model ICSAssignment {
+  id              String          @id @default(auto()) @map("_id") @db.ObjectId
+  incidentId      String          @db.ObjectId
+  role            ICSRole
+  assigneeName    String
+  assigneeAgency  MoroccanAgency?
+  assigneePhone   String?
+  assigneeUserId  String?
+  assignedBy      String
+  assignedAt      DateTime        @default(now())
+  relievedAt      DateTime?
+  notes           String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@unique([incidentId, role, relievedAt])
+  @@index([incidentId])
+  @@index([role])
+}
+
+model MutualAidRequest {
+  id                 String          @id @default(auto()) @map("_id") @db.ObjectId
+  incidentId         String          @db.ObjectId
+  requestingProvince String
+  targetProvince     String
+  resourceType       String
+  justification      String
+  status             MutualAidStatus @default(REQUESTED)
+  respondedAt        DateTime?
+  respondedBy        String?
+  responseNotes      String?
+  requestedBy        String
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  @@index([incidentId])
+  @@index([status])
+  @@index([targetProvince])
+}
+
+model PMAWorkflow {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  incidentId    String   @db.ObjectId
+  currentStep   PMAStep  @default(DETECTION)
+  steps         Json[]   // { step, timestamp, actor, notes }
+  aircraftType  String?
+  aircraftCount Int?
+  requestedBy   String
+  approvedBy    String?
+  status        String   @default("IN_PROGRESS") // IN_PROGRESS | COMPLETED | CANCELLED
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([incidentId])
+  @@index([currentStep])
+  @@index([status])
+}
+
+// ============================================
+// Moroccan Government Fire Management Forms
+// ============================================
+
+model EquipmentAudit {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  fireRecordId     String   @db.ObjectId
+  verificationDate DateTime @default(now())
+  auditType        String   // "general" (Annexe 2) or "vpi" (Annexe 5)
+  vpiMatricule     String?
+  dpeflcd          String?
+  ccdrf            String?
+  secteur          String?
+  foret            String?
+  canton           String?
+  lieudit          String?
+  items            Json     // array of {category, name, quantiteEngagee, quantiteRendue, quantitePerdue, fonctionnel, aEntretenir, aRemplacer, quantiteNecessaire, quantitePresente}
+  signedBy         String?
+  signedByRole     String?
+  donateur         String?
+  recepteur        String?
+  status           String   @default("draft")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([fireRecordId])
+  @@index([auditType])
+  @@index([status])
+}
+
+model Deployment {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  fireRecordId  String?  @db.ObjectId
+  date          DateTime @default(now())
+  dpeflcd       String?
+  ccdrf         String?
+  secteur       String?
+  foret         String?
+  canton        String?
+  lieudit       String?
+  operationType String[] // "prepositionnement","patrouille","lutte","permanence_post_incendie"
+  vpiNumbers    String[]
+  personnel     Json     // array of {nom, prenom, poste, cin}
+  observations  String?
+  signedBy      String?
+  status        String   @default("active")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([fireRecordId])
+  @@index([status])
+  @@index([date])
+}
+
+// ============================================
+// Operational Campaign & Phase Tracking
+// ============================================
+
+enum CampaignStatus {
+  PLANNING
+  ACTIVE
+  CLOSED
+}
+
+enum OperationalPhase {
+  PREPARATION
+  PREPOSITIONNEMENT
+  ALERTE
+  LUTTE
+  EXTINCTION
+  POST_CAMPAGNE
+}
+
+enum ChecklistItemStatus {
+  PENDING
+  IN_PROGRESS
+  DONE
+  BLOCKED
+}
+
+model Campaign {
+  id          String           @id @default(auto()) @map("_id") @db.ObjectId
+  year        Int              @unique
+  label       String
+  status      CampaignStatus   @default(PLANNING)
+  activePhase OperationalPhase @default(PREPARATION)
+  seasonStart DateTime?
+  seasonEnd   DateTime?
+  notes       String?
+  createdBy   String
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  checklists  PhaseChecklist[]
+
+  @@index([status])
+}
+
+model PhaseChecklist {
+  id              String              @id @default(auto()) @map("_id") @db.ObjectId
+  campaignId      String              @db.ObjectId
+  campaign        Campaign            @relation(fields: [campaignId], references: [id])
+  phase           OperationalPhase
+  task            String
+  responsibleUnit String?
+  deadline        DateTime?
+  status          ChecklistItemStatus @default(PENDING)
+  notes           String?
+  completedBy     String?
+  completedAt     DateTime?
+  sortOrder       Int                 @default(0)
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  @@index([campaignId, phase])
+}
+
+model Debriefing {
+  id                         String   @id @default(auto()) @map("_id") @db.ObjectId
+  fireRecordId               String   @db.ObjectId @unique
+  date                       DateTime @default(now())
+  superficieIncendiee        Float?
+  heureDeclenchement         String?
+  typeEssence                String?
+  alertePrecoce              Boolean?
+  alertePrecoceDetail        String?
+  premiereIntervention       String?
+  premiereInterventionDetail String?
+  vegetationSecondaire       String?
+  topographie                String[]
+  pistesForestieres          Boolean?
+  pistesAmenagees            Boolean?
+  trancheesPF                Boolean?
+  trancheesPFAmenagees       Boolean?
+  pointsEau                  Boolean?
+  pointsEauAccessible        Boolean?
+  pointsEauRempli            Boolean?
+  pointsEauUtilise           Boolean?
+  fonctionnaliteVPI          Boolean?
+  fonctionnaliteVPIDetail    String?
+  incidentLutte              String?
+  quAvaitEtePlanifie         String?
+  quEstCeQuiEstArrive        String?
+  pourquoi                   String?
+  prochaineFois              String?
+  observationsParticulieres  String?
+  animateurNom               String?
+  animateurQualite           String?
+  participants               Json     // array of {nom, prenom, poste}
+  status                     String   @default("draft")
+  createdAt                  DateTime @default(now())
+  updatedAt                  DateTime @updatedAt
+
+  @@index([status])
+  @@index([date])
+}

@@ -1,0 +1,12 @@
+rules:
+  - id: ricer-no-raw-eval
+    patterns:
+      - pattern: eval(...)
+    message: Avoid eval()
+    severity: ERROR
+    languages: [javascript, typescript]
+  - id: ricer-no-dangerous-redirect
+    pattern: return NextResponse.redirect(...)
+    message: Review redirects for open-redirect risks
+    severity: WARNING
+    languages: [typescript]
