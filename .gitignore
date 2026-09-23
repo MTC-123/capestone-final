@@ -81,6 +81,10 @@ tfull.json
 nul
 
 # IDE / tooling
-.claude/
-CLAUDE.md
 ricer-backup.bundle
+
+# Lighthouse CI reports
+**/.lighthouseci/
+
+# Keep environment templates
+!**/.env.example

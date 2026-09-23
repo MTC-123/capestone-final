@@ -1,0 +1,31 @@
+name: Bug report
+description: Something does not work as documented
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Sign in as an official
+        2. Open the dispatch map
+        3. ...
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options: [Reporting, Map and layers, Dispatch, Coordination, Notifications, Authentication, Other]
+  - type: input
+    id: env
+    attributes:
+      label: Browser and device
+      placeholder: Chrome 128, Android 14

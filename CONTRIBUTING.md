@@ -263,11 +263,11 @@ Add troubleshooting section for MongoDB connection issues
 
 ### Before Submitting
 
-1. ✅ **Run tests:** `npm test`
-2. ✅ **Run linter:** `npm run lint`
-3. ✅ **Check formatting:** `npm run format`
-4. ✅ **Update documentation** if needed
-5. ✅ **Test manually** in the browser
+1. **Run tests:** `npm test`
+2. **Run linter:** `npm run lint`
+3. **Type-check:** `npm run typecheck`
+4. **Update documentation** if needed
+5. **Test manually** in the browser
 
 ### PR Template
 
@@ -393,4 +393,4 @@ Contributors will be recognized in:
 - **CHANGELOG.md** for significant contributions
 - **Project documentation** for major features
 
-Thank you for helping improve the RICER Platform! 🔥🇲🇦
+Thank you for helping improve the RICER Platform!

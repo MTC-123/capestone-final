@@ -475,8 +475,8 @@ E2E tests had critical reliability issues:
 - `tests/unit/gpu/detection-cleanup.test.ts` - GPU cleanup tests
 - `tests/e2e/performance/map-fps.spec.ts` - Real browser FPS tests
 - `tests/e2e/dispatch-layer-controls.spec.ts` - Layer toggle tests
-- `docs/dispatch-deployment.md` - Deployment guide
-- `docs/dispatch-routing-audit.md` - This document
+- `docs/dispatch/deployment.md` - Deployment guide
+- `docs/dispatch/routing-audit.md` - This document
 
 ### Files Deleted (1)
 - `tests/performance/dispatch-rendering.test.ts` - Replaced with Playwright
@@ -495,7 +495,7 @@ E2E tests had critical reliability issues:
    npm run test:e2e
    ```
 
-2. **Environment Variables** (see docs/dispatch-deployment.md)
+2. **Environment Variables** (see docs/dispatch/deployment.md)
    - GRAPHHOPPER_URL
    - MONGODB_URI (with 2dsphere index)
    - REDIS_URL (for caching)
@@ -506,7 +506,7 @@ E2E tests had critical reliability issues:
    - dispatch.isochrone.duration (P95 < 3s)
    - dispatch.teams.nearest.duration (P95 < 200ms)
 
-4. **Smoke Tests** (see docs/dispatch-deployment.md)
+4. **Smoke Tests** (see docs/dispatch/deployment.md)
    - Create route between two points
    - Generate isochrones for fire station
    - Find nearest 10 teams

@@ -2,7 +2,7 @@
 
 ## Overview
 
-**RICER** (Rapid Incident Coordination and Emergency Response) is a real-time wildfire management system for Ifrane Province, Morocco. The platform enables fire reporting, incident tracking, resource management, and emergency coordination.
+**RICER** (Resilient Infrastructures and Coordinated Emergency Response) is a real-time wildfire management system for Ifrane Province, Morocco. The platform enables fire reporting, incident tracking, resource management, and emergency coordination.
 
 ## Technology Stack
 

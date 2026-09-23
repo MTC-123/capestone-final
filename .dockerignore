@@ -13,12 +13,7 @@ apps/web/tests
 !apps/web/README.md
 data/
 docs/
-Logos/
 scripts/
-ricer-ifrane/
-.claude/
-CLAUDE.md
-twilio*.jpeg
 *.pdf
 *.docx
 *.bundle

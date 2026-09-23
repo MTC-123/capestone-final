@@ -67,29 +67,29 @@ Use parameterized queries with Prisma ORM instead of raw SQL
 The RICER Platform implements the following security measures:
 
 #### Authentication & Authorization
-- ✅ **JWT tokens** with httpOnly cookies
-- ✅ **bcrypt password hashing** (10 rounds)
-- ✅ **Role-based access control** (Civilian/Official)
-- ✅ **Protected API routes** with middleware
-- ✅ **Session expiration** and refresh mechanisms
+- **JWT tokens** with httpOnly cookies
+- **bcrypt password hashing** (10 rounds)
+- **Role-based access control** (Civilian/Official)
+- **Protected API routes** with middleware
+- **Session expiration** and refresh mechanisms
 
 #### Input Validation
-- ✅ **Server-side validation** for all user inputs
-- ✅ **Type checking** with TypeScript
-- ✅ **SQL injection protection** via Prisma ORM
-- ✅ **XSS prevention** through React's built-in escaping
+- **Server-side validation** for all user inputs
+- **Type checking** with TypeScript
+- **SQL injection protection** via Prisma ORM
+- **XSS prevention** through React's built-in escaping
 
 #### Data Protection
-- ✅ **Environment variables** for secrets
-- ✅ **Secure database connections** (MongoDB Atlas)
-- ✅ **HTTPS enforcement** in production
-- ✅ **CORS configuration** for API endpoints
+- **Environment variables** for secrets
+- **Secure database connections** (MongoDB Atlas)
+- **HTTPS enforcement** in production
+- **CORS configuration** for API endpoints
 
 #### API Security
-- ✅ **Rate limiting** (planned)
-- ✅ **Request validation** with Zod schemas
-- ✅ **Error handling** without information leakage
-- ✅ **Secure headers** (Content-Security-Policy, etc.)
+- **Rate limiting** (sliding window)
+- **Request validation** on API routes
+- **Error handling** without information leakage
+- **Secure headers** (Content-Security-Policy, etc.)
 
 ---
 
@@ -125,24 +125,22 @@ When deploying to production:
 
 If you're contributing to the project:
 
-### Do's ✅
+### Do
+- **Validate all inputs** on the server side
+- **Use Prisma ORM** instead of raw database queries
+- **Sanitize user-generated content** before display
+- **Check authentication** in protected routes
+- **Use environment variables** for sensitive data
+- **Review dependencies** for known vulnerabilities
+- **Test security features** thoroughly
 
-- ✅ **Validate all inputs** on the server side
-- ✅ **Use Prisma ORM** instead of raw database queries
-- ✅ **Sanitize user-generated content** before display
-- ✅ **Check authentication** in protected routes
-- ✅ **Use environment variables** for sensitive data
-- ✅ **Review dependencies** for known vulnerabilities
-- ✅ **Test security features** thoroughly
-
-### Don'ts ❌
-
-- ❌ **Never commit secrets** (passwords, API keys, tokens)
-- ❌ **Don't trust client-side validation** alone
-- ❌ **Avoid raw SQL queries** when Prisma is available
-- ❌ **Don't expose error details** to end users
-- ❌ **Never disable security features** without good reason
-- ❌ **Don't use `eval()` or `dangerouslySetInnerHTML`** without sanitization
+### Don't
+- **Never commit secrets** (passwords, API keys, tokens)
+- **Don't trust client-side validation** alone
+- **Avoid raw SQL queries** when Prisma is available
+- **Don't expose error details** to end users
+- **Never disable security features** without good reason
+- **Don't use `eval()` or `dangerouslySetInnerHTML`** without sanitization
 
 ### Code Review Checklist
 
@@ -253,4 +251,4 @@ If you've reported a vulnerability, we'll list you here (with your permission) a
 
 ---
 
-**Thank you for helping keep the RICER Platform secure!** 🔒
+**Thank you for helping keep the RICER Platform secure!** 
