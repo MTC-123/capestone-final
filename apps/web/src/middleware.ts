@@ -52,8 +52,9 @@ function buildCsp(nonce: string): string {
     'style-src': ["'self'", "'unsafe-inline'"],
     'img-src': ["'self'", 'data:', 'blob:', 'https:'],
     'font-src': ["'self'", 'data:', 'https:'],
-    // Map tiles, open data services, realtime and error reporting.
-    'connect-src': ["'self'", 'https:', 'wss:', ...(isDev ? ['ws:', 'http://localhost:*'] : [])],
+    // Map tiles, open data services, realtime and error reporting. data:/blob:
+    // are needed because deck.gl loads its inline SVG icons through fetch().
+    'connect-src': ["'self'", 'https:', 'wss:', 'data:', 'blob:', ...(isDev ? ['ws:', 'http://localhost:*'] : [])],
     'worker-src': ["'self'", 'blob:'],
     'child-src': ["'self'", 'blob:'],
     'frame-src': ["'none'"],

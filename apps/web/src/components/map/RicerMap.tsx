@@ -26,7 +26,7 @@ import { useTranslation } from '@/hooks/useTranslation';
 import { Icon, type IconName } from '@/components/ui/Icon';
 import type { TranslationKey } from '@/i18n/translations';
 import { getMapStyle, HAS_PREMIUM_TILES } from '@/lib/map/styles';
-import { INCIDENT_STATUS_COLORS, FIRMS_CONFIDENCE_COLORS, SOIL_MOISTURE_COLORS, RESERVOIR_COLORS, PAMF_COLORS, RMA_COLORS } from '@/lib/map/colors';
+import { INCIDENT_STATUS_COLORS, FIRMS_CONFIDENCE_COLORS, SOIL_MOISTURE_COLORS, RESERVOIR_COLORS, PAMF_COLORS, RMA_COLORS, RISK_LEVEL_COLORS } from '@/lib/map/colors';
 import { usePopulationAtRisk } from '@/hooks/usePopulationAtRisk';
 import { useFireSpreadVectors } from '@/hooks/useFireSpreadVectors';
 import { registerSlopeProtocol, unregisterSlopeProtocol, configureSlopeProtocol } from '@/lib/map/slopeProtocol';
@@ -179,6 +179,7 @@ export default function RicerMap({ weather = null, weatherLoading = false }: Ric
 
   /* Reservoir state */
   const [reservoirData, setReservoirData] = useState<any | null>(null);
+  const [riskGrid, setRiskGrid] = useState<GeoJSON.FeatureCollection | null>(null);
 
   /* Population grid state */
   const [populationGridData, setPopulationGridData] = useState<any | null>(null);
@@ -413,7 +414,8 @@ export default function RicerMap({ weather = null, weatherLoading = false }: Ric
         setFirmsDetections(data);
         setFirmsLastUpdate(new Date());
         setLastSuccessfulSync(new Date());
-        setDataError('firmsDetections', null);
+        // Satellite sources can be down (or FIRMS unconfigured) without it being an app error.
+        setDataError('firmsDetections', res.headers.get('X-Detection-Status') === 'unavailable' ? 'unavailable' : null);
         logger.info({ event: 'firms_fetch_success_frontend', meta: { detections: data.features?.length || 0 } });
       } catch (error) {
         if (error instanceof Error && error.name === 'AbortError') return;
@@ -638,6 +640,52 @@ export default function RicerMap({ weather = null, weatherLoading = false }: Ric
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [layers.ndvi]);
+
+  /* ═══════════ Model risk grid (partner team XGBoost) ═══════════ */
+
+  useEffect(() => {
+    if (!layers.riskModel) return;
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const res = await fetch('/api/risk/grid');
+        if (!res.ok) throw new Error(`Risk grid: ${res.status}`);
+        const data = (await res.json()) as GeoJSON.FeatureCollection & { properties?: Record<string, unknown> };
+        if (cancelled) return;
+        // Each point is the centre of a 0.1° cell; draw it as a square.
+        const half = 0.05;
+        const cells: GeoJSON.FeatureCollection = {
+          type: 'FeatureCollection',
+          features: data.features.map((f) => {
+            const [lng, lat] = (f.geometry as GeoJSON.Point).coordinates;
+            return {
+              type: 'Feature',
+              properties: f.properties,
+              geometry: {
+                type: 'Polygon',
+                coordinates: [[[lng - half, lat - half], [lng + half, lat - half], [lng + half, lat + half], [lng - half, lat + half], [lng - half, lat - half]]],
+              },
+            };
+          }),
+        };
+        setRiskGrid(cells);
+        useMapStore.getState().setRiskMeta({
+          modelVersion: data.properties?.modelVersion as string | undefined,
+          generatedAt: data.properties?.generatedAt as string | undefined,
+          dataTime: (data.features[0]?.properties as { dataTime?: string } | undefined)?.dataTime,
+          cellCount: data.features.length,
+        });
+      } catch (err) {
+        if (!cancelled) logger.warn({ event: 'risk_grid_fetch_failed', meta: { error: String(err) } });
+      }
+    };
+    void load();
+    const id = window.setInterval(load, 30 * 60 * 1000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, [layers.riskModel]);
 
   /* ═══════════ Reservoir data fetch ═══════════ */
 
@@ -1326,6 +1374,20 @@ export default function RicerMap({ weather = null, weatherLoading = false }: Ric
 
   const mapStyle = useMemo(() => getMapStyle(basemap), [basemap]);
 
+  // Keep the default basemaps in step with the light/dark theme toggle;
+  // an explicit satellite or light choice is left alone.
+  useEffect(() => {
+    const root = document.documentElement;
+    const observer = new MutationObserver(() => {
+      const { basemap: current, setBasemap: apply } = useMapStore.getState();
+      const dark = root.classList.contains('dark');
+      if (dark && current === 'streets') apply('dark');
+      if (!dark && current === 'dark') apply('streets');
+    });
+    observer.observe(root, { attributes: true, attributeFilter: ['class'] });
+    return () => observer.disconnect();
+  }, []);
+
   /* ═══════════ Render ═══════════ */
 
   return (
@@ -1481,6 +1543,34 @@ export default function RicerMap({ weather = null, weatherLoading = false }: Ric
               type="raster"
               layout={{ visibility: layers.populationDensity ? 'visible' : 'none' }}
               paint={{ 'raster-opacity': populationDensityOpacity * 0.5 }}
+            />
+          </Source>
+        )}
+
+        {/* ═══ Model risk grid ═══ */}
+        {riskGrid && riskGrid.features.length > 0 && (
+          <Source id="risk-model" type="geojson" data={riskGrid}>
+            <Layer
+              id="risk-model-fill"
+              type="fill"
+              layout={{ visibility: layers.riskModel ? 'visible' : 'none' }}
+              paint={{
+                'fill-color': [
+                  'match', ['get', 'level'],
+                  'very_high', RISK_LEVEL_COLORS.very_high,
+                  'high', RISK_LEVEL_COLORS.high,
+                  'moderate', RISK_LEVEL_COLORS.moderate,
+                  RISK_LEVEL_COLORS.low,
+                ],
+                // Low-risk cells stay transparent so the layer only draws the
+                // eye to where risk is elevated; it fades as the user zooms in.
+                'fill-opacity': [
+                  '*',
+                  ['match', ['get', 'level'], 'very_high', 0.55, 'high', 0.42, 'moderate', 0.28, 0],
+                  ['interpolate', ['linear'], ['zoom'], 8, 1, 12, 0.7, 14, 0.4],
+                ],
+                'fill-antialias': false,
+              }}
             />
           </Source>
         )}

@@ -11,9 +11,34 @@ const vehicleStore: Record<string, any> = {};
 const dispatchStore: Record<string, any> = {};
 const telemetryStore: any[] = [];
 
+/** Fake of Prisma's conditional updateMany: applies `data` to every row matching all `where` fields. */
+function fakeUpdateMany(rows: any[], args: any) {
+  let count = 0;
+  for (const row of rows) {
+    if (Object.entries(args.where).every(([k, v]) => (row[k] ?? null) === v)) {
+      Object.assign(row, args.data, { updatedAt: new Date() });
+      count++;
+    }
+  }
+  return Promise.resolve({ count });
+}
+
+function fakeDeleteMany(rows: any[], args: any) {
+  const ids: string[] = args.where?.id?.in ?? [];
+  let count = 0;
+  for (let i = rows.length - 1; i >= 0; i--) {
+    if (ids.includes(rows[i].id)) {
+      rows.splice(i, 1);
+      count++;
+    }
+  }
+  return Promise.resolve({ count });
+}
+
 vi.mock('@/lib/prisma', () => ({
   prisma: {
     vehicle: {
+      updateMany: vi.fn((args: any) => fakeUpdateMany(Object.values(vehicleStore), args)),
       create: vi.fn((args: any) => {
         const v = { id: 'v-int-1', ...args.data, createdAt: new Date(), updatedAt: new Date() };
         vehicleStore[v.id] = v;
@@ -29,6 +54,7 @@ vi.mock('@/lib/prisma', () => ({
       }),
     },
     dispatch: {
+      deleteMany: vi.fn(() => Promise.resolve({ count: 0 })),
       create: vi.fn((args: any) => {
         const d = { id: `d-${Date.now()}`, ...args.data, createdAt: new Date(), updatedAt: new Date() };
         dispatchStore[d.id] = d;
@@ -72,7 +98,7 @@ vi.mock('@/lib/observability/logger', () => ({
 }));
 
 import { prisma } from '@/lib/prisma';
-import { assignVehicleToIncident } from '@/lib/dispatch/vehicleAssignment';
+import { assignVehicleToIncident, assignVehiclesToIncident } from '@/lib/dispatch/vehicleAssignment';
 import { validateVehicleAvailable } from '@/lib/dispatch/vehicleValidation';
 import { haversineDistance } from '@/lib/dispatch/geospatial';
 
@@ -106,7 +132,7 @@ describe('Vehicle Dispatch Lifecycle (Integration)', () => {
 
     // 3. Assign to incident
     const incident = { id: 'inc-int-1', location: { type: 'Point', coordinates: [-5.08, 33.55] } };
-    const assignment = await assignVehicleToIncident(created as Vehicle, incident, 'user-1');
+    const assignment = (await assignVehiclesToIncident([created as Vehicle], incident, 'user-1'))[0];
 
     expect(assignment.vehicleId).toBe('v-int-1');
     expect(assignment.callSign).toBe('FT-INT-001');
@@ -174,7 +200,7 @@ describe('Vehicle Dispatch Lifecycle (Integration)', () => {
 
     // 3. Assign to incident — should fall back to haversine
     const incident = { id: 'inc-fallback', location: { type: 'Point', coordinates: [-5.08, 33.55] } };
-    const assignment = await assignVehicleToIncident(created as Vehicle, incident, 'user-1');
+    const assignment = (await assignVehiclesToIncident([created as Vehicle], incident, 'user-1'))[0];
 
     // 4. Verify haversine fallback route
     expect(assignment.route.primary.coordinates).toEqual([[-5.1, 33.5], [-5.08, 33.55]]);

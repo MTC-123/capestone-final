@@ -191,18 +191,24 @@ export function SignUpForm() {
         />
 
         <div className="rounded-xl border border-border bg-surface-2/60 p-3.5">
-          <label className="flex cursor-pointer items-start gap-3">
+          <div className="flex items-start gap-3">
             <input
+              id="signup-agency"
               type="checkbox"
               checked={form.agency}
               onChange={(e) => set('agency', e.target.checked)}
-              className="mt-0.5 h-4 w-4 shrink-0 rounded border-input accent-[hsl(var(--primary))]"
+              aria-describedby="signup-agency-help"
+              className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer rounded border-input accent-[hsl(var(--primary))]"
             />
-            <span className="text-sm">
-              <span className="font-medium">{t('authAgencyToggle')}</span>
-              <span className="mt-0.5 block text-xs text-muted-foreground">{t('authAgencyExplain')}</span>
-            </span>
-          </label>
+            <div className="text-sm">
+              <label htmlFor="signup-agency" className="cursor-pointer font-medium">
+                {t('authAgencyToggle')}
+              </label>
+              <p id="signup-agency-help" className="mt-0.5 text-xs text-muted-foreground">
+                {t('authAgencyExplain')}
+              </p>
+            </div>
+          </div>
           {form.agency && (
             <div className="mt-4 space-y-3 border-t border-border pt-4 animate-slide-down">
               <SelectField

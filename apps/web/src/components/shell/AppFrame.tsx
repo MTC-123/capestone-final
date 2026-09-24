@@ -21,6 +21,9 @@ import { UserMenu } from '@/components/shell/UserMenu';
 import { CommandPalette } from '@/components/shell/CommandPalette';
 import { MobileTabBar } from '@/components/shell/MobileTabBar';
 import { SECTION_LABEL, SECTION_ORDER, currentNavItem, isActive, navFor } from '@/components/shell/nav';
+import { SyncStatusPill } from '@/components/offline';
+import { registerServiceWorker } from '@/lib/offline/registerServiceWorker';
+import { initSyncEngine, resumeAfterAuth } from '@/lib/offline/sync';
 import { cn } from '@/lib/cn';
 
 const FULL_BLEED = ['/map'];
@@ -38,6 +41,14 @@ export function AppFrame({ children }: { children: React.ReactNode }) {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const closePalette = useCallback(() => setPaletteOpen(false), [setPaletteOpen]);
   useNotificationPoller();
+
+  // Offline engine: start background sync, resume anything that was waiting
+  // on a sign-in, and register the service worker for the offline shell.
+  useEffect(() => {
+    initSyncEngine();
+    void resumeAfterAuth();
+    void registerServiceWorker();
+  }, []);
 
   const fullBleed = FULL_BLEED.some((p) => isActive(pathname, p));
   const Shell = user?.role === 'OFFICIAL' ? OpsShell : CivicShell;
@@ -237,6 +248,7 @@ function OpsShell({ children, fullBleed, onOpenPalette, onOpenNotifications }: S
             <IconButton label={t('paletteOpen')} onClick={onOpenPalette} className="md:hidden">
               <Icon name="search" size={19} />
             </IconButton>
+            <SyncStatusPill className="me-1 hidden whitespace-nowrap sm:inline-flex" />
             <div className="hidden xl:block">
               <LanguageSwitcher size="sm" />
             </div>
@@ -279,8 +291,8 @@ function CivicShell({ children, fullBleed, onOpenPalette, onOpenNotifications }:
     <div className="flex min-h-dvh flex-col bg-background" data-shell="civic">
       <header className="sticky top-0 z-30 border-b border-border bg-background/90 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-6xl items-center gap-4 px-4 sm:px-6">
-          <BrandMark href="/report" subtitle={t('shellCivicLabel')} />
-          <nav className="ms-4 hidden items-center gap-1 md:flex" aria-label={t('shellCivicLabel')}>
+          <BrandMark href="/report" subtitle={t('shellCivicLabel')} className="shrink-0" />
+          <nav className="ms-2 hidden items-center gap-0.5 lg:flex" aria-label={t('shellCivicLabel')}>
             {items.map((item) => {
               const active = isActive(pathname, item.href);
               return (
@@ -289,11 +301,11 @@ function CivicShell({ children, fullBleed, onOpenPalette, onOpenNotifications }:
                   href={item.href}
                   aria-current={active ? 'page' : undefined}
                   className={cn(
-                    'rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                    'whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-colors',
                     active ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                   )}
                 >
-                  {t(item.labelKey)}
+                  {t(item.shortKey ?? item.labelKey)}
                 </Link>
               );
             })}
@@ -302,14 +314,14 @@ function CivicShell({ children, fullBleed, onOpenPalette, onOpenNotifications }:
             <IconButton label={t('paletteOpen')} onClick={onOpenPalette} className="hidden md:inline-flex">
               <Icon name="search" size={18} />
             </IconButton>
-            <div className="hidden lg:block">
+            <div className="hidden xl:block">
               <LanguageSwitcher size="sm" />
             </div>
             <ThemeToggle />
             <NotificationsButton onClick={onOpenNotifications} />
             <Link
               href="/report"
-              className="ms-2 hidden h-10 items-center gap-2 rounded-xl bg-accent-fire px-4 text-sm font-semibold text-white shadow-glow-fire transition hover:brightness-110 md:flex"
+              className="ms-2 hidden h-10 items-center gap-2 whitespace-nowrap rounded-xl bg-accent-fire px-4 text-sm font-semibold text-white shadow-glow-fire transition hover:brightness-110 md:flex"
             >
               <Icon name="fire" size={17} />
               {t('reportFireCta')}

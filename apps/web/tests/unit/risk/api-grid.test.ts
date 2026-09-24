@@ -61,7 +61,8 @@ describe('/api/risk/grid', () => {
     const body = await response.json();
     expect(body.type).toBe('FeatureCollection');
     expect(Array.isArray(body.features)).toBe(true);
-    expect(body.features.length).toBeGreaterThan(100);
+    // 0.1° cells over the model domain (~11 × 8 points).
+    expect(body.features.length).toBeGreaterThanOrEqual(80);
 
     const feature = body.features[0];
     expect(feature.type).toBe('Feature');
@@ -94,7 +95,7 @@ describe('/api/risk/grid', () => {
 
     // Far fewer fetch calls than grid cells — batched, not one-per-point.
     expect(fetchMock.mock.calls.length).toBeGreaterThan(0);
-    expect(fetchMock.mock.calls.length).toBeLessThan(body.features.length / 10);
+    expect(fetchMock.mock.calls.length).toBeLessThanOrEqual(2);
   }, 20_000);
 
   it('omits cells when the weather batch fails, rather than fabricating a score', async () => {

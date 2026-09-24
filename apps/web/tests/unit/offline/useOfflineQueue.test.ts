@@ -77,4 +77,30 @@ describe('useOfflineQueue', () => {
       expect(result.current.items).toHaveLength(0);
     });
   });
+
+  it('never lets a slow, older refresh overwrite a newer state', async () => {
+    class SlowFirstRead extends MemoryStorageAdapter {
+      private reads = 0;
+      override async getAll<T>(storeName: Parameters<MemoryStorageAdapter['getAll']>[0]): Promise<T[]> {
+        const snapshot = await super.getAll<T>(storeName);
+        if (storeName !== 'submissions') return snapshot;
+        this.reads += 1;
+        // Reads 2 and 3 (taken while the report is still 'saved') resolve
+        // last, after the read that already sees 'sent'.
+        if (this.reads === 2 || this.reads === 3) await new Promise((r) => setTimeout(r, 60));
+        return snapshot;
+      }
+    }
+    __setStorageAdapterForTests(new SlowFirstRead());
+    __resetOfflineQueueForTests();
+
+    const { result } = renderHook(() => useOfflineQueue());
+    await act(async () => {
+      await result.current.enqueueReport({ latitude: 33.5, longitude: -5.1, description: 'Smoke above the cedars' }, []);
+    });
+
+    await waitFor(() => expect(result.current.items[0]?.state).toBe('sent'));
+    await new Promise((r) => setTimeout(r, 100));
+    expect(result.current.items[0]?.state).toBe('sent');
+  });
 });

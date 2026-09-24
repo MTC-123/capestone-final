@@ -58,6 +58,7 @@ const LAYER_KEY_MAP: Record<string, string> = {
   hillshade: 'layerHillshade',
   slope: 'layerSlope',
   owmWeather: 'owmWeather',
+  riskModel: 'mapRiskLayer',
 };
 
 const LAYER_ICONS: Record<string, string> = {
@@ -89,6 +90,7 @@ const LAYER_ICONS: Record<string, string> = {
   hillshade: 'mountain',
   slope: 'mountain',
   owmWeather: 'cloud',
+  riskModel: 'cpu',
 };
 
 const UNAVAILABLE_LAYERS = new Set([
@@ -749,6 +751,8 @@ export default function MapControls({ mobileOpen = false, onMobileOpenChange }: 
       <GlassPanel
         title={t('layersPanel')}
         collapsible
+        // Desktop starts collapsed so the map is the focus; the mobile sheet opens expanded.
+        defaultCollapsed={!mobileOpen}
         headerActions={
           <span className="ml-1.5 rounded-full bg-primary/15 px-1.5 py-0.5 text-[10px] font-bold text-primary tabular-nums">
             {activeCount}/{totalCount}
@@ -924,6 +928,7 @@ export default function MapControls({ mobileOpen = false, onMobileOpenChange }: 
               <AccordionTrigger>{t('environment' as TranslationKey)}</AccordionTrigger>
               <AccordionContent>
                 <div className="space-y-1.5">
+                  {isVisible('riskModel') && <LayerRow layerKey="riskModel" />}
                   {isVisible('owmWeather') && <LayerRow layerKey="owmWeather" />}
                   {layers.owmWeather && <OwmWeatherControls />}
                   {isVisible('windVectors') && <WindLayerRow />}

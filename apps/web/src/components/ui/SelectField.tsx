@@ -84,7 +84,7 @@ export function SelectField({
       </div>
 
       {errorText ? (
-        <p id={`${id}-error`} className="text-[13px] font-medium text-danger">
+        <p id={`${id}-error`} role="alert" className="text-[13px] font-medium text-danger">
           {errorText}
         </p>
       ) : helperText ? (

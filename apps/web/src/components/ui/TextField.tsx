@@ -71,7 +71,7 @@ export function TextField({
       </div>
 
       {errorText ? (
-        <p id={`${id}-error`} className="flex items-center gap-1.5 text-[13px] font-medium text-danger">
+        <p id={`${id}-error`} role="alert" className="flex items-center gap-1.5 text-[13px] font-medium text-danger">
           <Icon name="warning" size={14} />
           {errorText}
         </p>

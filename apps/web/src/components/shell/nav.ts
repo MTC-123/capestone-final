@@ -7,6 +7,8 @@ export type NavSection = 'operate' | 'resources' | 'records' | 'admin';
 export type NavItem = {
   href: string;
   labelKey: TranslationKey;
+  /** Compact label for tab bars and the civic header. */
+  shortKey?: TranslationKey;
   icon: IconName;
   section: NavSection;
   roles: Role[];
@@ -15,16 +17,16 @@ export type NavItem = {
 };
 
 export const NAV_ITEMS: NavItem[] = [
-  { href: '/map', labelKey: 'fireMap', icon: 'map', section: 'operate', roles: ['OFFICIAL', 'CIVILIAN'] },
-  { href: '/reports-list', labelKey: 'reports', icon: 'list', section: 'operate', roles: ['OFFICIAL'] },
-  { href: '/reports-list', labelKey: 'navMyReports', icon: 'list', section: 'operate', roles: ['CIVILIAN'] },
+  { href: '/map', labelKey: 'fireMap', shortKey: 'navShortMap', icon: 'map', section: 'operate', roles: ['OFFICIAL', 'CIVILIAN'] },
+  { href: '/reports-list', labelKey: 'reports', shortKey: 'navShortReports', icon: 'list', section: 'operate', roles: ['OFFICIAL'] },
+  { href: '/reports-list', labelKey: 'navMyReports', shortKey: 'navShortMyReports', icon: 'list', section: 'operate', roles: ['CIVILIAN'] },
   { href: '/report', labelKey: 'reportFireCta', icon: 'fire', section: 'operate', roles: ['OFFICIAL', 'CIVILIAN'], primary: true },
-  { href: '/weather', labelKey: 'weatherTitle', icon: 'cloud', section: 'records', roles: ['OFFICIAL', 'CIVILIAN'] },
+  { href: '/weather', labelKey: 'weatherTitle', shortKey: 'navShortWeather', icon: 'cloud', section: 'records', roles: ['OFFICIAL', 'CIVILIAN'] },
   { href: '/equipment', labelKey: 'equipment', icon: 'truck', section: 'resources', roles: ['OFFICIAL'] },
   { href: '/coordination', labelKey: 'coordination', icon: 'radio', section: 'resources', roles: ['OFFICIAL'] },
   { href: '/operations', labelKey: 'operationsTitle', icon: 'clipboard', section: 'resources', roles: ['OFFICIAL'] },
   { href: '/fire-database', labelKey: 'fireDatabase', icon: 'database', section: 'records', roles: ['OFFICIAL'] },
-  { href: '/analytics', labelKey: 'analytics', icon: 'analytics', section: 'records', roles: ['OFFICIAL', 'CIVILIAN'] },
+  { href: '/analytics', labelKey: 'analytics', shortKey: 'navShortAnalytics', icon: 'analytics', section: 'records', roles: ['OFFICIAL', 'CIVILIAN'] },
   { href: '/admin/approvals', labelKey: 'navApprovals', icon: 'userCheck', section: 'admin', roles: ['OFFICIAL'] },
   { href: '/admin/audit', labelKey: 'navAudit', icon: 'audit', section: 'admin', roles: ['OFFICIAL'] },
 ];

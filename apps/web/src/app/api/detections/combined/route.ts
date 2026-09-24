@@ -186,9 +186,19 @@ export const GET = withApiHandler(async (request: Request) => {
         detectionSource = 'cache';
       }
     } else {
-      throw new AppError(4000, {
-        message: 'All detection sources failed and no cached data available',
-      });
+      // No satellite source answered (or FIRMS has no key). This is a known,
+      // degraded state rather than a server error: the map shows the layer
+      // as unavailable and keeps polling.
+      const reason = process.env.FIRMS_MAP_KEY ? 'sources_unreachable' : 'firms_not_configured';
+      logger.warn({ event: 'combined_detections_unavailable', meta: { reason } });
+      const empty = NextResponse.json(
+        { type: 'FeatureCollection', features: [], meta: { status: 'unavailable', reason } },
+        { status: 200 }
+      );
+      empty.headers.set('X-Detection-Source', 'none');
+      empty.headers.set('X-Detection-Status', 'unavailable');
+      empty.headers.set('Cache-Control', 'private, max-age=60');
+      return empty;
     }
   }
 

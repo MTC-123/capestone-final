@@ -106,13 +106,20 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   let lastGroup = '';
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-start justify-center bg-background/60 p-4 pt-[12vh] backdrop-blur-sm" onMouseDown={onClose}>
+    <div className="fixed inset-0 z-[80] flex items-start justify-center p-4 pt-[12vh]">
+      {/* Backdrop: a plain button so pointer users can dismiss; Esc is handled on the input. */}
+      <button
+        type="button"
+        tabIndex={-1}
+        aria-label={t('closePanel')}
+        className="absolute inset-0 cursor-default bg-background/60 backdrop-blur-sm"
+        onClick={onClose}
+      />
       <div
         role="dialog"
         aria-modal="true"
         aria-label={t('paletteOpen')}
-        className="w-full max-w-xl animate-scale-in overflow-hidden rounded-2xl border border-border bg-surface shadow-elev-3"
-        onMouseDown={(e) => e.stopPropagation()}
+        className="relative w-full max-w-xl animate-scale-in overflow-hidden rounded-2xl border border-border bg-surface shadow-elev-3"
       >
         <div className="flex items-center gap-3 border-b border-border px-4">
           <Icon name="search" size={18} className="text-muted-foreground" />
@@ -143,9 +150,13 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                 <div
                   id={`cmd-${index}`}
                   role="option"
+                  tabIndex={-1}
                   aria-selected={index === cursor}
                   onMouseEnter={() => setCursor(index)}
                   onClick={command.run}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') command.run();
+                  }}
                   className={cn(
                     'flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-sm',
                     index === cursor ? 'bg-primary/10 text-foreground' : 'text-foreground/90'

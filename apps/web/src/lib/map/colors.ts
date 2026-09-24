@@ -203,3 +203,11 @@ export function getFRPColor(frp: number): string {
   if (frp >= FIRMS_FRP_GRADIENT.medium.threshold) return FIRMS_FRP_GRADIENT.medium.color;
   return FIRMS_FRP_GRADIENT.low.color;
 }
+
+/** Model risk grid levels (partner-team XGBoost), low → very high. */
+export const RISK_LEVEL_COLORS = {
+  low: '#2f9e5b',
+  moderate: '#e2b33a',
+  high: '#ef7a2b',
+  very_high: '#d7263d',
+} as const;

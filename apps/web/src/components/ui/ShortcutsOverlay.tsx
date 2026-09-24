@@ -10,15 +10,11 @@ interface ShortcutsOverlayProps {
 }
 
 const SHORTCUTS = [
-  { key: 'F', translationKey: 'shortcutFullscreen' },
-  { key: 'R', translationKey: 'shortcutRefresh' },
-  { key: 'N', translationKey: 'shortcutNewReport' },
-  { key: 'L', translationKey: 'shortcutToggleLayers' },
-  { key: 'G', translationKey: 'shortcutToggleLegend' },
-  { key: 'W', translationKey: 'shortcutToggleWeather' },
-  { key: 'D', translationKey: 'shortcutToggleTheme' },
-  { key: 'Esc', translationKey: 'shortcutClosePanel' },
+  { key: '⌘/Ctrl K', translationKey: 'paletteOpen' },
+  { key: 'Alt N', translationKey: 'shortcutNewReport' },
+  { key: 'Alt F', translationKey: 'shortcutFullscreen' },
   { key: '?', translationKey: 'shortcutShowHelp' },
+  { key: 'Esc', translationKey: 'shortcutClosePanel' },
 ] as const;
 
 export function ShortcutsOverlay({ open, onClose }: ShortcutsOverlayProps) {

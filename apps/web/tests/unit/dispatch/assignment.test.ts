@@ -11,9 +11,11 @@ vi.mock('@/lib/prisma', () => ({
   prisma: {
     dispatch: {
       create: vi.fn(),
+      deleteMany: vi.fn(),
     },
     team: {
       update: vi.fn(),
+      updateMany: vi.fn(),
     },
   },
 }));
@@ -132,6 +134,8 @@ describe('Dispatch Assignment', () => {
       status: 'EN_ROUTE',
       assignedTo: 'incident-1',
     });
+    (prisma.team.updateMany as any).mockResolvedValue({ count: 1 });
+    (prisma.dispatch.deleteMany as any).mockResolvedValue({ count: 0 });
   });
 
   afterEach(() => {
@@ -162,15 +166,8 @@ describe('Dispatch Assignment', () => {
         }),
       });
 
-      // Team status updated to EN_ROUTE
-      expect(prisma.team.update).toHaveBeenCalledOnce();
-      expect(prisma.team.update).toHaveBeenCalledWith({
-        where: { id: 'team-1' },
-        data: {
-          status: 'EN_ROUTE',
-          assignedTo: 'incident-1',
-        },
-      });
+      // The EN_ROUTE claim is made atomically by assignTeamsToIncident.
+      expect(prisma.team.update).not.toHaveBeenCalled();
 
       // Result shape
       expect(result).toEqual(
@@ -446,8 +443,12 @@ describe('Dispatch Assignment', () => {
       expect(results[1].dispatchId).toBe('dispatch-002');
       expect(results[1].teamName).toBe('Bravo');
 
-      // Both teams updated to EN_ROUTE
-      expect(prisma.team.update).toHaveBeenCalledTimes(2);
+      // Both teams claimed with a status-guarded conditional update
+      expect(prisma.team.updateMany).toHaveBeenCalledTimes(2);
+      expect(prisma.team.updateMany).toHaveBeenCalledWith({
+        where: { id: 'team-1', status: 'AVAILABLE' },
+        data: { status: 'EN_ROUTE', assignedTo: 'incident-1' },
+      });
     });
 
     it('should stop assigning if a routing error occurs mid-batch', async () => {
@@ -464,8 +465,21 @@ describe('Dispatch Assignment', () => {
         assignTeamsToIncident([team1, team2], incident, 'user-admin')
       ).rejects.toThrow('GraphHopper timeout');
 
-      // Only the first team's dispatch was created
+      // Only the first team's dispatch was created, then rolled back with both claims
       expect(prisma.dispatch.create).toHaveBeenCalledTimes(1);
+      expect(prisma.dispatch.deleteMany).toHaveBeenCalledOnce();
+      expect(prisma.team.updateMany).toHaveBeenCalledWith({
+        where: { id: 'team-2', status: 'EN_ROUTE', assignedTo: 'incident-1' },
+        data: { status: 'AVAILABLE', assignedTo: null },
+      });
+    });
+
+    it('rejects with 6003 when another request already claimed a team', async () => {
+      (prisma.team.updateMany as any).mockResolvedValueOnce({ count: 0 });
+      await expect(
+        assignTeamsToIncident([makeTeam({ id: 'team-1' })], makeIncident(), 'user-admin')
+      ).rejects.toMatchObject({ code: 6003 });
+      expect(prisma.dispatch.create).not.toHaveBeenCalled();
     });
   });
 });

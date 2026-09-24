@@ -9,11 +9,10 @@ function isTyping(target: EventTarget | null) {
 }
 
 /**
- * Global shortcuts. Everything except "?" uses a modifier so no single
- * printable key triggers an action (WCAG 2.1.4 Character Key Shortcuts).
+ * Global shortcuts. Everything except "?" and Esc uses a modifier so no
+ * single printable key triggers an action (WCAG 2.1.4 Character Key Shortcuts).
  *   Mod+K  command palette      Alt+N  new report
- *   Alt+L  map layers           Alt+G  map legend
- *   Alt+F  fullscreen map       ?      shortcut help
+ *   Alt+F  fullscreen map       ?      shortcut help      Esc  close help
  */
 export function useKeyboardShortcuts() {
   const router = useRouter();
@@ -26,6 +25,10 @@ export function useKeyboardShortcuts() {
       if ((e.metaKey || e.ctrlKey) && key === 'k') {
         e.preventDefault();
         setPaletteOpen((v) => !v);
+        return;
+      }
+      if (e.key === 'Escape') {
+        setShowOverlay(false);
         return;
       }
       if (isTyping(e.target)) return;
@@ -42,14 +45,6 @@ export function useKeyboardShortcuts() {
         case 'KeyN':
           e.preventDefault();
           router.push('/report');
-          break;
-        case 'KeyL':
-          e.preventDefault();
-          document.dispatchEvent(new CustomEvent('ricer:toggle-layers'));
-          break;
-        case 'KeyG':
-          e.preventDefault();
-          document.dispatchEvent(new CustomEvent('ricer:toggle-legend'));
           break;
         case 'KeyF': {
           e.preventDefault();

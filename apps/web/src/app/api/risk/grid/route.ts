@@ -14,8 +14,13 @@ import {
 } from '@/lib/risk/riskService';
 import { logger } from '@/lib/observability/logger';
 
-/** ~2 km steps (1 deg lat ≈ 111 km; 1 deg lng ≈ 93 km at this latitude). */
-const GRID_STEP_DEG = 0.018;
+/**
+ * 0.1° cells (~11 km × 9 km). The model's inputs are weather and date only,
+ * and Open-Meteo's forecast resolution is of the same order, so a finer grid
+ * would repeat identical scores and burn the free API quota (every
+ * coordinate counts as one call; 10,000/day). 88 points = one batched call.
+ */
+const GRID_STEP_DEG = 0.1;
 /** Points per Open-Meteo multi-coordinate call — batched, not one call per cell. */
 const BATCH_SIZE = 100;
 const CACHE_TTL_SECONDS = 30 * 60;
@@ -123,11 +128,10 @@ async function computeGrid(): Promise<GeoJSON.FeatureCollection> {
     features.push({
       type: 'Feature',
       geometry: { type: 'Point', coordinates: [point.lng, point.lat] },
+      // Rounded to keep the ~2,500-cell payload small; the level uses the full value.
       properties: {
-        score,
+        score: Math.round(score * 1000) / 1000,
         level: levelFromScore(score),
-        lat: point.lat,
-        lng: point.lng,
         dataTime: weatherResult.dataTime,
       },
     });
@@ -150,9 +154,9 @@ async function computeGrid(): Promise<GeoJSON.FeatureCollection> {
   };
 }
 
-const getCachedGrid = unstable_cache(computeGrid, ['risk-grid-v1'], { revalidate: CACHE_TTL_SECONDS });
+const getCachedGrid = unstable_cache(computeGrid, ['risk-grid-v2'], { revalidate: CACHE_TTL_SECONDS });
 
-/** GET /api/risk/grid — ~2km risk grid over Ifrane Province, cached 30 minutes. */
+/** GET /api/risk/grid — 0.1° risk grid over Ifrane Province, cached 30 minutes. */
 export const GET = withApiHandler(async () => {
   let geojson: GeoJSON.FeatureCollection;
   try {

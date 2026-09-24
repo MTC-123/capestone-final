@@ -39,6 +39,11 @@ function computeCounts(items: SubmissionRecord[]): SubmissionCounts {
   return counts;
 }
 
+// Refreshes are async and can overlap (several events in quick succession);
+// only the most recently started one may write, so a slow read of an older
+// state can never overwrite a newer one.
+let refreshSeq = 0;
+
 const useOfflineQueueStore = create<OfflineQueueInternalState>((set, get) => ({
   items: [],
   counts: emptyCounts(),
@@ -46,7 +51,9 @@ const useOfflineQueueStore = create<OfflineQueueInternalState>((set, get) => ({
   syncing: false,
   lastSyncAt: undefined,
   _refresh: async () => {
+    const seq = ++refreshSeq;
     const items = await getAllSubmissions();
+    if (seq !== refreshSeq) return;
     set({ items, counts: computeCounts(items), lastSyncAt: getLastSyncAt() ?? get().lastSyncAt });
   },
   _setOnline: (online) => set({ online }),

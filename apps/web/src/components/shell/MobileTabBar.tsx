@@ -48,7 +48,7 @@ export function MobileTabBar() {
         )}
       >
         <Icon name={item.icon} size={21} strokeWidth={active ? 2.3 : 1.9} />
-        <span className="max-w-full truncate px-1">{t(item.labelKey)}</span>
+        <span className="max-w-full truncate px-1">{t(item.shortKey ?? item.labelKey)}</span>
       </Link>
     );
   };
