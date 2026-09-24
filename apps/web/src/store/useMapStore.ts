@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { ViewState } from 'react-map-gl';
+import type { ViewState } from 'react-map-gl/maplibre';
 import type { Basemap } from '@/lib/map/styles';
 import type { GeoFeatureCollection, GeoIncidentProps, WeatherData } from '@/types';
 import type { FireSpreadStatus } from '@/hooks/useFireSpreadVectors';

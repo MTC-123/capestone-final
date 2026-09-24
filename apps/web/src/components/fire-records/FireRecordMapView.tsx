@@ -1,5 +1,6 @@
 'use client';
 
+import '@/lib/map/maplibreSetup';
 import { useMemo } from 'react';
 import { Map, Marker, NavigationControl, Popup } from 'react-map-gl/maplibre';
 import { useTranslation } from '@/hooks/useTranslation';

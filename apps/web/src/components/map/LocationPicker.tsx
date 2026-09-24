@@ -1,7 +1,8 @@
 'use client';
 
+import '@/lib/map/maplibreSetup';
 import { useCallback, useRef, useState } from 'react';
-import ReactMapGL, { Marker, type MapMouseEvent, type MapRef } from 'react-map-gl';
+import ReactMapGL, { Marker, type MapMouseEvent, type MapRef } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { IFRANE_COORDINATES } from '@/config/constants';
 import { Icon } from '@/components/ui/Icon';

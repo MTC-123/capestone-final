@@ -14,7 +14,7 @@ const mockGetMap = vi.fn(() => ({
 }));
 const mockMapRef = { current: { flyTo: mockFlyTo, getMap: mockGetMap } };
 
-vi.mock('react-map-gl', () => {
+vi.mock('react-map-gl/maplibre', () => {
   const actual = { useRef: () => mockMapRef };
   return {
     default: vi.fn(({ children, onClick, onMouseEnter, onMouseLeave, ...props }: any) => (
@@ -365,7 +365,7 @@ describe('RicerMap', () => {
     };
 
     // Simulate click via the onClick handler
-    const ReactMapGL = (await import('react-map-gl')).default as any;
+    const ReactMapGL = (await import('react-map-gl/maplibre')).default as any;
     const lastCall = ReactMapGL.mock.calls[ReactMapGL.mock.calls.length - 1];
     if (lastCall) {
       const onClickProp = lastCall[0]?.onClick;
@@ -379,7 +379,7 @@ describe('RicerMap', () => {
     const { useMapStore } = await import('@/store/useMapStore');
     render(<RicerMap />);
 
-    const ReactMapGL = (await import('react-map-gl')).default as any;
+    const ReactMapGL = (await import('react-map-gl/maplibre')).default as any;
     const lastCall = ReactMapGL.mock.calls[ReactMapGL.mock.calls.length - 1];
     if (lastCall) {
       const onClickProp = lastCall[0]?.onClick;

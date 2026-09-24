@@ -1,8 +1,9 @@
 'use client';
 
+import '@/lib/map/maplibreSetup';
 import { useState, useCallback, useMemo } from 'react';
-import ReactMapGL, { Marker, Popup, Source, Layer } from 'react-map-gl';
-import type { MapLayerMouseEvent } from 'react-map-gl';
+import ReactMapGL, { Marker, Popup, Source, Layer } from 'react-map-gl/maplibre';
+import type { MapLayerMouseEvent } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { IFRANE_COORDINATES } from '@/config/constants';
 import type { TruckDeployment } from '@/types';

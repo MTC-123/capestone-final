@@ -1,5 +1,6 @@
 'use client';
 
+import '@/lib/map/maplibreSetup';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import ReactMapGL, {
@@ -12,7 +13,7 @@ import ReactMapGL, {
   useControl,
   type MapRef,
   type MapLayerMouseEvent,
-} from 'react-map-gl';
+} from 'react-map-gl/maplibre';
 import { MapboxOverlay } from '@deck.gl/mapbox';
 import type { MapboxOverlayProps } from '@deck.gl/mapbox/typed';
 import 'maplibre-gl/dist/maplibre-gl.css';
@@ -1408,7 +1409,7 @@ export default function RicerMap({ weather = null, weatherLoading = false }: Ric
         onMouseLeave={handleMouseLeave}
         style={MAP_CONTAINER_STYLE}
         maxPitch={85}
-        attributionControl={true}
+        attributionControl={{ compact: true }}
       >
         {/* ═══ Terrain DEM source ═══ */}
         <Source
