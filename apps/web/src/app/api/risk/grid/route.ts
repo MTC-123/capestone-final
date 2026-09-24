@@ -154,7 +154,21 @@ const getCachedGrid = unstable_cache(computeGrid, ['risk-grid-v1'], { revalidate
 
 /** GET /api/risk/grid — ~2km risk grid over Ifrane Province, cached 30 minutes. */
 export const GET = withApiHandler(async () => {
-  const geojson = await getCachedGrid();
+  let geojson: GeoJSON.FeatureCollection;
+  try {
+    geojson = await getCachedGrid();
+  } catch (error) {
+    // `unstable_cache` requires a live Next.js server incremental-cache
+    // context, which isn't present outside `next start`/`next dev` (e.g.
+    // vitest, or an unusual runtime edge case). Degrade to an uncached
+    // (always-fresh) computation rather than failing the route; any other
+    // error still propagates to `withApiHandler`.
+    if (error instanceof Error && /incrementalCache missing/i.test(error.message)) {
+      geojson = await computeGrid();
+    } else {
+      throw error;
+    }
+  }
   const response = NextResponse.json(geojson);
   response.headers.set('Cache-Control', 'public, s-maxage=1800, stale-while-revalidate=300');
   return response;

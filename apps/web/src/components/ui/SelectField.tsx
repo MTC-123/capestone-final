@@ -41,19 +41,21 @@ export function SelectField({
   ].filter(Boolean) as string[];
 
   return (
-    <div className={cn('space-y-2', containerClassName)}>
-      <label
-        htmlFor={id}
-        className={cn('text-sm font-semibold text-foreground', disabled && 'opacity-60')}
-      >
+    <div className={cn('space-y-1.5', containerClassName)}>
+      <label htmlFor={id} className={cn('block text-[13px] font-medium text-foreground', disabled && 'opacity-60')}>
         {label}
-        {required ? <span className="ms-1 text-danger">*</span> : null}
+        {required ? (
+          <span className="ms-0.5 text-danger" aria-hidden>
+            *
+          </span>
+        ) : null}
       </label>
 
       <div
         className={cn(
-          'flex items-center gap-2 rounded-md border border-input bg-surface px-3 py-2 shadow-sm transition',
-          'focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 focus-within:ring-offset-background',
+          'flex h-11 items-center gap-2.5 rounded-[10px] border bg-surface px-3 transition-[border-color,box-shadow]',
+          errorText ? 'border-danger/60' : 'border-input hover:border-foreground/25',
+          'focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/15',
           disabled && 'opacity-60'
         )}
       >
@@ -64,7 +66,7 @@ export function SelectField({
         <select
           id={id}
           className={cn(
-            'h-7 w-full bg-transparent text-sm text-foreground outline-none',
+            'h-full w-full bg-transparent text-[15px] text-foreground outline-none sm:text-sm',
             selectClassName
           )}
           aria-invalid={!!errorText || undefined}
@@ -82,15 +84,13 @@ export function SelectField({
       </div>
 
       {errorText ? (
-        <div id={`${id}-error`} role="alert" className="text-sm font-semibold text-danger">
+        <p id={`${id}-error`} className="text-[13px] font-medium text-danger">
           {errorText}
-        </div>
-      ) : null}
-
-      {helperText ? (
-        <div id={`${id}-help`} className="text-xs text-muted-foreground">
+        </p>
+      ) : helperText ? (
+        <p id={`${id}-help`} className="text-xs text-muted-foreground">
           {helperText}
-        </div>
+        </p>
       ) : null}
     </div>
   );

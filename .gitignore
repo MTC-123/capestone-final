@@ -89,3 +89,6 @@ ricer-backup.bundle
 # Keep environment templates
 !**/.env.example
 .claude/
+
+# Local database backups
+apps/web/backups/

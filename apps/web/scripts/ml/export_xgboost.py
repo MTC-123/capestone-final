@@ -89,15 +89,20 @@ FEATURE_NAMES = [
     "causal_modis_ndvi_last_valid_6c",
 ]
 
-ROUND_DP = 7  # XGBoost trains in float32 (~7 significant digits); no need for more.
-
-
 def r(x):
+    """Round-trips a value through float32 (XGBoost's own training precision)
+    without further decimal-place rounding. Earlier we rounded to a fixed
+    number of *decimal places*, which silently destroyed precision for
+    small-magnitude thresholds (e.g. 0.00043511385 -> 0.0004351) and flipped
+    split outcomes near the boundary — caught by the TS parity test. Fixed
+    *significant-figure* precision (via float32) doesn't have that problem
+    at any magnitude.
+    """
     if x is None:
         return None
     if isinstance(x, float) and math.isnan(x):
         return None
-    return round(float(x), ROUND_DP)
+    return float(np.float32(x))
 
 
 def main() -> None:
