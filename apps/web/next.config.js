@@ -4,15 +4,19 @@ const nextConfig = {
   compress: true,
   swcMinify: true,
   productionBrowserSourceMaps: false,
+  poweredByHeader: false,
   experimental: {
-    webpackMemoryOptimizations: true,
     serverActions: {
-      allowedOrigins: ['*'],
-      bodySizeLimit: '10mb',
+      // Server actions only accept same-origin requests plus explicitly
+      // listed hosts (comma-separated in SERVER_ACTIONS_ALLOWED_ORIGINS).
+      allowedOrigins: (process.env.SERVER_ACTIONS_ALLOWED_ORIGINS || '')
+        .split(',')
+        .map((o) => o.trim())
+        .filter(Boolean),
+      bodySizeLimit: '2mb',
     },
     optimizePackageImports: ['lucide-react', 'recharts', '@deck.gl/core', '@deck.gl/layers', '@deck.gl/mapbox', 'date-fns', 'lodash-es'],
     serverComponentsExternalPackages: [
-      'bcrypt',
       '@sentry/nextjs',
       '@sentry/opentelemetry',
       '@opentelemetry/instrumentation',
@@ -21,6 +25,27 @@ const nextConfig = {
   },
   typescript: {
     ignoreBuildErrors: false,
+  },
+  async headers() {
+    // Page responses get a nonce-based CSP from middleware; these apply to
+    // every response, including API routes and static assets.
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          { key: 'X-Frame-Options', value: 'DENY' },
+        ],
+      },
+      {
+        source: '/sw.js',
+        headers: [
+          { key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate' },
+          { key: 'Service-Worker-Allowed', value: '/' },
+        ],
+      },
+    ];
   },
   images: {
     formats: ['image/avif', 'image/webp'],

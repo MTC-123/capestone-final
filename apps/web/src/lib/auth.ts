@@ -181,3 +181,72 @@ export function signToken(payload: Omit<AccessTokenPayload, 'tokenUse' | 'scopes
 export function verifyToken(token: string): AccessTokenPayload | null {
   return verifyAccessToken(token);
 }
+
+export type SessionUser = {
+  id: string;
+  cin: string;
+  role: Role;
+  department?: string | null;
+};
+
+const REFRESH_TOKEN_SECONDS = 60 * 60 * 24 * 30;
+
+/**
+ * Mints an access/refresh token pair and records the hashed refresh token.
+ * Shared by sign-in, sign-up and the demo entry point.
+ */
+export async function issueSession(
+  user: SessionUser,
+  request: Request,
+  opts: { refreshSeconds?: number } = {}
+): Promise<{ accessToken: string; refreshToken: string }> {
+  const { prisma } = await import('@/lib/prisma');
+  const scopes = deriveScopes(user.role);
+  const accessToken = signAccessToken({
+    userId: user.id,
+    cin: user.cin,
+    role: user.role,
+    department: user.department ?? undefined,
+    scopes,
+  });
+  const jti = crypto.randomUUID();
+  const refreshToken = signRefreshToken({ userId: user.id, jti, scopes });
+  await prisma.refreshToken.create({
+    data: {
+      userId: user.id,
+      jti,
+      tokenHash: hashRefreshToken(refreshToken),
+      scopes,
+      expiresAt: new Date(Date.now() + (opts.refreshSeconds ?? REFRESH_TOKEN_SECONDS) * 1000),
+      ip: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? undefined,
+      userAgent: request.headers.get('user-agent')?.slice(0, 256) ?? undefined,
+    },
+  });
+  return { accessToken, refreshToken };
+}
+
+export function toPublicUser(user: {
+  id: string;
+  cin: string;
+  phone: string;
+  role: Role;
+  fullName?: string | null;
+  email?: string | null;
+  department?: string | null;
+  position?: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}) {
+  return {
+    id: user.id,
+    cin: user.cin,
+    phone: user.phone,
+    role: user.role,
+    fullName: user.fullName ?? undefined,
+    email: user.email ?? undefined,
+    department: user.department ?? undefined,
+    position: user.position ?? undefined,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt,
+  };
+}

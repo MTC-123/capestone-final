@@ -4,38 +4,40 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
-// Validate DATABASE_URL exists
-if (!process.env.DATABASE_URL) {
-  throw new Error('DATABASE_URL environment variable is not set');
-}
-
 function createPrismaClient(): PrismaClient {
-  const client = new PrismaClient({
-    log: process.env.NODE_ENV === 'production'
-      ? ['error']
-      : ['error', 'warn'],
+  if (!process.env.DATABASE_URL) {
+    throw new Error('DATABASE_URL environment variable is not set');
+  }
+  return new PrismaClient({
+    log: process.env.NODE_ENV === 'production' ? ['error'] : ['error', 'warn'],
   });
-
-  return client;
 }
 
-export const prisma = globalForPrisma.prisma ?? createPrismaClient();
-
-if (process.env.NODE_ENV !== 'production') {
-  globalForPrisma.prisma = prisma;
+function getClient(): PrismaClient {
+  if (!globalForPrisma.prisma) {
+    globalForPrisma.prisma = createPrismaClient();
+  }
+  return globalForPrisma.prisma;
 }
 
-// Eagerly warm up the connection pool so the first query doesn't pay the
-// cold-start cost (MongoDB Atlas free/serverless tiers can take 2-5 s).
-void prisma.$connect().catch(() => {
-  // Non-blocking — if this fails the first query will retry automatically.
+/**
+ * Lazily-constructed Prisma client. Importing this module never throws;
+ * a missing DATABASE_URL surfaces on first use, where route handlers turn it
+ * into a structured error and the health check reports it as unhealthy.
+ */
+export const prisma = new Proxy({} as PrismaClient, {
+  get(_target, prop, receiver) {
+    const client = getClient();
+    const value = Reflect.get(client, prop, receiver);
+    return typeof value === 'function' ? value.bind(client) : value;
+  },
 });
 
-// Health check utility
 export async function checkDatabaseHealth(): Promise<boolean> {
   try {
-    // For MongoDB, we can't use $queryRaw. Use $connect instead.
-    await prisma.$connect();
+    // $runCommandRaw performs a real round trip; $connect alone can succeed
+    // against a cached pool while the server is unreachable.
+    await getClient().$runCommandRaw({ ping: 1 });
     return true;
   } catch (error) {
     console.error('Database health check failed:', error);

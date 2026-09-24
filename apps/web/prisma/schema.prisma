@@ -14,14 +14,102 @@ model User {
   phone      String
   password   String
   role       Role
+  fullName   String?
+  email      String?
   department String?
   position   String?
+  failedLoginCount Int       @default(0)
+  lockedUntil      DateTime?
+  lastLoginAt      DateTime?
   reports    Report[]
   refreshTokens RefreshToken[]
+  officialRequests OfficialRequest[]
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
   @@index([role])
+}
+
+enum OfficialRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+/// A civilian account asking to be promoted to OFFICIAL. Only an existing
+/// official can approve it; users can never grant themselves privileges.
+model OfficialRequest {
+  id           String                @id @default(auto()) @map("_id") @db.ObjectId
+  userId       String                @db.ObjectId
+  user         User                  @relation(fields: [userId], references: [id])
+  department   String
+  position     String?
+  justification String?
+  status       OfficialRequestStatus @default(PENDING)
+  reviewedBy   String?               @db.ObjectId
+  reviewedAt   DateTime?
+  reviewNote   String?
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+
+  @@index([status, createdAt])
+  @@index([userId])
+}
+
+/// Append-only record of security-relevant and operational actions.
+model AuditLog {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  actorId    String?  @db.ObjectId
+  actorCin   String?
+  actorRole  String?
+  action     String
+  targetType String?
+  targetId   String?
+  outcome    String   @default("SUCCESS")
+  meta       Json?
+  ip         String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([action, createdAt])
+  @@index([actorId, createdAt])
+  @@index([targetType, targetId])
+}
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+  WHATSAPP
+}
+
+enum DeliveryStatus {
+  QUEUED
+  SENT
+  FAILED
+  SKIPPED
+}
+
+/// One row per attempted delivery, so channel behaviour is auditable and
+/// test-adapter results are kept distinct from live deliveries.
+model NotificationDelivery {
+  id          String              @id @default(auto()) @map("_id") @db.ObjectId
+  event       String
+  channel     NotificationChannel
+  recipient   String
+  status      DeliveryStatus      @default(QUEUED)
+  adapter     String
+  attempts    Int                 @default(0)
+  lastError   String?
+  payload     Json?
+  targetType  String?
+  targetId    String?
+  sentAt      DateTime?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  @@index([status, createdAt])
+  @@index([targetType, targetId])
 }
 
 enum Role {
@@ -62,7 +150,9 @@ model Report {
   anonymous       Boolean   @default(false)
   contactPhone    String?
   characteristics Json?
-  referenceNumber String?   @unique
+  referenceNumber String    @unique
+  /// Client-generated id that makes offline retries idempotent.
+  clientSubmissionId String @unique
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
@@ -753,4 +843,25 @@ model Debriefing {
 
   @@index([status])
   @@index([date])
+}
+
+/// Uploaded report photo. Bytes live in Vercel Blob when configured
+/// (blobUrl), otherwise inline in `data` so local and key-less demos work.
+model Upload {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  ownerId        String   @db.ObjectId
+  /// Client-supplied key (e.g. "<clientSubmissionId>:0") so retried uploads
+  /// from the offline queue return the same record instead of duplicating.
+  idempotencyKey String   @unique
+  contentType    String
+  size           Int
+  sha256         String
+  width          Int?
+  height         Int?
+  blobUrl        String?
+  data           Bytes?
+  createdAt      DateTime @default(now())
+
+  @@index([ownerId, createdAt])
+  @@index([sha256])
 }
