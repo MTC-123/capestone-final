@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
+import { unset } from '@/lib/database/unset';
 import { withApiHandler } from '@/lib/errors/withApiHandler';
 import { AppError } from '@/lib/errors/AppError';
 import { requireOfficial } from '@/lib/security/guards';
@@ -52,7 +53,7 @@ export const PATCH = withApiHandler(async (request: Request, context?: { params?
       data: { role: 'OFFICIAL', department: existing.department, position: existing.position ?? undefined },
     });
     await prisma.refreshToken.updateMany({
-      where: { userId: existing.userId, revokedAt: null },
+      where: { userId: existing.userId, ...unset('revokedAt') },
       data: { revokedAt: new Date() },
     });
   }

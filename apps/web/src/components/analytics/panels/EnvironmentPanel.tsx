@@ -141,15 +141,15 @@ export function EnvironmentPanel() {
         {precipData && (
           <div className="grid grid-cols-3 gap-3 mb-6">
             <div className="rounded-lg border border-border bg-surface-2/50 p-3 text-center">
-              <div className="text-2xl font-bold text-primary">{precipData.stats.rainfall30d}<span className="text-sm font-normal ml-0.5">mm</span></div>
+              <div className="text-2xl font-bold text-primary">{precipData.stats.rainfall30d}<span className="text-sm font-normal ms-0.5">mm</span></div>
               <div className="text-[11px] text-muted-foreground mt-0.5">{t('rainfall30d' as TranslationKey)}</div>
             </div>
             <div className="rounded-lg border border-border bg-surface-2/50 p-3 text-center">
-              <div className="text-2xl font-bold text-amber-500">{precipData.stats.daysSinceRain}<span className="text-sm font-normal ml-0.5">d</span></div>
+              <div className="text-2xl font-bold text-amber-500">{precipData.stats.daysSinceRain}<span className="text-sm font-normal ms-0.5">d</span></div>
               <div className="text-[11px] text-muted-foreground mt-0.5">{t('daysSinceRain' as TranslationKey)}</div>
             </div>
             <div className="rounded-lg border border-border bg-surface-2/50 p-3 text-center">
-              <div className="text-2xl font-bold text-danger">{precipData.stats.deficitPercent}<span className="text-sm font-normal ml-0.5">%</span></div>
+              <div className="text-2xl font-bold text-danger">{precipData.stats.deficitPercent}<span className="text-sm font-normal ms-0.5">%</span></div>
               <div className="text-[11px] text-muted-foreground mt-0.5">{t('precipitationDeficit' as TranslationKey)}</div>
             </div>
           </div>

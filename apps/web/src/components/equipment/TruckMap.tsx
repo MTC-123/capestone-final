@@ -145,7 +145,7 @@ export default function TruckMap({ trucks, onDispatch }: TruckMapProps) {
           <button
             type="button"
             onClick={stopPicking}
-            className="ml-2 opacity-80 hover:opacity-100"
+            className="ms-2 opacity-80 hover:opacity-100"
           >
             <Icon name="close" size={16} aria-hidden />
           </button>

@@ -15,8 +15,12 @@ function normalize(value: string) {
   return value.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 }
 
-/** ⌘K / Ctrl+K launcher for pages and quick actions. */
+/** ⌘K / Ctrl+K launcher for pages and quick actions. Mounted fresh on every open. */
 export function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void }) {
+  return open ? <PaletteDialog onClose={onClose} /> : null;
+}
+
+function PaletteDialog({ onClose }: { onClose: () => void }) {
   const router = useRouter();
   const { t } = useTranslation();
   const role = useAuthStore((s) => s.user?.role);
@@ -75,17 +79,11 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   }, [commands, query]);
 
   useEffect(() => {
-    if (!open) return;
     restoreFocus.current = document.activeElement as HTMLElement | null;
-    setQuery('');
-    setCursor(0);
-    requestAnimationFrame(() => inputRef.current?.focus());
-    return () => restoreFocus.current?.focus?.();
-  }, [open]);
-
-  useEffect(() => setCursor(0), [query]);
-
-  if (!open) return null;
+    const previous = restoreFocus;
+    inputRef.current?.focus();
+    return () => previous.current?.focus?.();
+  }, []);
 
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'ArrowDown') {
@@ -126,7 +124,10 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
           <input
             ref={inputRef}
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setCursor(0);
+            }}
             onKeyDown={onKeyDown}
             placeholder={t('palettePlaceholder')}
             role="combobox"

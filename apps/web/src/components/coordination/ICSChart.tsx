@@ -73,7 +73,7 @@ export function ICSChart() {
           {[0, 1, 2].map((tier) => (
             <div
               key={tier}
-              className={`flex flex-wrap justify-center gap-4 ${tier === 0 ? '' : 'pl-8'}`}
+              className={`flex flex-wrap justify-center gap-4 ${tier === 0 ? '' : 'ps-8'}`}
             >
               {ICS_HIERARCHY.filter((h) => h.tier === tier).map(({ role, labelKey }) => {
                 const assignment = getAssignment(role);

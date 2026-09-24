@@ -81,7 +81,7 @@ export function CommLogTimeline() {
       ) : commLog.length === 0 ? (
         <p className="text-center text-muted-foreground py-8">{t('commLogEmpty')}</p>
       ) : (
-        <div className="relative border-l-2 border-border pl-4 sm:pl-6 space-y-4">
+        <div className="relative border-s-2 border-border ps-4 sm:ps-6 space-y-4">
           {commLog.map((entry: CommLogEntry) => (
             <div key={entry.id} className="relative">
               <div className="absolute -left-[23px] sm:-left-[31px] top-1 h-3 w-3 rounded-full bg-primary border-2 border-surface" />
@@ -96,7 +96,7 @@ export function CommLogTimeline() {
                   {entry.toAgency && (
                     <span className="text-xs text-muted-foreground">→ {entry.toAgency}</span>
                   )}
-                  <span className="text-xs text-muted-foreground ml-auto">
+                  <span className="text-xs text-muted-foreground ms-auto">
                     {new Date(entry.createdAt).toLocaleString()}
                   </span>
                 </div>

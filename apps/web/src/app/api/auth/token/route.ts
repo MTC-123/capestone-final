@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { prisma } from '@/lib/prisma';
+import { unset } from '@/lib/database/unset';
 import { withApiHandler } from '@/lib/errors/withApiHandler';
 import { AppError } from '@/lib/errors/AppError';
 import { enforceRateLimit } from '@/lib/security/rateLimit';
@@ -46,8 +47,12 @@ export const POST = withApiHandler(async (request: Request) => {
 
   // Reuse of an already-rotated token means it was copied: revoke every
   // session of this user (refresh-token family invalidation, ASVS 7.4).
-  if (stored.rotatedAt) {
-    await prisma.refreshToken.updateMany({ where: { userId: decoded.userId, revokedAt: null }, data: { revokedAt: new Date() } });
+  // A short grace window absorbs benign races — two tabs, or a retry after a
+  // dropped response, presenting the same token within seconds.
+  const REUSE_GRACE_MS = 60_000;
+  const withinGrace = stored.rotatedAt ? Date.now() - stored.rotatedAt.getTime() < REUSE_GRACE_MS : false;
+  if (stored.rotatedAt && !withinGrace) {
+    await prisma.refreshToken.updateMany({ where: { userId: decoded.userId, ...unset('revokedAt') }, data: { revokedAt: new Date() } });
     await audit({
       action: 'auth.signin_failed',
       targetType: 'user',
@@ -78,23 +83,27 @@ export const POST = withApiHandler(async (request: Request) => {
   const newRefreshTokenHash = hashRefreshToken(newRefreshToken);
   const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
-  await prisma.$transaction([
-    prisma.refreshToken.update({
-      where: { id: stored.id },
+  // Mark the presented token as rotated with a conditional update (no
+  // multi-document transaction, so concurrent refreshes cannot deadlock). If
+  // another request rotated it a moment ago, that is the benign race the grace
+  // window exists for; the first rotation time is kept either way.
+  if (!withinGrace) {
+    await prisma.refreshToken.updateMany({
+      where: { id: stored.id, ...unset('rotatedAt') },
       data: { rotatedAt: new Date(), replacedByJti: newJti },
-    }),
-    prisma.refreshToken.create({
-      data: {
-        userId: user.id,
-        jti: newJti,
-        tokenHash: newRefreshTokenHash,
-        scopes,
-        expiresAt,
-        ip: request.headers.get('x-forwarded-for') ?? undefined,
-        userAgent: request.headers.get('user-agent') ?? undefined,
-      },
-    }),
-  ]);
+    });
+  }
+  await prisma.refreshToken.create({
+    data: {
+      userId: user.id,
+      jti: newJti,
+      tokenHash: newRefreshTokenHash,
+      scopes,
+      expiresAt,
+      ip: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? undefined,
+      userAgent: request.headers.get('user-agent')?.slice(0, 256) ?? undefined,
+    },
+  });
 
   const includeRefreshToken = Boolean(refreshTokenFromBody);
   return buildAuthResponse(

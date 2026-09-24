@@ -106,7 +106,7 @@ export default function FireRecordDetailPage() {
           {activeRecord.lockedSections.length}/5 {t('fireRecordLockedSections')}
         </span>
         {user?.role === 'OFFICIAL' && (
-          <div className="ml-auto flex flex-wrap gap-2">
+          <div className="ms-auto flex flex-wrap gap-2">
             <Button
               variant="secondary"
               size="sm"

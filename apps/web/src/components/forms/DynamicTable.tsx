@@ -84,7 +84,7 @@ export function DynamicTable({
           <thead>
             <tr className="border-b border-input">
               {columns.map((col) => (
-                <th key={col.key} className="px-2 py-2 text-left font-semibold text-foreground">
+                <th key={col.key} className="px-2 py-2 text-start font-semibold text-foreground">
                   {col.label}
                 </th>
               ))}

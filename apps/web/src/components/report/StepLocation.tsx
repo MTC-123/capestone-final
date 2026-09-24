@@ -27,7 +27,7 @@ interface StepLocationProps {
 export function StepLocation({ location, onLocationSelect, onNext }: StepLocationProps) {
   const { t, language } = useTranslation();
   const isRTL = language === 'ar';
-  const textAlign = isRTL ? 'text-right' : 'text-left';
+  const textAlign = 'text-start';
 
   return (
     <div className="space-y-4">

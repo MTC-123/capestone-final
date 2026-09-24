@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 import { describe, it, expect, vi } from 'vitest';
 import { createIncidentPulseLayer, createResourceLayer, createInfrastructureLayers, createRetardantLayer } from '@/lib/map/layers';
 import type { GeoFeatureCollection, GeoIncidentProps, GeoResourceProps, GeoInfrastructureProps } from '@/types';

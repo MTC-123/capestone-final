@@ -141,7 +141,7 @@ export function TeamSelector({ incidentId }: TeamSelectorProps) {
   if (error) {
     return (
       <div className="bg-destructive/10 text-destructive text-sm rounded-lg p-3">
-        <Icon name="warning" className="inline mr-1" />
+        <Icon name="warning" className="inline me-1" />
         {error}
       </div>
     );

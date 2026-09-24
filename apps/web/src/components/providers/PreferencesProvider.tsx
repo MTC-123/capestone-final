@@ -17,12 +17,12 @@ export function useServerPreferences() {
  * child renders, so server HTML and the first client render agree.
  */
 export function PreferencesProvider({ children, ...prefs }: Preferences & { children: React.ReactNode }) {
-  const seeded = React.useRef(false);
-  if (!seeded.current && typeof window !== 'undefined') {
-    seeded.current = true;
-    if (useLanguageStore.getState().language !== prefs.locale) {
+  // Runs once, before any child renders on the client.
+  React.useState(() => {
+    if (typeof window !== 'undefined' && useLanguageStore.getState().language !== prefs.locale) {
       useLanguageStore.setState({ language: prefs.locale });
     }
-  }
+    return true;
+  });
   return <PreferencesContext.Provider value={prefs}>{children}</PreferencesContext.Provider>;
 }

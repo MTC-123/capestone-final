@@ -92,7 +92,7 @@ export function TemporalPanel() {
             <table className="w-full text-sm">
               <thead>
                 <tr>
-                  <th className="p-2 text-left text-muted-foreground" />
+                  <th className="p-2 text-start text-muted-foreground" />
                   {monthNames.map((name, i) => (
                     <th key={i} className="p-2 text-center text-xs text-muted-foreground">
                       {name}

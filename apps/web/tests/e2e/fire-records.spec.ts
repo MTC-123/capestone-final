@@ -24,7 +24,7 @@ const mockRecord: {
 };
 
 async function mockFireRecordRoutes(page: import('@playwright/test').Page) {
-  let records = [{ ...mockRecord }];
+  const records = [{ ...mockRecord }];
 
   await page.route('**/api/fire-records?**', async (route) => {
     if (route.request().method() !== 'GET') return route.fallback();

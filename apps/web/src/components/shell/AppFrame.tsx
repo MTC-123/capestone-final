@@ -24,6 +24,7 @@ import { SECTION_LABEL, SECTION_ORDER, currentNavItem, isActive, navFor } from '
 import { SyncStatusPill } from '@/components/offline';
 import { registerServiceWorker } from '@/lib/offline/registerServiceWorker';
 import { initSyncEngine, resumeAfterAuth } from '@/lib/offline/sync';
+import { useIsApplePlatform, useLocalFlag } from '@/lib/client/browserStores';
 import { cn } from '@/lib/cn';
 
 const FULL_BLEED = ['/map'];
@@ -97,8 +98,7 @@ function NotificationsButton({ onClick }: { onClick: () => void }) {
 
 function PaletteTrigger({ onClick, className }: { onClick: () => void; className?: string }) {
   const { t } = useTranslation();
-  const [isMac, setIsMac] = useState(true);
-  useEffect(() => setIsMac(/Mac|iPhone|iPad/.test(navigator.platform)), []);
+  const isMac = useIsApplePlatform();
   return (
     <button
       type="button"
@@ -122,26 +122,8 @@ function OpsShell({ children, fullBleed, onOpenPalette, onOpenNotifications }: S
   const pathname = usePathname();
   const { t } = useTranslation();
   const user = useAuthStore((s) => s.user);
-  const [collapsed, setCollapsed] = useState(false);
-
-  useEffect(() => {
-    try {
-      setCollapsed(localStorage.getItem('ricer-rail') === 'collapsed');
-    } catch {
-      /* storage unavailable */
-    }
-  }, []);
-
-  const toggleRail = () => {
-    setCollapsed((v) => {
-      try {
-        localStorage.setItem('ricer-rail', v ? 'expanded' : 'collapsed');
-      } catch {
-        /* storage unavailable */
-      }
-      return !v;
-    });
-  };
+  const [collapsed, setCollapsed] = useLocalFlag('ricer-rail-collapsed');
+  const toggleRail = () => setCollapsed(!collapsed);
 
   const items = navFor(user?.role);
   const current = currentNavItem(pathname, user?.role);

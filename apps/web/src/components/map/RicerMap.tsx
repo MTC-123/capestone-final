@@ -567,7 +567,7 @@ export default function RicerMap({ weather = null, weatherLoading = false }: Ric
       controller.abort();
       clearInterval(interval);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [layers.soilMoisture, layers.fireSpread]);
 
   /* ═══════════ EFFIS Burned Areas vector fetch ═══════════ */
@@ -603,7 +603,7 @@ export default function RicerMap({ weather = null, weatherLoading = false }: Ric
       controller.abort();
       clearInterval(interval);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [layers.effisBurnedAreas]);
 
   /* ═══════════ NDVI date probe (fetch latest available date) ═══════════ */
@@ -638,7 +638,7 @@ export default function RicerMap({ weather = null, weatherLoading = false }: Ric
       });
 
     return () => { cancelled = true; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [layers.ndvi]);
 
   /* ═══════════ Model risk grid (partner team XGBoost) ═══════════ */
@@ -739,7 +739,7 @@ export default function RicerMap({ weather = null, weatherLoading = false }: Ric
       });
 
     return () => { cancelled = true; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [layers.populationDensity]);
 
   /* ═══════════ PAMF/RMA data fetch ═══════════ */
@@ -795,7 +795,7 @@ export default function RicerMap({ weather = null, weatherLoading = false }: Ric
             const statsMap = new Map(stats.communes.map((c: any) => [c.name, c]));
             const geojsonNames = new Set<string>();
 
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+             
             (geojson.features as any[]).forEach((f: any) => {
               const name = f.properties?.name;
               geojsonNames.add(name);
@@ -1068,7 +1068,7 @@ export default function RicerMap({ weather = null, weatherLoading = false }: Ric
     if (vehicleLayer) list.push(vehicleLayer);
 
     return list;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [layers.routes, layers.activeTeams, layers.vehicles, routeLayerData, selectedTeams, vehiclesData, pulsePhase]);
 
   // Animated layers: pulse + arcs — only on Tier A/B
@@ -1128,7 +1128,7 @@ export default function RicerMap({ weather = null, weatherLoading = false }: Ric
         setHoveredIncident(null);
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
     [viewState, setSelectedIncidentId, layers.fireSpread, setFireSpreadSimPoint],
   );
 

@@ -194,9 +194,9 @@ export function CausesPanel() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border">
-                  <th className="p-2 text-left text-muted-foreground">{t('causeCategory')}</th>
-                  <th className="p-2 text-left text-muted-foreground">{t('totalFires')}</th>
-                  <th className="p-2 text-left text-muted-foreground">{t('causePercentage')}</th>
+                  <th className="p-2 text-start text-muted-foreground">{t('causeCategory')}</th>
+                  <th className="p-2 text-start text-muted-foreground">{t('totalFires')}</th>
+                  <th className="p-2 text-start text-muted-foreground">{t('causePercentage')}</th>
                 </tr>
               </thead>
               <tbody>

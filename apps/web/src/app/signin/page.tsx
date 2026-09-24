@@ -5,10 +5,11 @@ import { isDemoMode } from '@/lib/demo';
 
 export const metadata: Metadata = { title: 'Sign in' };
 
-export default function SignInPage({ searchParams }: { searchParams: { next?: string } }) {
+export default async function SignInPage({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
+  const { next } = await searchParams;
   return (
     <AuthLayout>
-      <SignInForm demoMode={isDemoMode()} next={searchParams.next} />
+      <SignInForm demoMode={isDemoMode()} next={next} />
     </AuthLayout>
   );
 }

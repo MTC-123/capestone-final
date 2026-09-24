@@ -86,7 +86,7 @@ export function MutualAidPanel() {
               <div className="flex items-center gap-2 mb-2 flex-wrap">
                 <Badge tone={STATUS_TONE[req.status]}>{req.status}</Badge>
                 <span className="text-sm font-semibold">{req.requestingProvince} → {req.targetProvince}</span>
-                <span className="text-xs text-muted-foreground ml-auto">
+                <span className="text-xs text-muted-foreground ms-auto">
                   {new Date(req.createdAt).toLocaleString()}
                 </span>
               </div>

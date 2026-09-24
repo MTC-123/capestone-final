@@ -78,10 +78,28 @@ export type ApiHandler<TCtx extends ApiHandlerContext = ApiHandlerContext> = (
   context?: TCtx
 ) => Promise<Response>;
 
-export function withApiHandler<TCtx extends ApiHandlerContext>(
-  handler: ApiHandler<TCtx>
-): ApiHandler<TCtx> {
-  return async (request: Request, context?: TCtx) => {
+/**
+ * Next.js 15 passes dynamic route params as a Promise. The wrapper resolves
+ * them once so handlers keep reading `context.params.id` synchronously (plain
+ * objects, as used in tests, are accepted too).
+ */
+export type RouteContext = { params?: Promise<Record<string, string>> | Record<string, string> };
+
+/**
+ * Route handler as exported from route.ts files. Next.js infers the route
+ * context from the last signature (context required); the single-argument
+ * form lets tests and internal callers invoke handlers directly.
+ */
+export interface WrappedRouteHandler {
+  (request: Request): Promise<Response>;
+  (request: Request, context: { params?: Record<string, string> }): Promise<Response>;
+  (request: Request, context: { params: Promise<Record<string, string>> }): Promise<Response>;
+}
+
+export function withApiHandler<TCtx extends ApiHandlerContext>(handler: ApiHandler<TCtx>): WrappedRouteHandler {
+  return async (request: Request, routeContext?: RouteContext) => {
+    const params = routeContext?.params ? await routeContext.params : undefined;
+    const context = (routeContext ? { ...routeContext, params } : undefined) as TCtx | undefined;
     const requestId =
       request.headers.get('x-request-id') ?? (typeof crypto !== 'undefined' ? crypto.randomUUID() : `${Date.now()}`);
     const startedAt = performance.now();

@@ -41,7 +41,7 @@ export function FireRecordDetailTabs({ activeTab, onTabChange, lockedSections }:
             ].join(' ')}
           >
             {t(tab.labelKey as Parameters<typeof t>[0])}
-            {isLocked && <span className="ml-1 text-green-500" aria-label="locked">&#x1F512;</span>}
+            {isLocked && <span className="ms-1 text-green-500" aria-label="locked">&#x1F512;</span>}
           </button>
         );
       })}

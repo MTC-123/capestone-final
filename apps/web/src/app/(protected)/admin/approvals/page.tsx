@@ -262,7 +262,7 @@ export default function AdminApprovalsPage() {
           {items.map((item) => (
             <li key={item.id}>
               <Card tone="default" className="p-4 sm:p-5">
-                <div className={cn('flex flex-col gap-4', isRTL ? 'text-right' : 'text-left')}>
+                <div className={'flex flex-col gap-4 text-start'}>
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
@@ -271,7 +271,7 @@ export default function AdminApprovalsPage() {
                         </h3>
                         <Badge tone={statusTone(item.status)}>{getStatusLabel(item.status)}</Badge>
                       </div>
-                      <p className="mt-1 font-mono text-xs text-muted-foreground">{item.user.cin}</p>
+                      <p className="mt-1 inline-flex rounded-md bg-surface-2 px-1.5 py-0.5 font-mono text-xs text-muted-foreground">{item.user.cin}</p>
                     </div>
                     <time
                       dateTime={item.createdAt}
@@ -282,27 +282,27 @@ export default function AdminApprovalsPage() {
                     </time>
                   </div>
 
-                  <dl className="grid grid-cols-1 gap-x-4 gap-y-2 text-sm sm:grid-cols-2">
+                  <dl className="grid grid-cols-1 gap-x-6 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
                     <div>
-                      <dt className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      <dt className="text-xs font-medium text-muted-foreground">
                         {t('department')}
                       </dt>
                       <dd className="text-foreground">{item.department || '—'}</dd>
                     </div>
                     <div>
-                      <dt className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      <dt className="text-xs font-medium text-muted-foreground">
                         {t('position')}
                       </dt>
                       <dd className="text-foreground">{item.position || '—'}</dd>
                     </div>
                     <div>
-                      <dt className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      <dt className="text-xs font-medium text-muted-foreground">
                         {t('phone')}
                       </dt>
-                      <dd className="text-foreground">{item.user.phone || '—'}</dd>
+                      <dd className="font-mono text-[13px] text-foreground"><bdi>{item.user.phone || '—'}</bdi></dd>
                     </div>
                     <div>
-                      <dt className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      <dt className="text-xs font-medium text-muted-foreground">
                         {t('adminEmail')}
                       </dt>
                       <dd className="truncate text-foreground">{item.user.email || '—'}</dd>
@@ -310,12 +310,12 @@ export default function AdminApprovalsPage() {
                   </dl>
 
                   {item.justification && (
-                    <div>
-                      <dt className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                        {t('adminJustification')}
-                      </dt>
-                      <p className="mt-1 text-sm text-foreground">{item.justification}</p>
-                    </div>
+                    <figure className="rounded-xl border-s-2 border-primary/50 bg-surface-2 px-4 py-3">
+                      <figcaption className="text-xs font-medium text-muted-foreground">{t('adminJustification')}</figcaption>
+                      <blockquote className="mt-1 text-sm leading-relaxed text-foreground">
+                        <bdi>{item.justification}</bdi>
+                      </blockquote>
+                    </figure>
                   )}
 
                   {item.status !== 'PENDING' && item.reviewNote && (
@@ -325,14 +325,18 @@ export default function AdminApprovalsPage() {
                   )}
 
                   {item.status === 'PENDING' && (
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap justify-end gap-2 border-t border-border pt-4">
+                      <Button
+                        variant="outline"
+                        className="text-danger hover:border-danger/40 hover:bg-danger-muted"
+                        onClick={() => openDecision(item, 'REJECT')}
+                      >
+                        <Icon name="close" size={16} />
+                        {t('adminReject')}
+                      </Button>
                       <Button variant="primary" onClick={() => openDecision(item, 'APPROVE')}>
                         <Icon name="check" size={16} />
                         {t('adminApprove')}
-                      </Button>
-                      <Button variant="danger" onClick={() => openDecision(item, 'REJECT')}>
-                        <Icon name="close" size={16} />
-                        {t('adminReject')}
                       </Button>
                     </div>
                   )}

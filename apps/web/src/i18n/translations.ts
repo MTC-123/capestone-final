@@ -1417,6 +1417,7 @@ export const translations = {
     deliveryStatusSkipped: 'تم التجاوز',
     deliveryEmptyTitle: 'لا توجد عمليات تسليم بعد',
     deliveryEmptyBody: 'ستظهر عمليات تسليم الإشعارات هنا بمجرد تشغيل الأحداث.',
+    delete: 'حذف',
   },
   fr: {
     language: 'Langue',
@@ -2836,6 +2837,7 @@ export const translations = {
     deliveryStatusSkipped: 'Ignoré',
     deliveryEmptyTitle: 'Aucun envoi pour le moment',
     deliveryEmptyBody: 'Les envois de notifications apparaîtront ici dès que des événements seront déclenchés.',
+    delete: 'Supprimer',
   },
   en: {
     language: 'Language',
@@ -4254,6 +4256,7 @@ export const translations = {
     deliveryStatusSkipped: 'Skipped',
     deliveryEmptyTitle: 'No deliveries yet',
     deliveryEmptyBody: 'Notification deliveries will appear here once events are triggered.',
+    delete: 'Delete',
   },
 };
 

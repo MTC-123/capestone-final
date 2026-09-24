@@ -65,7 +65,7 @@ export default function DispatchTruckDialog({ truck, open, onClose }: DispatchTr
                   key={inc.id}
                   type="button"
                   onClick={() => setSelectedIncidentId(inc.id)}
-                  className={`w-full rounded-lg border p-3 text-left text-sm transition-colors ${
+                  className={`w-full rounded-lg border p-3 text-start text-sm transition-colors ${
                     selectedIncidentId === inc.id
                       ? 'border-primary bg-primary/10'
                       : 'border-border hover:border-primary/50'

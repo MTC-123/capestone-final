@@ -52,7 +52,7 @@ export function FireRecordTableV2() {
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-border text-left">
+            <tr className="border-b border-border text-start">
               <th className="px-3 py-2 w-8">
                 <span className="sr-only">{t('compare' as Parameters<typeof t>[0])}</span>
               </th>

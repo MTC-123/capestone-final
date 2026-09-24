@@ -25,7 +25,7 @@ describe('xgboost parity against Python booster.predict()', () => {
       maxProbabilityDiff = Math.max(maxProbabilityDiff, Math.abs(probability - row.probabilityPython));
     }
 
-    // eslint-disable-next-line no-console
+     
     console.log(
       `xgboost parity: max |margin diff| = ${maxMarginDiff.toExponential(3)}, ` +
         `max |probability diff| = ${maxProbabilityDiff.toExponential(3)} over ${fixture.rows.length} rows`

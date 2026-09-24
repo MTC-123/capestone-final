@@ -65,7 +65,7 @@ export function DeliveryTable({ items, language }: { items: NotificationDelivery
       <div className="hidden overflow-x-auto rounded-lg border border-border sm:block">
         <table className="w-full min-w-[760px] border-collapse text-sm">
           <thead>
-            <tr className="border-b border-border bg-surface-2 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <tr className="border-b border-border bg-surface-2 text-start text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               <th className="px-3 py-2.5">{t('deliveryColChannel')}</th>
               <th className="px-3 py-2.5">{t('deliveryColRecipient')}</th>
               <th className="px-3 py-2.5">{t('deliveryColEvent')}</th>

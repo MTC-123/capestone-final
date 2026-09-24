@@ -47,7 +47,7 @@ export default function EquipmentPage() {
   const [dispatchTruck, setDispatchTruck] = useState<TruckDeployment | null>(null);
 
   const isRTL = language === 'ar';
-  const textAlign = isRTL ? 'text-right' : 'text-left';
+  const textAlign = 'text-start';
 
   // Fetch trucks separately (not part of the new CRUD overhaul)
   const loadTrucks = useCallback(async () => {

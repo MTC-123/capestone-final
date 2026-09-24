@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useAuthRefresh } from '@/hooks/useAuthRefresh';
@@ -34,15 +34,14 @@ export default function AuthProvider({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const seeded = useRef(false);
-  // Seed the store on the client only: on the server the store module is
-  // shared between requests, so the user is read from props there instead.
-  if (!seeded.current && typeof window !== 'undefined') {
-    seeded.current = true;
-    if (initialUser && !useAuthStore.getState().user) {
+  // Seed the store once on the client only: on the server the store module
+  // is shared between requests, so the user is read from props there instead.
+  useState(() => {
+    if (typeof window !== 'undefined' && initialUser && !useAuthStore.getState().user) {
       useAuthStore.setState({ user: initialUser, isLoading: false });
     }
-  }
+    return true;
+  });
   const user = useAuthStore((s) => s.user) ?? initialUser;
   const isLoading = useAuthStore((s) => s.isLoading) && !user;
   const { setUser, setLoading } = useAuthStore.getState();

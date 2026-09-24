@@ -38,7 +38,7 @@ function ToastItem({ toast }: { toast: Toast }) {
       <span className="flex-1">{toast.message}</span>
       <button
         onClick={() => removeToast(toast.id)}
-        className="flex-shrink-0 opacity-60 hover:opacity-100 transition-opacity ml-1"
+        className="flex-shrink-0 opacity-60 hover:opacity-100 transition-opacity ms-1"
         aria-label="Dismiss"
       >
         ✕

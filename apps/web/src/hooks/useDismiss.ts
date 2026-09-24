@@ -3,7 +3,7 @@
 import { useEffect, type RefObject } from 'react';
 
 /** Calls onDismiss on Escape or a pointer press outside `ref` while `active`. */
-export function useDismiss(ref: RefObject<HTMLElement>, active: boolean, onDismiss: () => void) {
+export function useDismiss(ref: RefObject<HTMLElement | null>, active: boolean, onDismiss: () => void) {
   useEffect(() => {
     if (!active) return;
     const onKey = (e: KeyboardEvent) => {

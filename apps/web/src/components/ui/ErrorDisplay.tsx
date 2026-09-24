@@ -75,7 +75,7 @@ export function ErrorDisplay({
                     href={`/error-codes#${code}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="ml-2 text-red-600 hover:text-red-700 underline"
+                    className="ms-2 text-red-600 hover:text-red-700 underline"
                   >
                     Learn more
                   </a>

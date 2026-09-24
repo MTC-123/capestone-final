@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { jwtVerify } from 'jose';
 
 /**
- * Edge middleware:
+ * Request proxy (Next.js 16's successor to middleware; runs on Node.js):
  *  1. Server-side gate for app pages. Anonymous visitors are redirected to
  *     /signin before any protected markup is sent, and civilians never
  *     receive official-only pages. API routes still enforce roles themselves;
@@ -82,7 +82,7 @@ function applySecurityHeaders(response: NextResponse, csp: string) {
   return response;
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
   const nonce = btoa(crypto.randomUUID());
   const csp = buildCsp(nonce);

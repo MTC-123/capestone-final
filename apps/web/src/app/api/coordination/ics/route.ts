@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { unset } from '@/lib/database/unset';
 import { withApiHandler } from '@/lib/errors/withApiHandler';
 import { AppError } from '@/lib/errors/AppError';
 
@@ -16,7 +17,7 @@ export const GET = withApiHandler(async (request: Request) => {
   if (!incidentId) throw new AppError(1001);
 
   const assignments = await prisma.iCSAssignment.findMany({
-    where: { incidentId, relievedAt: null },
+    where: { incidentId, ...unset('relievedAt') },
     orderBy: { assignedAt: 'desc' },
   });
 
@@ -33,7 +34,7 @@ export const POST = withApiHandler(async (request: Request) => {
 
   // Relieve current holder if occupied
   await prisma.iCSAssignment.updateMany({
-    where: { incidentId: body.incidentId, role: body.role, relievedAt: null },
+    where: { incidentId: body.incidentId, role: body.role, ...unset('relievedAt') },
     data: { relievedAt: new Date() },
   });
 

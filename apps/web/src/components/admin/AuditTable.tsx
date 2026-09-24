@@ -71,7 +71,7 @@ export function AuditTable({ items, language }: { items: AuditLogItem[]; languag
       <div className="hidden overflow-x-auto rounded-lg border border-border sm:block">
         <table className="w-full min-w-[860px] border-collapse text-sm">
           <thead>
-            <tr className="border-b border-border bg-surface-2 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <tr className="border-b border-border bg-surface-2 text-start text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               <th className="w-8 px-3 py-2.5" aria-hidden="true" />
               <th className="px-3 py-2.5">{t('auditColTime')}</th>
               <th className="px-3 py-2.5">{t('auditColActor')}</th>

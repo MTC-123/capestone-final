@@ -12,7 +12,7 @@ import type { User } from '@/types';
  * session on the client.
  */
 async function loadInitialUser(): Promise<User | null> {
-  const token = cookies().get('auth-token')?.value;
+  const token = (await cookies()).get('auth-token')?.value;
   const claims = token ? verifyAccessToken(token) : null;
   if (!claims) return null;
   try {

@@ -94,11 +94,11 @@ export default function LocationPicker({ onLocationSelect, selectedLocation, exp
         className={`absolute top-3 ${isRTL ? 'right-3' : 'left-3'} z-[1000] max-w-[calc(100%-1.5rem)] rounded-lg border border-border bg-surface/95 px-3 py-2 text-xs shadow-elev-1 backdrop-blur sm:top-4 sm:text-sm ${isRTL ? 'sm:right-4' : 'sm:left-4'}`}
         dir={isRTL ? 'rtl' : 'ltr'}
       >
-        <div className={`mb-1 flex items-center gap-2 font-bold ${isRTL ? 'justify-end text-right' : 'justify-start text-left'}`}>
+        <div className={`mb-1 flex items-center gap-2 font-bold justify-start text-start`}>
           <Icon name="pin" aria-hidden={true} size={18} className="text-muted-foreground" />
           <span>{isMobile ? t('tapTheMap') : t('clickTheMap')}</span>
         </div>
-        <div className={isRTL ? 'text-right text-muted-foreground' : 'text-left text-muted-foreground'}>
+        <div className="text-start text-muted-foreground">
           {t('locationPickerSubtitle')}
         </div>
       </div>

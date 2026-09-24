@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/cn';
@@ -27,7 +27,12 @@ export function MobileTabBar() {
   const sheetRef = useRef<HTMLDivElement>(null);
   const close = useCallback(() => setMoreOpen(false), []);
   useDismiss(sheetRef, moreOpen, close);
-  useEffect(close, [pathname, close]);
+  // Close the sheet when the route changes (state adjustment during render).
+  const [lastPath, setLastPath] = useState(pathname);
+  if (lastPath !== pathname) {
+    setLastPath(pathname);
+    setMoreOpen(false);
+  }
 
   const items = navFor(user?.role);
   const report = items.find((i) => i.primary);

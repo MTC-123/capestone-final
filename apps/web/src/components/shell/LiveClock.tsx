@@ -1,22 +1,17 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { useTranslation } from '@/hooks/useTranslation';
+import { useNow } from '@/lib/client/browserStores';
 
 const LOCALES = { ar: 'ar-MA', fr: 'fr-MA', en: 'en-GB' } as const;
 
 /** Ifrane local time, updated every 15 s. Renders nothing until mounted to avoid hydration drift. */
 export function LiveClock() {
   const { t, language } = useTranslation();
-  const [now, setNow] = useState<Date | null>(null);
+  const timestamp = useNow(15_000);
 
-  useEffect(() => {
-    setNow(new Date());
-    const id = window.setInterval(() => setNow(new Date()), 15_000);
-    return () => window.clearInterval(id);
-  }, []);
-
-  if (!now) return <span className="inline-block h-4 w-24" aria-hidden />;
+  if (timestamp === null) return <span className="inline-block h-4 w-24" aria-hidden />;
+  const now = new Date(timestamp);
 
   const time = new Intl.DateTimeFormat(LOCALES[language], {
     hour: '2-digit',

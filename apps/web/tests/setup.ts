@@ -15,7 +15,7 @@ afterEach(() => {
 vi.mock('next/image', () => ({
   __esModule: true,
   default: vi.fn((props) => {
-    // eslint-disable-next-line jsx-a11y/alt-text
+     
     return React.createElement('img', props);
   }),
 }));

@@ -20,9 +20,9 @@ function pickFromAcceptLanguage(value: string | null): Locale | null {
  * paint is already correct (no flash of the wrong language, direction or
  * colour scheme, and no inline bootstrap script to exempt from the CSP).
  */
-export function getRequestPreferences(): { locale: Locale; dir: 'rtl' | 'ltr'; theme: ThemeMode; persona: Persona; nonce?: string } {
-  const jar = cookies();
-  const hdrs = headers();
+export async function getRequestPreferences(): Promise< { locale: Locale; dir: 'rtl' | 'ltr'; theme: ThemeMode; persona: Persona; nonce?: string }> {
+  const jar = await cookies();
+  const hdrs = await headers();
   const cookieLang = jar.get('ricer-language')?.value;
   const locale: Locale =
     cookieLang === 'ar' || cookieLang === 'fr' || cookieLang === 'en'

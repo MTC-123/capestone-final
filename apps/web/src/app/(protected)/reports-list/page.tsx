@@ -119,7 +119,7 @@ export default function ReportsListPage() {
 
   const isRTL = language === 'ar';
   const isOfficial = user?.role === 'OFFICIAL';
-  const textAlign = isRTL ? 'text-right' : 'text-left';
+  const textAlign = 'text-start';
   const errorServerMessage = t('errorServer');
   const connectionErrorMessage = t('connectionError');
 
@@ -338,7 +338,7 @@ export default function ReportsListPage() {
                 placeholder={t('searchReportsPlaceholder')}
                 className={cn(
                   'h-10 w-full rounded-lg border border-input bg-surface px-3 text-sm text-foreground shadow-sm placeholder:text-muted-foreground focus:ring-2 focus:ring-ring',
-                  isRTL ? 'pr-9 text-right' : 'pl-9'
+                  'ps-9'
                 )}
               />
             </div>

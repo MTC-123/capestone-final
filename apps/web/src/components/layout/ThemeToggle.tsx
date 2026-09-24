@@ -1,9 +1,11 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { IconButton } from '@/components/ui/IconButton';
 import { Icon } from '@/components/ui/Icon';
 import { useTranslation } from '@/hooks/useTranslation';
+import { useIsDark } from '@/lib/client/browserStores';
+import { useServerPreferences } from '@/components/providers/PreferencesProvider';
 
 /**
  * Light/dark switch. The choice is stored in the `ricer-theme` cookie so the
@@ -11,15 +13,11 @@ import { useTranslation } from '@/hooks/useTranslation';
  */
 export function ThemeToggle() {
   const { language } = useTranslation();
-  const [theme, setTheme] = useState<'light' | 'dark'>('light');
-
-  useEffect(() => {
-    setTheme(document.documentElement.classList.contains('dark') ? 'dark' : 'light');
-  }, []);
+  const { theme: serverTheme } = useServerPreferences();
+  const theme = useIsDark(serverTheme === 'dark') ? 'dark' : 'light';
 
   const toggleTheme = () => {
     const next = theme === 'light' ? 'dark' : 'light';
-    setTheme(next);
     document.documentElement.classList.toggle('dark', next === 'dark');
     document.cookie = `ricer-theme=${next}; Path=/; Max-Age=31536000; SameSite=Lax`;
   };

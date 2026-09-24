@@ -291,14 +291,14 @@ export function DispatchPanel({ incidentId, onClose }: DispatchPanelProps) {
           {/* Error Messages */}
           {routeError && (
             <div className="bg-destructive/10 text-destructive text-sm rounded-lg p-3">
-              <Icon name="warning" className="inline mr-1" />
+              <Icon name="warning" className="inline me-1" />
               {routeError}
             </div>
           )}
 
           {assignmentError && (
             <div className="bg-destructive/10 text-destructive text-sm rounded-lg p-3">
-              <Icon name="warning" className="inline mr-1" />
+              <Icon name="warning" className="inline me-1" />
               {assignmentError}
             </div>
           )}
@@ -315,12 +315,12 @@ export function DispatchPanel({ incidentId, onClose }: DispatchPanelProps) {
             >
               {isGeneratingRoute ? (
                 <>
-                  <Icon name="loading" className="animate-spin mr-2" />
+                  <Icon name="loading" className="animate-spin me-2" />
                   {t('generatingRoute') || 'Generating Routes...'}
                 </>
               ) : (
                 <>
-                  <Icon name="route" className="mr-2" />
+                  <Icon name="route" className="me-2" />
                   {t('generateRoute') || 'Generate Routes'}
                 </>
               )}
@@ -334,12 +334,12 @@ export function DispatchPanel({ incidentId, onClose }: DispatchPanelProps) {
             >
               {isAssigning ? (
                 <>
-                  <Icon name="loading" className="animate-spin mr-2" />
+                  <Icon name="loading" className="animate-spin me-2" />
                   {t('dispatching') || 'Dispatching...'}
                 </>
               ) : (
                 <>
-                  <Icon name="send" className="mr-2" />
+                  <Icon name="send" className="me-2" />
                   {t('confirmDispatch') || 'Confirm Dispatch'}
                 </>
               )}

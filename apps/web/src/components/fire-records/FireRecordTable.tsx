@@ -33,7 +33,7 @@ export function FireRecordTable() {
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-border text-left">
+            <tr className="border-b border-border text-start">
               <th className="px-3 py-2 font-medium text-muted-foreground">{t('incident')}</th>
               <th className="px-3 py-2 font-medium text-muted-foreground">{t('fireRecordStatus')}</th>
               <th className="px-3 py-2 font-medium text-muted-foreground">{t('fireRecordAlertSource')}</th>

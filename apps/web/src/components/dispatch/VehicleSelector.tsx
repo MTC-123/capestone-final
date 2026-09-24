@@ -55,7 +55,7 @@ export function VehicleSelector({ incidentId }: VehicleSelectorProps) {
     }
     fetchVehicles();
     return () => { cancelled = true; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, []);
 
   if (loading) {

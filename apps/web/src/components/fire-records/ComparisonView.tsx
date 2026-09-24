@@ -23,7 +23,7 @@ export function ComparisonView() {
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-border text-left">
+            <tr className="border-b border-border text-start">
               <th className="px-3 py-2 font-medium text-muted-foreground">{t('field' as Parameters<typeof t>[0])}</th>
               {comparisonRecords.map((r) => (
                 <th key={r.id} className="px-3 py-2 font-medium text-muted-foreground">

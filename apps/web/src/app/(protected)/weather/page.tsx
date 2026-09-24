@@ -84,7 +84,7 @@ export default function WeatherPage() {
   const directionIndex = Math.round(weather.windDirection / 45) % 8;
   const windDirectionText = t(directionKeys[directionIndex]);
   const isRTL = language === 'ar';
-  const textAlign = isRTL ? 'text-right' : 'text-left';
+  const textAlign = 'text-start';
 
   const weatherCards = [
     {

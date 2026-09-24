@@ -41,7 +41,7 @@ export function ResourceCard({
             <p className="text-xs text-muted-foreground truncate">{subtitle}</p>
           )}
         </div>
-        <Badge tone={statusTone} className="ml-2 shrink-0">{status}</Badge>
+        <Badge tone={statusTone} className="ms-2 shrink-0">{status}</Badge>
       </div>
 
       <div className="grid grid-cols-2 gap-2 text-xs">

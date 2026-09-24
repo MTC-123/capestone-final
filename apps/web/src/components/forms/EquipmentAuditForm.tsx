@@ -577,18 +577,18 @@ export function EquipmentAuditForm({
           <div className="max-h-64 overflow-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-input text-left">
-                  <th className="py-1 pr-2 font-semibold">Catégorie</th>
-                  <th className="py-1 pr-2 font-semibold">Désignation</th>
+                <tr className="border-b border-input text-start">
+                  <th className="py-1 pe-2 font-semibold">Catégorie</th>
+                  <th className="py-1 pe-2 font-semibold">Désignation</th>
                   {isGeneral ? (
                     <>
-                      <th className="py-1 pr-2 font-semibold">Eng.</th>
-                      <th className="py-1 pr-2 font-semibold">Rendu</th>
+                      <th className="py-1 pe-2 font-semibold">Eng.</th>
+                      <th className="py-1 pe-2 font-semibold">Rendu</th>
                       <th className="py-1 font-semibold">Perdu</th>
                     </>
                   ) : (
                     <>
-                      <th className="py-1 pr-2 font-semibold">Néc.</th>
+                      <th className="py-1 pe-2 font-semibold">Néc.</th>
                       <th className="py-1 font-semibold">Prés.</th>
                     </>
                   )}
@@ -597,17 +597,17 @@ export function EquipmentAuditForm({
               <tbody>
                 {activeItems.map((it, i) => (
                   <tr key={i} className="border-b border-input/50">
-                    <td className="py-1 pr-2 text-muted-foreground">{it.category}</td>
-                    <td className="py-1 pr-2">{it.name}</td>
+                    <td className="py-1 pe-2 text-muted-foreground">{it.category}</td>
+                    <td className="py-1 pe-2">{it.name}</td>
                     {isGeneral ? (
                       <>
-                        <td className="py-1 pr-2">{(it as GeneralItem).quantiteEngagee}</td>
-                        <td className="py-1 pr-2">{(it as GeneralItem).quantiteRendue}</td>
+                        <td className="py-1 pe-2">{(it as GeneralItem).quantiteEngagee}</td>
+                        <td className="py-1 pe-2">{(it as GeneralItem).quantiteRendue}</td>
                         <td className="py-1">{(it as GeneralItem).quantitePerdue}</td>
                       </>
                     ) : (
                       <>
-                        <td className="py-1 pr-2">{(it as VpiItem).quantiteNecessaire}</td>
+                        <td className="py-1 pe-2">{(it as VpiItem).quantiteNecessaire}</td>
                         <td className="py-1">{(it as VpiItem).quantitePresente}</td>
                       </>
                     )}

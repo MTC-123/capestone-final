@@ -1,21 +1,12 @@
 import type { Metadata, Viewport } from 'next';
 import { IBM_Plex_Sans, IBM_Plex_Sans_Arabic, IBM_Plex_Mono } from 'next/font/google';
-import dynamic from 'next/dynamic';
 import './globals.css';
 import LocaleSync from '@/components/layout/LocaleSync';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { ErrorProvider } from '@/contexts/ErrorContext';
 import { PreferencesProvider } from '@/components/providers/PreferencesProvider';
 import { getRequestPreferences } from '@/lib/i18n/server';
-
-const OfflineBanner = dynamic(
-  () => import('@/components/ui/OfflineBanner').then((m) => m.OfflineBanner),
-  { ssr: false }
-);
-const ToastContainer = dynamic(
-  () => import('@/components/ui/Toast').then((m) => m.ToastContainer),
-  { ssr: false }
-);
+import { ClientOverlays } from '@/components/providers/ClientOverlays';
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.BASE_URL || 'http://localhost:3000'),
@@ -71,8 +62,8 @@ const fontMono = IBM_Plex_Mono({
   display: 'swap',
 });
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
-  const { locale, dir, theme, persona } = getRequestPreferences();
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const { locale, dir, theme, persona } = await getRequestPreferences();
 
   return (
     <html
@@ -87,9 +78,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <ErrorBoundary>
             <ErrorProvider>
               <LocaleSync />
-              <OfflineBanner />
-              {children}
-              <ToastContainer />
+              <ClientOverlays>{children}</ClientOverlays>
             </ErrorProvider>
           </ErrorBoundary>
         </PreferencesProvider>

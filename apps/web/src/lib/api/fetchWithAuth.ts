@@ -21,7 +21,8 @@ async function refreshAccessToken(): Promise<boolean> {
   }
 }
 
-function getRefreshPromise(): Promise<boolean> {
+/** Single in-flight refresh per tab; every caller shares its result. */
+export function refreshSession(): Promise<boolean> {
   if (!refreshPromise) {
     refreshPromise = refreshAccessToken().finally(() => {
       refreshPromise = null;
@@ -37,7 +38,7 @@ export async function fetchWithAuth(
   const response = await fetch(input, init);
 
   if (response.status === 401) {
-    const refreshed = await getRefreshPromise();
+    const refreshed = await refreshSession();
 
     if (refreshed) {
       // Retry the original request with fresh token

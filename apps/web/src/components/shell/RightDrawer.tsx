@@ -30,14 +30,7 @@ export function RightDrawer({
   // Keep the panel out of layout entirely once the close animation ends: an
   // off-screen fixed element still widens the page in right-to-left layouts.
   const [rendered, setRendered] = React.useState(open);
-  React.useEffect(() => {
-    if (open) {
-      setRendered(true);
-      return;
-    }
-    const id = window.setTimeout(() => setRendered(false), 320);
-    return () => window.clearTimeout(id);
-  }, [open]);
+  if (open && !rendered) setRendered(true);
 
   React.useEffect(() => {
     if (!open) return;
@@ -103,6 +96,9 @@ export function RightDrawer({
         aria-labelledby={titleId}
         aria-hidden={!open || undefined}
         ref={drawerRef}
+        onTransitionEnd={(e) => {
+          if (e.target === e.currentTarget && !open) setRendered(false);
+        }}
         className={cn(
           'fixed end-0 top-[var(--topbar-height)] z-50 h-[calc(100dvh-var(--topbar-height))] w-full max-w-[95vw] overflow-hidden sm:w-[400px]',
           'max-md:inset-x-0 max-md:bottom-0 max-md:top-auto max-md:h-[min(82dvh,720px)] max-md:max-w-none max-md:rounded-t-xl',

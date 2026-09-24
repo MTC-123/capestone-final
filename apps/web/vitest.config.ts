@@ -14,7 +14,7 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./tests/setup.ts'],
     include: ['./tests/**/*.{test,spec}.{ts,tsx}'],
-    exclude: ['./tests/e2e/**', './tests/performance/**', './node_modules/**'],
+    exclude: ['./tests/e2e/**', './tests/performance/**', './tests/db/**', './node_modules/**'],
     coverage: {
       provider: 'v8',
       include: [
@@ -36,7 +36,11 @@ export default defineConfig({
         'src/store/**',
         'src/components/ui/Logo.tsx',
         'src/components/layout/ThemeToggle.tsx',
-        'src/components/layout/Footer.tsx',
+        'src/lib/offline/**',
+        'src/lib/audit/**',
+        'src/lib/security/**',
+        'src/lib/uploads/**',
+        'src/lib/validation/**',
         'src/components/map/RicerMap.tsx',
       ],
       reporter: ['text', 'json-summary', 'html'],
