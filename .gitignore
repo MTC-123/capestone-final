@@ -88,3 +88,4 @@ ricer-backup.bundle
 
 # Keep environment templates
 !**/.env.example
+.claude/

@@ -4,6 +4,7 @@
  */
 
 import { prisma } from '@/lib/prisma';
+import { claimVehicles, releaseVehicles } from '@/lib/dispatch/claims';
 import { logger } from '@/lib/observability/logger';
 import { GraphHopperClient } from '@/lib/routing/graphhopper';
 import { getCachedRoute, setCachedRoute } from '@/lib/routing/cache';
@@ -102,7 +103,9 @@ function calculateETA(durationMinutes: number): Date {
 }
 
 /**
- * Assign a single vehicle to an incident
+ * Route a vehicle to an incident and record the dispatch. The vehicle must
+ * already be claimed (EN_ROUTE to this incident) via claimVehicles; use
+ * assignVehiclesToIncident unless the claim is handled by the caller.
  */
 export async function assignVehicleToIncident(
   vehicle: Vehicle,
@@ -134,15 +137,6 @@ export async function assignVehicleToIncident(
       eta,
       assignedBy: assignedByUserId,
       assignedAt: new Date(),
-    },
-  });
-
-  // Update vehicle status to EN_ROUTE
-  await prisma.vehicle.update({
-    where: { id: vehicle.id },
-    data: {
-      status: 'EN_ROUTE',
-      assignedTo: incident.id,
     },
   });
 
@@ -181,11 +175,20 @@ export async function assignVehiclesToIncident(
   assignedByUserId: string
 ): Promise<VehicleAssignmentResult[]> {
   const results: VehicleAssignmentResult[] = [];
+  const ids = vehicles.map((item) => item.id);
 
-  // Process vehicles sequentially to avoid race conditions
-  for (const vehicle of vehicles) {
-    const result = await assignVehicleToIncident(vehicle, incident, assignedByUserId);
-    results.push(result);
+  // Claim every vehicle atomically before any routing work, so a concurrent
+  // request for the same vehicle fails fast and nothing is double-booked.
+  await claimVehicles(ids, incident.id);
+
+  try {
+    for (const vehicle of vehicles) {
+      results.push(await assignVehicleToIncident(vehicle, incident, assignedByUserId));
+    }
+  } catch (error) {
+    await prisma.dispatch.deleteMany({ where: { id: { in: results.map((r) => r.dispatchId) } } });
+    await releaseVehicles(ids, incident.id);
+    throw error;
   }
 
   logger.info({

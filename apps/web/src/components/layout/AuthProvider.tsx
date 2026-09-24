@@ -1,80 +1,78 @@
 'use client';
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useRef } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/useAuthStore';
-import { Icon } from '@/components/ui/Icon';
-import { useTranslation } from '@/hooks/useTranslation';
 import { useAuthRefresh } from '@/hooks/useAuthRefresh';
 import { fetchWithAuth } from '@/lib/api/fetchWithAuth';
+import type { User } from '@/types';
+
+function FrameSkeleton() {
+  return (
+    <div className="min-h-dvh bg-background" role="status" aria-live="polite" aria-busy="true">
+      <div className="h-14 border-b border-border bg-surface/60" />
+      <div className="mx-auto max-w-6xl space-y-4 p-6">
+        <div className="h-7 w-56 animate-pulse rounded-lg bg-muted" />
+        <div className="grid gap-4 sm:grid-cols-3">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="h-28 animate-pulse rounded-xl bg-muted/70" />
+          ))}
+        </div>
+        <div className="h-72 animate-pulse rounded-xl bg-muted/60" />
+      </div>
+      <span className="sr-only">Loading…</span>
+    </div>
+  );
+}
 
 export default function AuthProvider({
   children,
+  initialUser = null,
 }: {
   children: React.ReactNode;
+  initialUser?: User | null;
 }) {
   const router = useRouter();
-  const { t } = useTranslation();
-  const { user, isLoading, setUser, setLoading } = useAuthStore();
+  const pathname = usePathname();
+  const seeded = useRef(false);
+  // Seed the store on the client only: on the server the store module is
+  // shared between requests, so the user is read from props there instead.
+  if (!seeded.current && typeof window !== 'undefined') {
+    seeded.current = true;
+    if (initialUser && !useAuthStore.getState().user) {
+      useAuthStore.setState({ user: initialUser, isLoading: false });
+    }
+  }
+  const user = useAuthStore((s) => s.user) ?? initialUser;
+  const isLoading = useAuthStore((s) => s.isLoading) && !user;
+  const { setUser, setLoading } = useAuthStore.getState();
   useAuthRefresh();
 
   useEffect(() => {
-    // If user is already in the store (e.g. just signed up/in), skip the API call
     if (user) {
       setLoading(false);
       return;
     }
-
-    // AbortController ensures StrictMode's double-mount doesn't race two
-    // checkAuth calls — the first is aborted before the second starts.
     const controller = new AbortController();
-
-    const checkAuth = async () => {
+    (async () => {
       try {
         const response = await fetchWithAuth('/api/auth/me');
         if (controller.signal.aborted) return;
-
         if (response.ok) {
           const data = await response.json();
           setUser(data.user);
         } else {
-          router.replace('/signin');
+          router.replace(`/signin?next=${encodeURIComponent(pathname)}`);
         }
       } catch {
-        if (controller.signal.aborted) return;
-        router.replace('/signin');
+        if (!controller.signal.aborted) router.replace(`/signin?next=${encodeURIComponent(pathname)}`);
       } finally {
-        if (!controller.signal.aborted) {
-          setLoading(false);
-        }
+        if (!controller.signal.aborted) setLoading(false);
       }
-    };
-
-    checkAuth();
-
+    })();
     return () => controller.abort();
-  }, [router, user, setUser, setLoading]);
+  }, [router, pathname, user, setUser, setLoading]);
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen grid place-items-center bg-background">
-        <div
-          role="status"
-          aria-live="polite"
-          className="flex items-center gap-4 rounded-lg border border-border bg-surface px-5 py-4 shadow-elev-1"
-        >
-          <div className="grid h-10 w-10 place-items-center rounded-md bg-primary text-primary-foreground shadow-sm">
-            <Icon name="fire" aria-hidden={true} size={20} />
-          </div>
-          <div className="text-sm font-semibold text-muted-foreground">{t('loading')}</div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return null;
-  }
-
+  if (isLoading || !user) return <FrameSkeleton />;
   return <>{children}</>;
 }

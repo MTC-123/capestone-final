@@ -121,6 +121,12 @@ export function buildAuthResponse(
   };
   response.cookies.set('auth-token', accessToken, { ...base, maxAge: 60 * 15 });
   response.cookies.set('refresh-token', refreshToken, { ...base, maxAge: 60 * 60 * 24 * 30 });
+  // Readable, non-sensitive hint used only to render the matching theme on
+  // the server (civic vs ops). Authorization never relies on it.
+  const role = (jwt.decode(accessToken) as { role?: Role } | null)?.role;
+  if (role) {
+    response.cookies.set('ricer-role', role, { ...base, httpOnly: false, maxAge: 60 * 60 * 24 * 30 });
+  }
   return response;
 }
 
@@ -161,6 +167,7 @@ export async function clearAuthCookies() {
   const cookieStore = await cookies();
   cookieStore.delete('auth-token');
   cookieStore.delete('refresh-token');
+  cookieStore.delete('ricer-role');
 }
 
 export async function clearAuthCookie() {

@@ -6,7 +6,12 @@ export const dynamic = 'force-dynamic';
  */
 
 import { NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
+import { requireOfficial } from '@/lib/security/guards';
+import { enforceRateLimit } from '@/lib/security/rateLimit';
+import { audit } from '@/lib/audit/log';
+import { notifyEvent } from '@/lib/notifications/events';
+import { releaseTeams } from '@/lib/dispatch/claims';
 import { withApiHandler } from '@/lib/errors/withApiHandler';
 import { AppError } from '@/lib/errors/AppError';
 import { logger } from '@/lib/observability/logger';
@@ -29,16 +34,18 @@ import { assignVehiclesToIncident } from '@/lib/dispatch/vehicleAssignment';
  * Body: { incidentId: string, teamIds?: string[], vehicleIds?: string[] }
  */
 export const POST = withApiHandler(async (request: Request) => {
-  const user = await getCurrentUser(request);
-  if (!user) throw new AppError(2000);
+  const user = await requireOfficial(request);
+  await enforceRateLimit('mutation', request, user.userId);
 
-  // Only OFFICIAL can assign
-  if (user.role !== 'OFFICIAL') {
-    throw new AppError(2001);
+  let body: { incidentId?: unknown; teamIds?: unknown; vehicleIds?: unknown };
+  try {
+    body = await request.json();
+  } catch (error) {
+    throw new AppError(1000, { cause: error });
   }
-
-  const body = await request.json();
-  const { incidentId, teamIds, vehicleIds } = body;
+  const { incidentId } = body as { incidentId: string };
+  const teamIds = Array.isArray(body.teamIds) ? [...new Set(body.teamIds.filter((v): v is string => typeof v === 'string'))] : [];
+  const vehicleIds = Array.isArray(body.vehicleIds) ? [...new Set(body.vehicleIds.filter((v): v is string => typeof v === 'string'))] : [];
 
   // Validate request
   const fields = [];
@@ -51,8 +58,8 @@ export const POST = withApiHandler(async (request: Request) => {
     });
   }
 
-  const hasTeams = Array.isArray(teamIds) && teamIds.length > 0;
-  const hasVehicles = Array.isArray(vehicleIds) && vehicleIds.length > 0;
+  const hasTeams = teamIds.length > 0;
+  const hasVehicles = vehicleIds.length > 0;
 
   if (!hasTeams && !hasVehicles) {
     fields.push({
@@ -69,7 +76,7 @@ export const POST = withApiHandler(async (request: Request) => {
   // Validate incident exists
   const incident = await validateIncidentExists(incidentId);
 
-  // Validate and assign teams
+  // Validate, then claim-and-assign teams
   let teamAssignments: Awaited<ReturnType<typeof assignTeamsToIncident>> = [];
   if (hasTeams) {
     validateMaxTeams(teamIds.length);
@@ -90,6 +97,14 @@ export const POST = withApiHandler(async (request: Request) => {
     try {
       vehicleAssignments = await assignVehiclesToIncident(vehicles, incident, user.userId);
     } catch (error: unknown) {
+      // All-or-nothing across teams and vehicles for one request.
+      if (teamAssignments.length) {
+        await prisma.dispatch.deleteMany({ where: { id: { in: teamAssignments.map((a) => a.dispatchId) } } });
+        await releaseTeams(teamAssignments.map((a) => a.teamId), incidentId);
+      }
+      if (error instanceof AppError && (error.code === 7001 || error.code === 6003)) {
+        await audit({ action: 'dispatch.assign_conflict', actor: user, targetType: 'incident', targetId: incidentId, outcome: 'DENIED', meta: error.meta, request });
+      }
       const err = error as { name?: string; message?: string; stack?: string; code?: string };
       logger.error({
         event: 'vehicle_dispatch_assignment_failed',
@@ -103,6 +118,31 @@ export const POST = withApiHandler(async (request: Request) => {
       if (error instanceof AppError) throw error;
       throw new AppError(5000, { message: 'Failed to assign vehicles', meta: { originalError: err.message } });
     }
+  }
+
+  await audit({
+    action: 'dispatch.assign',
+    actor: user,
+    targetType: 'incident',
+    targetId: incidentId,
+    meta: {
+      teams: teamAssignments.map((a) => a.teamId),
+      vehicles: vehicleAssignments.map((a) => a.vehicleId),
+      dispatchIds: [...teamAssignments, ...vehicleAssignments].map((a) => a.dispatchId),
+    },
+    request,
+  });
+  const units = [...teamAssignments.map((a) => a.teamName), ...vehicleAssignments.map((a) => a.callSign)];
+  const firstDispatch = teamAssignments[0]?.dispatchId ?? vehicleAssignments[0]?.dispatchId;
+  if (firstDispatch) {
+    const etas = [...teamAssignments, ...vehicleAssignments].map((a) => a.duration_min);
+    void notifyEvent({
+      type: 'dispatch.assigned',
+      dispatchId: firstDispatch,
+      incidentId,
+      unitLabel: units.join(', '),
+      etaMinutes: etas.length ? Math.round(Math.min(...etas)) : null,
+    }).catch(() => undefined);
   }
 
   logger.info({

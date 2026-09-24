@@ -4,6 +4,7 @@
  */
 
 import { prisma } from '@/lib/prisma';
+import { claimTeams, releaseTeams } from '@/lib/dispatch/claims';
 import { logger } from '@/lib/observability/logger';
 import { GraphHopperClient } from '@/lib/routing/graphhopper';
 import { getCachedRoute, setCachedRoute } from '@/lib/routing/cache';
@@ -103,7 +104,9 @@ function calculateETA(durationMinutes: number): Date {
 }
 
 /**
- * Assign a single team to an incident
+ * Route a team to an incident and record the dispatch. The team must
+ * already be claimed (EN_ROUTE to this incident) via claimTeams; use
+ * assignTeamsToIncident unless the claim is handled by the caller.
  */
 export async function assignTeamToIncident(
   team: Team,
@@ -132,15 +135,6 @@ export async function assignTeamToIncident(
       eta,
       assignedBy: assignedByUserId,
       assignedAt: new Date(),
-    },
-  });
-
-  // Update team status to EN_ROUTE
-  await prisma.team.update({
-    where: { id: team.id },
-    data: {
-      status: 'EN_ROUTE',
-      assignedTo: incident.id,
     },
   });
 
@@ -179,11 +173,20 @@ export async function assignTeamsToIncident(
   assignedByUserId: string
 ): Promise<AssignmentResult[]> {
   const results: AssignmentResult[] = [];
+  const ids = teams.map((item) => item.id);
 
-  // Process teams sequentially to avoid race conditions
-  for (const team of teams) {
-    const result = await assignTeamToIncident(team, incident, assignedByUserId);
-    results.push(result);
+  // Claim every team atomically before any routing work, so a concurrent
+  // request for the same team fails fast and nothing is double-booked.
+  await claimTeams(ids, incident.id);
+
+  try {
+    for (const team of teams) {
+      results.push(await assignTeamToIncident(team, incident, assignedByUserId));
+    }
+  } catch (error) {
+    await prisma.dispatch.deleteMany({ where: { id: { in: results.map((r) => r.dispatchId) } } });
+    await releaseTeams(ids, incident.id);
+    throw error;
   }
 
   logger.info({

@@ -7,6 +7,8 @@ export interface User {
   cin: string;
   phone: string;
   role: Role;
+  fullName?: string;
+  email?: string;
   agencyType?: AgencyType;
   department?: string;
   position?: string;

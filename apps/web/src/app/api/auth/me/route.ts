@@ -17,6 +17,8 @@ export const GET = withApiHandler(async (request: Request) => {
       cin: true,
       phone: true,
       role: true,
+      fullName: true,
+      email: true,
       department: true,
       position: true,
       createdAt: true,
@@ -26,5 +28,14 @@ export const GET = withApiHandler(async (request: Request) => {
 
   if (!user) throw new AppError(1003, { meta: { resource: 'User' } });
 
-  return NextResponse.json({ user });
+  const officialRequest =
+    user.role === 'CIVILIAN'
+      ? await prisma.officialRequest.findFirst({
+          where: { userId: user.id },
+          orderBy: { createdAt: 'desc' },
+          select: { id: true, status: true, department: true, createdAt: true, reviewNote: true },
+        })
+      : null;
+
+  return NextResponse.json({ user, officialRequest });
 });
