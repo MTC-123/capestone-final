@@ -7,7 +7,13 @@ import { useFireRecordStore } from '@/store/useFireRecordStore';
 import { FireDatabaseKpis } from '@/components/fire-records/FireDatabaseKpis';
 import { FireRecordFiltersV2 } from '@/components/fire-records/FireRecordFiltersV2';
 import { FireRecordTableV2 } from '@/components/fire-records/FireRecordTableV2';
-import { FireRecordMapView } from '@/components/fire-records/FireRecordMapView';
+import dynamic from 'next/dynamic';
+
+// MapLibre is only needed when the map view is chosen, so it stays out of the page bundle.
+const FireRecordMapView = dynamic(() => import('@/components/fire-records/FireRecordMapView'), {
+  ssr: false,
+  loading: () => <div className="h-[500px] w-full animate-pulse rounded-xl bg-muted/60" />,
+});
 import { ComparisonBar } from '@/components/fire-records/ComparisonBar';
 import { ComparisonView } from '@/components/fire-records/ComparisonView';
 import { ImportFirmsDialog } from '@/components/fire-records/ImportFirmsDialog';

@@ -1,6 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'standalone',
+  // Lets a production build run alongside `next dev` (e.g. NEXT_DIST_DIR=.next-prod).
+  distDir: process.env.NEXT_DIST_DIR || '.next',
   compress: true,
   swcMinify: true,
   productionBrowserSourceMaps: false,

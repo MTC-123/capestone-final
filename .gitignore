@@ -92,3 +92,8 @@ ricer-backup.bundle
 
 # Local database backups
 apps/web/backups/
+
+# Build and test artefacts
+apps/web/test-results/
+apps/web/playwright-report/
+apps/web/.next-prod/

@@ -9,6 +9,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import type { FireEventRecord } from '@/types';
 import 'maplibre-gl/dist/maplibre-gl.css';
+import { getMapStyle } from '@/lib/map/styles';
 
 const INITIAL_VIEW = {
   longitude: -5.1,
@@ -16,7 +17,7 @@ const INITIAL_VIEW = {
   zoom: 8,
 };
 
-export function FireRecordMapView() {
+export default function FireRecordMapView() {
   const { t } = useTranslation();
   const { records } = useFireRecordStore();
   const [selected, setSelected] = useState<FireEventRecord | null>(null);
@@ -47,7 +48,9 @@ export function FireRecordMapView() {
       <Map
         initialViewState={INITIAL_VIEW}
         style={{ width: '100%', height: '100%' }}
-        mapStyle={`https://api.maptiler.com/maps/streets/style.json?key=${process.env.NEXT_PUBLIC_MAPTILER_KEY || 'placeholder'}`}
+        mapStyle={getMapStyle(
+          typeof document !== 'undefined' && document.documentElement.classList.contains('dark') ? 'dark' : 'streets'
+        ) as string}
       >
         <NavigationControl position="top-right" />
 
