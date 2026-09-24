@@ -8,7 +8,7 @@
  */
 'use client';
 
-import { useLanguageStore } from '@/store/useLanguageStore';
+import { useLanguage } from '@/hooks/useTranslation';
 
 export const offlineMessages = {
   en: {
@@ -154,7 +154,7 @@ export function translateOffline(
 
 /** Same locale source as useTranslation() (useLanguageStore), scoped to the offline queue's own strings. */
 export function useOfflineMessages() {
-  const language = useLanguageStore((s) => s.language) as OfflineLocale;
+  const language = useLanguage() as OfflineLocale;
   const t = (key: OfflineMessageKey, vars?: Record<string, string | number>) => translateOffline(language, key, vars);
   return { t, language };
 }

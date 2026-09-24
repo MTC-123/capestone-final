@@ -1,11 +1,11 @@
 'use client';
 
 import * as React from 'react';
-import { useLanguageStore } from '@/store/useLanguageStore';
+import { useLanguage } from '@/hooks/useTranslation';
 
 /** Keeps <html lang/dir> and the language cookie in step with the store. */
 export default function LocaleSync() {
-  const language = useLanguageStore((s) => s.language);
+  const language = useLanguage();
 
   React.useEffect(() => {
     const root = document.documentElement;

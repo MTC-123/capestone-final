@@ -1565,9 +1565,10 @@ export default function RicerMap({ weather = null, weatherLoading = false }: Ric
                 // Low-risk cells stay transparent so the layer only draws the
                 // eye to where risk is elevated; it fades as the user zooms in.
                 'fill-opacity': [
-                  '*',
-                  ['match', ['get', 'level'], 'very_high', 0.55, 'high', 0.42, 'moderate', 0.28, 0],
-                  ['interpolate', ['linear'], ['zoom'], 8, 1, 12, 0.7, 14, 0.4],
+                  'interpolate', ['linear'], ['zoom'],
+                  8, ['match', ['get', 'level'], 'very_high', 0.55, 'high', 0.42, 'moderate', 0.28, 0],
+                  12, ['match', ['get', 'level'], 'very_high', 0.4, 'high', 0.3, 'moderate', 0.2, 0],
+                  14, ['match', ['get', 'level'], 'very_high', 0.22, 'high', 0.16, 'moderate', 0.1, 0],
                 ],
                 'fill-antialias': false,
               }}

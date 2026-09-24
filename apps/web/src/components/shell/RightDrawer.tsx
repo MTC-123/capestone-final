@@ -27,6 +27,17 @@ export function RightDrawer({
   const closeButtonRef = React.useRef<HTMLButtonElement>(null);
   const drawerRef = React.useRef<HTMLDivElement>(null);
   const lastActiveElementRef = React.useRef<HTMLElement | null>(null);
+  // Keep the panel out of layout entirely once the close animation ends: an
+  // off-screen fixed element still widens the page in right-to-left layouts.
+  const [rendered, setRendered] = React.useState(open);
+  React.useEffect(() => {
+    if (open) {
+      setRendered(true);
+      return;
+    }
+    const id = window.setTimeout(() => setRendered(false), 320);
+    return () => window.clearTimeout(id);
+  }, [open]);
 
   React.useEffect(() => {
     if (!open) return;
@@ -90,16 +101,20 @@ export function RightDrawer({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
+        aria-hidden={!open || undefined}
         ref={drawerRef}
         className={cn(
-          'fixed right-0 top-16 z-50 h-[calc(100dvh-var(--topbar-height))] w-full max-w-[95vw] overflow-hidden sm:w-[400px]',
+          'fixed end-0 top-[var(--topbar-height)] z-50 h-[calc(100dvh-var(--topbar-height))] w-full max-w-[95vw] overflow-hidden sm:w-[400px]',
           'max-md:inset-x-0 max-md:bottom-0 max-md:top-auto max-md:h-[min(82dvh,720px)] max-md:max-w-none max-md:rounded-t-xl',
-          'glass shadow-elev-3 border-l border-border/40',
-          'max-md:border-l-0 max-md:border-t max-md:pb-[env(safe-area-inset-bottom)]',
-          'transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]',
+          'bg-surface shadow-elev-3 border-s border-border',
+          'max-md:border-s-0 max-md:border-t max-md:pb-[env(safe-area-inset-bottom)]',
+          'transition-[transform,visibility] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]',
+          // Closed drawers are invisible, not just off-screen, so they leave
+          // the tab order and the accessibility tree.
           open
-            ? 'translate-x-0 max-md:translate-y-0'
-            : 'translate-x-full max-md:translate-x-0 max-md:translate-y-full',
+            ? 'visible translate-x-0 max-md:translate-y-0'
+            : 'invisible translate-x-full rtl:-translate-x-full max-md:translate-x-0 max-md:translate-y-full',
+          !open && !rendered && 'hidden',
           className
         )}
       >

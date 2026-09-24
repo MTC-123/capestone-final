@@ -12,8 +12,8 @@ const OPTIONS: { value: Language; short: string; long: string }[] = [
 ];
 
 export default function LanguageSwitcher({ size = 'md', className }: { size?: 'sm' | 'md'; className?: string }) {
-  const { language, setLanguage } = useLanguageStore();
-  const { t } = useTranslation();
+  const setLanguage = useLanguageStore((s) => s.setLanguage);
+  const { t, language } = useTranslation();
 
   return (
     <div
