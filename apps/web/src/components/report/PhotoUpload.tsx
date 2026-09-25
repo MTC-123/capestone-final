@@ -80,7 +80,7 @@ export function PhotoUpload({ images, onChange }: PhotoUploadProps) {
               <button
                 type="button"
                 onClick={() => handleRemove(i)}
-                className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-danger text-white shadow-sm"
+                className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-danger text-on-danger shadow-sm"
                 aria-label={t('removePhoto')}
               >
                 <Icon name="close" size={12} aria-hidden />

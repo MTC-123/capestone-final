@@ -230,7 +230,7 @@ function EffisFwiControls() {
               onClick={() => setEffisFwiMode(m.value)}
               className={`rounded-full px-2 py-0.5 text-[10px] font-medium border transition-all
                 ${effisFwiMode === m.value
-                  ? 'border-primary bg-primary text-white'
+                  ? 'border-primary bg-primary text-primary-foreground'
                   : 'border-border bg-surface-2/50 text-foreground hover:border-primary/50'
                 }`}
             >
@@ -250,7 +250,7 @@ function EffisFwiControls() {
               onClick={() => setEffisFwiDay(d.value)}
               className={`rounded-full px-2 py-0.5 text-[10px] font-medium border transition-all
                 ${effisFwiDay === d.value
-                  ? 'border-primary bg-primary text-white'
+                  ? 'border-primary bg-primary text-primary-foreground'
                   : 'border-border bg-surface-2/50 text-foreground hover:border-primary/50'
                 }`}
             >
@@ -294,7 +294,7 @@ function EffisBurnedAreasControls() {
             onClick={() => setMode(m.value)}
             className={`rounded-full px-2 py-0.5 text-[10px] font-medium border transition-all
               ${mode === m.value
-                ? 'border-primary bg-primary text-white'
+                ? 'border-primary bg-primary text-primary-foreground'
                 : 'border-border bg-surface-2/50 text-foreground hover:border-primary/50'
               }`}
           >
@@ -324,7 +324,7 @@ function SoilMoistureControls() {
             onClick={() => setDepth(d.value)}
             className={`rounded-full px-2 py-0.5 text-[10px] font-medium border transition-all
               ${depth === d.value
-                ? 'border-primary bg-primary text-white'
+                ? 'border-primary bg-primary text-primary-foreground'
                 : 'border-border bg-surface-2/50 text-foreground hover:border-primary/50'
               }`}
           >
@@ -508,7 +508,7 @@ function CamsAerosolControls() {
               onClick={() => setMode(m.value)}
               className={`rounded-full px-2 py-0.5 text-[10px] font-medium border transition-all
                 ${mode === m.value
-                  ? 'border-primary bg-primary text-white'
+                  ? 'border-primary bg-primary text-primary-foreground'
                   : 'border-border bg-surface-2/50 text-foreground hover:border-primary/50'
                 }`}
             >
@@ -565,7 +565,7 @@ function OwmWeatherControls() {
               onClick={() => setOwmLayer(m.value)}
               className={`rounded-full px-2 py-0.5 text-[10px] font-medium border transition-all
                 ${owmLayer === m.value
-                  ? 'border-primary bg-primary text-white'
+                  ? 'border-primary bg-primary text-primary-foreground'
                   : 'border-border bg-surface-2/50 text-foreground hover:border-primary/50'
                 }`}
             >
@@ -798,7 +798,7 @@ export default function MapControls({ mobileOpen = false, onMobileOpenChange }: 
                       aria-pressed={basemap === value}
                       className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium transition-all border
                         ${basemap === value
-                          ? 'border-primary bg-primary text-white shadow-sm'
+                          ? 'border-primary bg-primary text-primary-foreground shadow-sm'
                           : 'border-border bg-surface-2/50 text-foreground hover:border-primary/50'
                         }`}
                     >

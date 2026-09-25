@@ -4,7 +4,6 @@ import { translations, TranslationKey } from '@/i18n/translations';
 import { useServerPreferences } from '@/components/providers/PreferencesProvider';
 
 const subscribe = (onChange: () => void) => useLanguageStore.subscribe(onChange);
-const getSnapshot = () => useLanguageStore.getState().language;
 
 /**
  * Current UI language. During the server render and hydration the value is
@@ -14,7 +13,7 @@ const getSnapshot = () => useLanguageStore.getState().language;
  */
 export function useLanguage(): Language {
   const { locale } = useServerPreferences();
-  return useSyncExternalStore(subscribe, getSnapshot, () => locale);
+  return useSyncExternalStore(subscribe, () => useLanguageStore.getState().language ?? locale, () => locale);
 }
 
 export function useTranslation() {

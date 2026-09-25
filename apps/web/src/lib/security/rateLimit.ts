@@ -15,6 +15,7 @@ export const RATE_LIMITS = {
   upload: { limit: 30, windowSeconds: 600 },
   mutation: { limit: 120, windowSeconds: 60 },
   proxy: { limit: 600, windowSeconds: 60 },
+  geocode: { limit: 30, windowSeconds: 60 },
 } as const;
 
 export type RateLimitName = keyof typeof RATE_LIMITS;

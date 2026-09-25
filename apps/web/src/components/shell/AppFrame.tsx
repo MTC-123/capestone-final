@@ -87,7 +87,7 @@ function NotificationsButton({ onClick }: { onClick: () => void }) {
       <span className="relative">
         <Icon name="notifications" size={19} />
         {unread > 0 && (
-          <span className="absolute -end-1.5 -top-1.5 grid h-4 min-w-4 place-items-center rounded-full bg-accent-fire px-1 text-[9.5px] font-bold text-white ring-2 ring-background">
+          <span className="absolute -end-1.5 -top-1.5 grid h-4 min-w-4 place-items-center rounded-full bg-accent-fire px-1 text-[9.5px] font-bold text-on-accent-fire ring-2 ring-background">
             {unread > 9 ? '9+' : unread}
           </span>
         )}
@@ -187,7 +187,7 @@ function OpsShell({ children, fullBleed, onOpenPalette, onOpenNotifications }: S
           <Link
             href="/report"
             className={cn(
-              'flex h-10 items-center justify-center gap-2 rounded-lg bg-accent-fire text-sm font-semibold text-white shadow-glow-fire transition hover:brightness-110',
+              'flex h-10 items-center justify-center gap-2 rounded-lg bg-accent-fire text-sm font-semibold text-on-accent-fire shadow-glow-fire transition hover:brightness-110',
               collapsed && 'px-0'
             )}
           >
@@ -303,7 +303,7 @@ function CivicShell({ children, fullBleed, onOpenPalette, onOpenNotifications }:
             <NotificationsButton onClick={onOpenNotifications} />
             <Link
               href="/report"
-              className="ms-2 hidden h-10 items-center gap-2 whitespace-nowrap rounded-xl bg-accent-fire px-4 text-sm font-semibold text-white shadow-glow-fire transition hover:brightness-110 md:flex"
+              className="ms-2 hidden h-10 items-center gap-2 whitespace-nowrap rounded-xl bg-accent-fire px-4 text-sm font-semibold text-on-accent-fire shadow-glow-fire transition hover:brightness-110 md:flex"
             >
               <Icon name="fire" size={17} />
               {t('reportFireCta')}
@@ -317,7 +317,7 @@ function CivicShell({ children, fullBleed, onOpenPalette, onOpenNotifications }:
           <div className="mx-auto flex max-w-6xl items-center gap-2 px-4 py-1.5 text-[12.5px] text-danger-foreground sm:px-6">
             <Icon name="phone" size={14} />
             <p className="flex-1 truncate">{t('emergencyStrip')}</p>
-            <a href="tel:15" className="shrink-0 rounded-md bg-danger px-2.5 py-0.5 text-xs font-semibold text-white hover:brightness-110">
+            <a href="tel:15" className="shrink-0 rounded-md bg-danger px-2.5 py-0.5 text-xs font-semibold text-on-danger hover:brightness-110">
               {t('emergencyCallShort')}
             </a>
           </div>

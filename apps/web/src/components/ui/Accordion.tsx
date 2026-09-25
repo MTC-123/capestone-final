@@ -46,7 +46,7 @@ export function AccordionTrigger({ children, className }: AccordionTriggerProps)
     <AccordionPrimitive.Header className="flex">
       <AccordionPrimitive.Trigger
         className={cn(
-          'flex w-full items-center justify-between text-[9px] font-bold uppercase tracking-widest text-muted-foreground/70 px-0.5 hover:text-muted-foreground transition-colors group',
+          'flex w-full items-center justify-between px-0.5 text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground transition-colors hover:text-foreground group',
           className
         )}
       >

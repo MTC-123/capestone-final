@@ -89,7 +89,8 @@ export function PhaseCard({ phase, index, summary, isActive, isCompleted }: Phas
         className={cn(
           'px-4 py-3 text-sm font-semibold normal-case tracking-normal',
           isActive && 'text-primary',
-          isCompleted && 'text-success-foreground'
+          isCompleted && 'text-success-foreground',
+          !isActive && !isCompleted && 'text-foreground'
         )}
       >
         <div className="flex items-center gap-3 w-full">
@@ -97,8 +98,8 @@ export function PhaseCard({ phase, index, summary, isActive, isCompleted }: Phas
           <span
             className={cn(
               'flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold',
-              isCompleted && 'bg-success text-white',
-              isActive && 'bg-primary text-white',
+              isCompleted && 'bg-success text-on-success',
+              isActive && 'bg-primary text-primary-foreground',
               !isActive && !isCompleted && 'bg-muted text-muted-foreground'
             )}
           >

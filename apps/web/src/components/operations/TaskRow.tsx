@@ -35,7 +35,7 @@ export function TaskRow({ item, onToggle, onDelete }: TaskRowProps) {
         className={cn(
           'flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 transition-all duration-150',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
-          isDone ? 'border-success bg-success text-white' : 'border-input hover:border-primary'
+          isDone ? 'border-success bg-success text-on-success' : 'border-input hover:border-primary'
         )}
       >
         {isDone && (

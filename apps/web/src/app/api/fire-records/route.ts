@@ -27,6 +27,8 @@ function buildDisplayId(record: {
 export const GET = withApiHandler(async (request: Request) => {
   const currentUser = await getCurrentUser(request);
   if (!currentUser) throw new AppError(2000);
+  // Fire records include investigation details: officials only.
+  if (currentUser.role !== 'OFFICIAL') throw new AppError(2001);
 
   const url = new URL(request.url);
   const limit = Math.min(

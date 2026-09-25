@@ -228,7 +228,7 @@ export default function MapLegend({ mobileOpen = false, onMobileOpenChange }: Ma
           'z-10 flex-col',
           mobileOpen
             ? 'fixed inset-x-2 bottom-[calc(var(--mobile-tabbar-height)+0.75rem)] z-50 flex md:hidden'
-            : 'absolute bottom-4 hidden min-w-[180px] max-h-[45vh] ltr:right-4 rtl:left-4 md:flex sm:max-h-[60vh]'
+            : 'absolute bottom-10 hidden min-w-[180px] max-h-[45vh] ltr:right-3 rtl:left-3 md:flex sm:max-h-[60vh]'
         )}
       >
       <GlassPanel title={t('mapLegend')} collapsible defaultCollapsed={!mobileOpen}>

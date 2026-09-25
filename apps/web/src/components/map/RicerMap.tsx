@@ -17,6 +17,7 @@ import ReactMapGL, {
 import { MapboxOverlay } from '@deck.gl/mapbox';
 import type { MapboxOverlayProps } from '@deck.gl/mapbox/typed';
 import 'maplibre-gl/dist/maplibre-gl.css';
+import { useAuthStore } from '@/store/useAuthStore';
 import { useMapStore } from '@/store/useMapStore';
 import { useDispatchStore } from '@/store/useDispatchStore';
 import { useToastStore } from '@/store/useToastStore';
@@ -124,7 +125,9 @@ interface RicerMapProps {
 }
 
 export default function RicerMap({ weather = null, weatherLoading = false }: RicerMapProps) {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
+  // Map chrome mirrors in Arabic: controls go to the inline-start edge, clear of the layer panel.
+  const controlCorner = language === 'ar' ? 'top-left' : 'top-right';
   const mapRef = useRef<MapRef>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -338,7 +341,9 @@ export default function RicerMap({ weather = null, weatherLoading = false }: Ric
 
   useEffect(() => {
     let cancelled = false;
-    let resourcesDisabled = false;
+    // Resource, vehicle and retardant feeds are official-only; residents never request them.
+    const isOfficialViewer = useAuthStore.getState().user?.role === 'OFFICIAL';
+    let resourcesDisabled = !isOfficialViewer;
     const abortController = new AbortController();
 
     async function fetchIncidents() {
@@ -426,7 +431,7 @@ export default function RicerMap({ weather = null, weatherLoading = false }: Ric
       }
     }
 
-    let vehiclesDisabled = false;
+    let vehiclesDisabled = !isOfficialViewer;
     async function fetchVehicles() {
       if (cancelled || vehiclesDisabled) return;
       try {
@@ -443,7 +448,7 @@ export default function RicerMap({ weather = null, weatherLoading = false }: Ric
       }
     }
 
-    let retardantDisabled = false;
+    let retardantDisabled = !isOfficialViewer;
     async function fetchRetardant() {
       if (cancelled || retardantDisabled) return;
       try {
@@ -2315,13 +2320,13 @@ export default function RicerMap({ weather = null, weatherLoading = false }: Ric
 
         {/* ═══ Map controls ═══ */}
         <NavigationControl
-          position="top-right"
+          position={controlCorner}
           showCompass={true}
           visualizePitch={true}
         />
         <ScaleControl position="bottom-left" maxWidth={100} unit="metric" />
         <GeolocateControl
-          position="top-right"
+          position={controlCorner}
           trackUserLocation
           showAccuracyCircle={false}
         />

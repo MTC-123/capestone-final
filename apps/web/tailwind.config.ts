@@ -37,6 +37,9 @@ const config: Config = {
         "info-foreground": "hsl(var(--info-foreground))",
 
         "accent-fire-muted": "hsl(var(--accent-fire-muted))",
+        "on-accent-fire": "hsl(var(--on-accent-fire))",
+        "on-danger": "hsl(var(--on-danger))",
+        "on-success": "hsl(var(--on-success))",
       },
       fontSize: {
         "fluid-sm": "clamp(0.8125rem, 0.75rem + 0.2vw, 0.875rem)",

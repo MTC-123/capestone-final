@@ -60,8 +60,8 @@ export function PhaseTracker() {
                   <span
                     className={cn(
                       'flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-full text-xs sm:text-sm font-bold transition-all duration-200',
-                      isCompleted && 'bg-success text-white',
-                      isCurrent && 'bg-primary text-white ring-4 ring-primary/20',
+                      isCompleted && 'bg-success text-on-success',
+                      isCurrent && 'bg-primary text-primary-foreground ring-4 ring-primary/20',
                       isFuture && 'bg-muted text-muted-foreground',
                       isViewing && !isCurrent && 'ring-2 ring-primary/40'
                     )}

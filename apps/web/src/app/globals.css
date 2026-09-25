@@ -34,7 +34,7 @@
     --success: 150 60% 32%;
     --success-muted: 150 40% 93%;
     --success-foreground: 150 64% 20%;
-    --warning: 33 96% 44%;
+    --warning: 33 96% 34%;
     --warning-muted: 40 90% 93%;
     --warning-foreground: 28 90% 26%;
     --danger: 4 74% 47%;
@@ -44,8 +44,13 @@
     --info-muted: 212 70% 95%;
     --info-foreground: 212 72% 30%;
 
-    --accent-fire: 16 92% 52%;
-    --accent-fire-muted: 20 95% 94%;
+    --accent-fire: 16 90% 42%;
+    --accent-fire-muted: 20 95% 97%;
+
+    /* Text on solid fills (buttons, badges): WCAG AA against each fill. */
+    --on-accent-fire: 0 0% 100%;
+    --on-danger: 0 0% 100%;
+    --on-success: 0 0% 100%;
 
     --shadow-color: 150 20% 10%;
     --grid-line: 155 20% 10% / 0.045;
@@ -81,6 +86,10 @@
 
     --accent-fire: 18 100% 58%;
     --accent-fire-muted: 18 70% 12%;
+
+    --on-accent-fire: 214 30% 8%;
+    --on-danger: 214 30% 8%;
+    --on-success: 214 30% 8%;
 
     --shadow-color: 214 40% 2%;
     --grid-line: 210 40% 96% / 0.035;
@@ -414,4 +423,16 @@ div[data-ricer-map-ready]:fullscreen {
     transition-duration: 0.001ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* ── Map control targets (WCAG 2.2 2.5.8, ≥24px; 36px for touch) ─────── */
+.maplibregl-ctrl-group button,
+.maplibregl-ctrl button {
+  min-width: 36px;
+  min-height: 36px;
+}
+.maplibregl-ctrl-attrib-button,
+.maplibregl-ctrl-attrib summary {
+  min-width: 28px;
+  min-height: 28px;
 }

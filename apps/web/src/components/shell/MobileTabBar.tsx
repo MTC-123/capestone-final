@@ -116,7 +116,7 @@ export function MobileTabBar() {
                 href={report.href}
                 aria-label={t(report.labelKey)}
                 aria-current={isActive(pathname, report.href) ? 'page' : undefined}
-                className="-mt-5 grid h-14 w-14 place-items-center rounded-2xl bg-accent-fire text-white shadow-glow-fire ring-4 ring-background transition-transform active:scale-95"
+                className="-mt-5 grid h-14 w-14 place-items-center rounded-2xl bg-accent-fire text-on-accent-fire shadow-glow-fire ring-4 ring-background transition-transform active:scale-95"
               >
                 <Icon name="fire" size={24} strokeWidth={2.2} />
               </Link>

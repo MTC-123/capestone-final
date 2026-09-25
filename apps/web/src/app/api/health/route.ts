@@ -48,7 +48,7 @@ export const GET = withApiHandler(async () => {
       queue: configured('QSTASH_TOKEN'),
       firms: configured('FIRMS_MAP_KEY'),
       weatherTiles: configured('NEXT_PUBLIC_OWM_API_KEY'),
-      routing: configured('ORS_API_KEY') || configured('GRAPHHOPPER_API_KEY') || configured('GRAPHHOPPER_URL'),
+      routing: configured('GRAPHHOPPER_API_KEY') || configured('GRAPHHOPPER_URL'),
       geocoding: configured('LOCATIONIQ_API_KEY'),
       errorTracking: configured('SENTRY_DSN') || configured('NEXT_PUBLIC_SENTRY_DSN'),
     },

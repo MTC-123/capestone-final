@@ -20,8 +20,17 @@ import type {
   GraphHopperIsochroneResponse,
 } from './types';
 
-const DEFAULT_CONFIG: Required<Omit<RoutingClientConfig, 'apiKey'>> = {
-  baseUrl: process.env.GRAPHHOPPER_URL || 'http://localhost:8989',
+/**
+ * Self-hosted GraphHopper via GRAPHHOPPER_URL, or the GraphHopper Cloud API
+ * (free tier) when only GRAPHHOPPER_API_KEY is set.
+ */
+function defaultBaseUrl(): string {
+  if (process.env.GRAPHHOPPER_URL) return process.env.GRAPHHOPPER_URL;
+  if (process.env.GRAPHHOPPER_API_KEY) return 'https://graphhopper.com/api/1';
+  return 'http://localhost:8989';
+}
+
+const DEFAULT_CONFIG = {
   timeout: 10000, // 10 seconds
   retries: 2,
 };
@@ -30,7 +39,18 @@ export class GraphHopperClient {
   private config: RoutingClientConfig;
 
   constructor(config?: Partial<RoutingClientConfig>) {
-    this.config = { ...DEFAULT_CONFIG, ...config };
+    this.config = {
+      baseUrl: defaultBaseUrl(),
+      apiKey: process.env.GRAPHHOPPER_API_KEY,
+      ...DEFAULT_CONFIG,
+      ...config,
+    };
+  }
+
+  /** Appends the Cloud API key when one is configured. */
+  private withKey(url: string): string {
+    if (!this.config.apiKey) return url;
+    return `${url}${url.includes('?') ? '&' : '?'}key=${encodeURIComponent(this.config.apiKey)}`;
   }
 
   /**
@@ -140,7 +160,7 @@ export class GraphHopperClient {
         profile: this.mapProfile(profile),
       });
 
-      const url = `${this.config.baseUrl}/isochrone?${params}`;
+      const url = this.withKey(`${this.config.baseUrl}/isochrone?${params}`);
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), this.config.timeout);
 
@@ -207,7 +227,7 @@ export class GraphHopperClient {
     body: unknown,
     attempt = 1
   ): Promise<T> {
-    const url = `${this.config.baseUrl}${endpoint}`;
+    const url = this.withKey(`${this.config.baseUrl}${endpoint}`);
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), this.config.timeout);
 

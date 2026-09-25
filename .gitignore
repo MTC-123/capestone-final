@@ -100,3 +100,4 @@ apps/web/.next-prod/
 
 # Generated on install from node_modules/maplibre-gl
 apps/web/public/maplibre/
+apps/web/tests/e2e/.auth/

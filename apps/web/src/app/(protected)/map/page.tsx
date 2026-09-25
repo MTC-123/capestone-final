@@ -397,7 +397,7 @@ export default function MapPage() {
                             onClick={() => handleUpdateIncident('status', s)}
                             className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
                               selectedIncident.properties.status === s
-                                ? 'bg-primary text-white'
+                                ? 'bg-primary text-primary-foreground'
                                 : 'bg-surface-2 text-foreground hover:bg-surface-3'
                             }`}
                           >
@@ -430,7 +430,7 @@ export default function MapPage() {
                   </div>
                 )}
 
-                {selectedIncident && (
+                {selectedIncident && user?.role === 'OFFICIAL' && (
                   <IncidentFireRecordPanel incidentId={selectedIncident.properties.id} />
                 )}
               </>

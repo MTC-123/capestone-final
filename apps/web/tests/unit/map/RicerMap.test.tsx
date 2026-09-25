@@ -260,7 +260,9 @@ describe('RicerMap', () => {
     });
   });
 
-  it('fetches resources on mount', async () => {
+  it('fetches resources on mount for officials', async () => {
+    const { useAuthStore } = await import('@/store/useAuthStore');
+    useAuthStore.setState({ user: { id: 'u1', cin: 'CD789012', phone: '', role: 'OFFICIAL', createdAt: new Date(), updatedAt: new Date() } });
     render(<RicerMap />);
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith(
@@ -268,6 +270,17 @@ describe('RicerMap', () => {
         expect.any(Object),
       );
     });
+    useAuthStore.setState({ user: null });
+  });
+
+  it('never requests official-only feeds for residents', async () => {
+    const { useAuthStore } = await import('@/store/useAuthStore');
+    useAuthStore.setState({ user: { id: 'u2', cin: 'AB123456', phone: '', role: 'CIVILIAN', createdAt: new Date(), updatedAt: new Date() } });
+    render(<RicerMap />);
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('geo/incidents'), expect.any(Object)));
+    const urls = (global.fetch as unknown as { mock: { calls: unknown[][] } }).mock.calls.map((c) => String(c[0]));
+    expect(urls.some((u) => /geo\/resources|geo\/vehicles|api\/retardant/.test(u))).toBe(false);
+    useAuthStore.setState({ user: null });
   });
 
   it('fetches infrastructure on mount', async () => {

@@ -1,7 +1,6 @@
 'use client';
 
 import * as React from 'react';
-import { useLanguageStore } from '@/store/useLanguageStore';
 import type { Locale, Persona, ThemeMode } from '@/lib/i18n/server';
 
 type Preferences = { locale: Locale; theme: ThemeMode; persona: Persona };
@@ -12,17 +11,7 @@ export function useServerPreferences() {
   return React.useContext(PreferencesContext);
 }
 
-/**
- * Seeds client stores with the language resolved on the server, before any
- * child renders, so server HTML and the first client render agree.
- */
+/** Exposes the request's resolved locale, theme and persona to client components. */
 export function PreferencesProvider({ children, ...prefs }: Preferences & { children: React.ReactNode }) {
-  // Runs once, before any child renders on the client.
-  React.useState(() => {
-    if (typeof window !== 'undefined' && useLanguageStore.getState().language !== prefs.locale) {
-      useLanguageStore.setState({ language: prefs.locale });
-    }
-    return true;
-  });
   return <PreferencesContext.Provider value={prefs}>{children}</PreferencesContext.Provider>;
 }
