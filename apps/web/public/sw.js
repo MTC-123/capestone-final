@@ -72,6 +72,9 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('message', (event) => {
+  // Only pages of this app may control the worker.
+  const sourceUrl = event.source && 'url' in event.source ? event.source.url : '';
+  if (!sourceUrl || new URL(sourceUrl).origin !== self.location.origin) return;
   if (event.data?.type === 'skipWaiting') self.skipWaiting();
 });
 

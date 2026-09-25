@@ -54,9 +54,13 @@ function translate(locale: SupportedLocale, key: string): string {
   return bucket[key] ?? (translations.en as Record<string, string>)[key] ?? key;
 }
 
-function isDebugEnabled(request: Request): boolean {
-  if (process.env.NODE_ENV !== 'production') return true;
-  return request.headers.get('x-debug') === '1';
+/**
+ * Stack traces and causes are returned only in local development. In
+ * production they go to the log and Sentry, never to the client: a request
+ * header must not be able to switch this on (OWASP ASVS V7.4).
+ */
+function isDebugEnabled(): boolean {
+  return process.env.NODE_ENV === 'development';
 }
 
 function toProblemDetails(request: Request, entry: ReturnType<typeof getCatalogEntry>, envelope: ApiErrorEnvelope): ProblemDetails {
@@ -146,7 +150,7 @@ export function withApiHandler<TCtx extends ApiHandlerContext>(handler: ApiHandl
         meta: isRateLimited ? { originalCode: originalEntry.code } : appError.meta,
       };
 
-      if (isDebugEnabled(request)) {
+      if (isDebugEnabled()) {
         envelope.debug = {
           stack: (err as { stack?: unknown })?.stack ? String((err as { stack?: unknown }).stack) : undefined,
           cause: err instanceof AppError ? err.cause : undefined,

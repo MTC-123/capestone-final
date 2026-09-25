@@ -1,0 +1,8 @@
+name: RICER CodeQL
+# Scan what ships. Tests and load-test scripts use mocks and non-cryptographic
+# randomness on purpose; they never run in production.
+paths-ignore:
+  - apps/web/tests
+  - apps/web/perf
+  - '**/*.test.ts'
+  - '**/*.test.tsx'
