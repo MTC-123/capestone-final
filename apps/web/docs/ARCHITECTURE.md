@@ -7,7 +7,7 @@
 ## Technology Stack
 
 ### Frontend
-- **Framework**: Next.js 14 (App Router)
+- **Framework**: Next.js 16 (App Router, Turbopack), React 19
 - **UI Library**: React 18
 - **Language**: TypeScript
 - **Styling**: Tailwind CSS
@@ -19,9 +19,9 @@
 - **Runtime**: Node.js (Next.js API Routes)
 - **Database**: MongoDB with Prisma ORM
 - **Authentication**: JWT with bcrypt
-- **Background Jobs**: Redis-based queue system
+- **Background Jobs**: Upstash QStash (signed webhooks to `/api/notifications/deliver`, retries)
 - **Notifications**: Twilio WhatsApp API
-- **Caching**: Redis
+- **Caching**: Next.js data cache + Upstash Redis over HTTP (in-memory fallback)
 
 ### Testing
 - **Unit/Integration**: Vitest + React Testing Library
@@ -139,7 +139,7 @@ Optimized endpoints for map visualization with caching:
 - **Error Catalog**: Auto-generated documentation of all error codes
 
 ### Rate Limiting
-- **Redis-based**: Sliding window rate limiting
+- **Upstash-based**: sliding-window rate limiting (`src/lib/security/rateLimit.ts`), in-memory fallback
 - **Per-endpoint Configuration**: Different limits for different operations
 - **Graceful Degradation**: Returns 429 with retry-after header
 
@@ -149,7 +149,7 @@ Optimized endpoints for map visualization with caching:
 - **Half-open State**: Gradual recovery testing
 
 ### Background Job Queue
-- **Redis Queue**: FIFO queue for WhatsApp notifications
+- **Notification deliveries**: `NotificationDelivery` rows per channel; QStash delivers with retries
 - **Worker Process**: Separate process polls queue
 - **Retry Logic**: Exponential backoff (max 3 retries)
 - **Dead Letter Queue**: Failed jobs moved to DLQ
@@ -197,8 +197,8 @@ All stores use Zustand's persist middleware for localStorage sync.
 1. User submits report via `/report` page
 2. `POST /api/reports` validates data
 3. Report saved to MongoDB
-4. Notification job enqueued to Redis
-5. Background worker processes queue
+4. `notifyEvent` records one delivery per recipient and channel
+5. QStash calls the signed delivery webhook (or delivery runs inline when QStash is not configured)
 6. WhatsApp messages sent via Twilio
 7. Map updates via real-time polling (10s interval)
 
@@ -237,14 +237,15 @@ All stores use Zustand's persist middleware for localStorage sync.
 ### Production
 - **Hosting**: Vercel (serverless functions)
 - **Database**: MongoDB Atlas
-- **Cache**: Redis Cloud
+- **Cache / rate limits**: Upstash Redis (free tier)
 - **CDN**: Vercel Edge Network
 - **Monitoring**: Sentry
 
 ### Environment Variables
 ```env
 DATABASE_URL=mongodb://...
-REDIS_URL=redis://...
+UPSTASH_REDIS_REST_URL=https://...
+UPSTASH_REDIS_REST_TOKEN=...
 JWT_SECRET=...
 TWILIO_ACCOUNT_SID=...
 TWILIO_AUTH_TOKEN=...
