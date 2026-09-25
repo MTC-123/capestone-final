@@ -18,25 +18,37 @@ jobs:
     if: github.event.deployment_status.state == 'success' && github.event.deployment.environment == 'Preview'
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      # Previews sit behind Vercel Deployment Protection; without the bypass
+      # secret the suite cannot reach them, so it is skipped rather than failed.
+      VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
     defaults:
       run:
         working-directory: apps/web
     steps:
+      - name: Bypass secret configured?
+        if: env.VERCEL_AUTOMATION_BYPASS_SECRET == ''
+        working-directory: ${{ github.workspace }}
+        run: echo "::notice::Set the VERCEL_AUTOMATION_BYPASS_SECRET repository secret to run the live suite on previews."
       - uses: actions/checkout@v4
+        if: env.VERCEL_AUTOMATION_BYPASS_SECRET != ''
         with:
           ref: ${{ github.event.deployment.sha }}
       - uses: actions/setup-node@v4
+        if: env.VERCEL_AUTOMATION_BYPASS_SECRET != ''
         with:
           node-version-file: .nvmrc
           cache: npm
           cache-dependency-path: apps/web/package-lock.json
       - run: npm ci
+        if: env.VERCEL_AUTOMATION_BYPASS_SECRET != ''
       - run: npx playwright install --with-deps chromium webkit
+        if: env.VERCEL_AUTOMATION_BYPASS_SECRET != ''
       - name: Run live suite (desktop, phone, Arabic RTL)
+        if: env.VERCEL_AUTOMATION_BYPASS_SECRET != ''
         run: npx playwright test tests/e2e/live --project=chromium --project=iphone-14 --project=arabic-rtl
         env:
           E2E_BASE_URL: ${{ github.event.deployment_status.environment_url }}
-          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
