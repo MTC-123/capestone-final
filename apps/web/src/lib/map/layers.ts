@@ -95,17 +95,20 @@ export function createIncidentPulseLayer(
  */
 export function createInfrastructureLayers(
   infrastructure: GeoFeatureCollection<GeoInfrastructureProps>,
-  isActive: boolean
+  isActive: boolean,
+  activeTypes?: Record<string, boolean>
 ): (IconLayer | PathLayer)[] {
   if (!isActive || infrastructure.features.length === 0) return [];
 
   const layers: (IconLayer | PathLayer)[] = [];
+  const shown = activeTypes
+    ? infrastructure.features.filter((f) => activeTypes[f.properties.type] !== false)
+    : infrastructure.features;
 
   // Point infrastructure (watchtowers, water points, stations, helipads)
-  const pointTypes = new Set(['WATCHTOWER', 'WATER_POINT', 'STATION', 'HELIPAD']);
-  const pointFeatures = infrastructure.features.filter(
-    (f) => pointTypes.has(f.properties.type),
-  );
+  // Firebreaks recorded as a single point (e.g. a surveyed gate) are drawn as markers too.
+  const pointTypes = new Set(['WATCHTOWER', 'WATER_POINT', 'STATION', 'HELIPAD', 'FIREBREAK']);
+  const pointFeatures = shown.filter((f) => f.geometry.type === 'Point' && pointTypes.has(f.properties.type));
 
   if (pointFeatures.length > 0) {
     const data = pointFeatures.map((f) => ({
@@ -134,9 +137,7 @@ export function createInfrastructureLayers(
   }
 
   // Firebreak paths
-  const firebreaks = infrastructure.features.filter(
-    (f) => f.properties.type === 'FIREBREAK',
-  );
+  const firebreaks = shown.filter((f) => f.properties.type === 'FIREBREAK' && f.geometry.type === 'LineString');
 
   if (firebreaks.length > 0) {
     const paths = firebreaks.map((f) => ({

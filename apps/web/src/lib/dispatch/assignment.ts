@@ -6,7 +6,7 @@
 import { prisma } from '@/lib/prisma';
 import { claimTeams, releaseTeams } from '@/lib/dispatch/claims';
 import { logger } from '@/lib/observability/logger';
-import { GraphHopperClient } from '@/lib/routing/graphhopper';
+import { routing } from '@/lib/routing';
 import { getCachedRoute, setCachedRoute } from '@/lib/routing/cache';
 import { haversineDistance } from '@/lib/dispatch/geospatial';
 import type { Team } from '@prisma/client';
@@ -45,10 +45,9 @@ async function calculateRoute(
     return cached;
   }
 
-  // Calculate route using GraphHopper, fall back to Haversine if unavailable
+  // Road route from the routing providers; straight-line estimate if none answers
   try {
-    const graphhopper = new GraphHopperClient();
-    const route = await graphhopper.getRoute({
+    const route = await routing.getRoute({
       origin,
       destination,
       profile: 'fire_truck',
@@ -80,7 +79,7 @@ async function calculateRoute(
         },
         alternatives: [],
         metadata: {
-          provider: 'graphhopper' as const,
+          provider: 'estimate' as const,
           cached: false,
           computed_at: new Date().toISOString(),
         },

@@ -5,6 +5,7 @@ import { NextResponse } from 'next/server';
 import { withApiHandler } from '@/lib/errors/withApiHandler';
 import { checkDatabaseHealth } from '@/lib/prisma';
 import { getKv } from '@/lib/kv';
+import { configuredRoutingProviders } from '@/lib/routing';
 
 async function timed<T>(fn: () => Promise<T>): Promise<{ value: T; ms: number }> {
   const started = performance.now();
@@ -48,7 +49,7 @@ export const GET = withApiHandler(async () => {
       queue: configured('QSTASH_TOKEN'),
       firms: configured('FIRMS_MAP_KEY'),
       weatherTiles: configured('NEXT_PUBLIC_OWM_API_KEY'),
-      routing: configured('GRAPHHOPPER_API_KEY') || configured('GRAPHHOPPER_URL'),
+      routing: configuredRoutingProviders()[0] ?? false,
       geocoding: configured('LOCATIONIQ_API_KEY'),
       errorTracking: configured('SENTRY_DSN') || configured('NEXT_PUBLIC_SENTRY_DSN'),
     },

@@ -223,7 +223,7 @@ describe('Routing API Integration', () => {
       expect(response.headers.get('X-Cache')).toBe('MISS');
     });
 
-    it('should set Cache-Control header', async () => {
+    it('keeps routes out of shared caches (signed-in data)', async () => {
       mockOfficialUser();
 
       const response = await routePost(
@@ -236,8 +236,7 @@ describe('Routing API Integration', () => {
 
       expect(response.status).toBe(200);
       const cacheControl = response.headers.get('Cache-Control');
-      expect(cacheControl).toContain('public');
-      expect(cacheControl).toContain('s-maxage=3600'); // 1 hour
+      expect(cacheControl).toBe('private, max-age=600');
     });
   });
 

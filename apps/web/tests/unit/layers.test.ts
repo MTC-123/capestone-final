@@ -238,6 +238,15 @@ describe('createInfrastructureLayers', () => {
     expect(ids).toContain('firebreak-paths');
   });
 
+  it('hides the infrastructure types switched off in the panel', () => {
+    const noFirebreaks = createInfrastructureLayers(mixedInfra, true, { FIREBREAK: false });
+    expect(noFirebreaks.map((l: any) => l.props.id)).toEqual(['infra-icons']);
+    const noPoints = createInfrastructureLayers(mixedInfra, true, {
+      WATCHTOWER: false, WATER_POINT: false, STATION: false, HELIPAD: false,
+    });
+    expect(noPoints.map((l: any) => l.props.id)).toEqual(['firebreak-paths']);
+  });
+
   it('PathLayer getColor returns [139, 92, 246] (purple)', () => {
     const layers = createInfrastructureLayers(firebreakInfra, true);
     const pathLayer = layers[0] as any;

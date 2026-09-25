@@ -28,7 +28,7 @@ import { useTranslation } from '@/hooks/useTranslation';
 import { Icon, type IconName } from '@/components/ui/Icon';
 import type { TranslationKey } from '@/i18n/translations';
 import { getMapStyle, HAS_PREMIUM_TILES } from '@/lib/map/styles';
-import { INCIDENT_STATUS_COLORS, FIRMS_CONFIDENCE_COLORS, SOIL_MOISTURE_COLORS, RESERVOIR_COLORS, PAMF_COLORS, RMA_COLORS, RISK_LEVEL_COLORS } from '@/lib/map/colors';
+import { INCIDENT_STATUS_COLORS, FIRMS_CONFIDENCE_COLORS, SOIL_MOISTURE_COLORS, RESERVOIR_COLORS, PAMF_COLORS, RMA_COLORS, RISK_LEVEL_COLORS, FOREST_ROAD_COLOR, rgbaCss } from '@/lib/map/colors';
 import { usePopulationAtRisk } from '@/hooks/usePopulationAtRisk';
 import { useFireSpreadVectors } from '@/hooks/useFireSpreadVectors';
 import { registerSlopeProtocol, unregisterSlopeProtocol, configureSlopeProtocol } from '@/lib/map/slopeProtocol';
@@ -183,6 +183,7 @@ export default function RicerMap({ weather = null, weatherLoading = false }: Ric
 
   /* Reservoir state */
   const [reservoirData, setReservoirData] = useState<any | null>(null);
+  const [forestRoadData, setForestRoadData] = useState<GeoJSON.FeatureCollection | null>(null);
   const [riskGrid, setRiskGrid] = useState<GeoJSON.FeatureCollection | null>(null);
 
   /* Population grid state */
@@ -658,23 +659,8 @@ export default function RicerMap({ weather = null, weatherLoading = false }: Ric
         if (!res.ok) throw new Error(`Risk grid: ${res.status}`);
         const data = (await res.json()) as GeoJSON.FeatureCollection & { properties?: Record<string, unknown> };
         if (cancelled) return;
-        // Each point is the centre of a 0.1° cell; draw it as a square.
-        const half = 0.05;
-        const cells: GeoJSON.FeatureCollection = {
-          type: 'FeatureCollection',
-          features: data.features.map((f) => {
-            const [lng, lat] = (f.geometry as GeoJSON.Point).coordinates;
-            return {
-              type: 'Feature',
-              properties: f.properties,
-              geometry: {
-                type: 'Polygon',
-                coordinates: [[[lng - half, lat - half], [lng + half, lat - half], [lng + half, lat + half], [lng - half, lat + half], [lng - half, lat - half]]],
-              },
-            };
-          }),
-        };
-        setRiskGrid(cells);
+        // One point per 0.1° model cell, carrying its score and level.
+        setRiskGrid(data);
         useMapStore.getState().setRiskMeta({
           modelVersion: data.properties?.modelVersion as string | undefined,
           generatedAt: data.properties?.generatedAt as string | undefined,
@@ -720,6 +706,29 @@ export default function RicerMap({ weather = null, weatherLoading = false }: Ric
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [layers.reservoirs]);
+
+  /* ═══════════ Forest tracks (OpenStreetMap highway=track, loaded once on first use) ═══════════ */
+
+  useEffect(() => {
+    if (!layers.forestRoads || forestRoadData) return;
+    let cancelled = false;
+    fetch('/data/forest-roads-ifrane.geojson')
+      .then((res) => {
+        if (!res.ok) throw new Error(`Forest roads GeoJSON: ${res.status}`);
+        return res.json();
+      })
+      .then((data) => {
+        if (!cancelled) setForestRoadData(data);
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          console.error('[ForestRoads] Failed to load forest tracks', err);
+          addToast(t('forestRoadsUnavailable' as TranslationKey), 'warning');
+        }
+      });
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [layers.forestRoads]);
 
   /* ═══════════ Population grid data fetch (for usePopulationAtRisk hook) ═══════════ */
 
@@ -1040,12 +1049,17 @@ export default function RicerMap({ weather = null, weatherLoading = false }: Ric
     };
     const resourceLayer = createResourceLayer(resources, layers.resources, resourceActiveTypes);
     if (resourceLayer) list.push(resourceLayer);
-    const infraLayers = createInfrastructureLayers(infrastructure, layers.infrastructure);
+    const infraLayers = createInfrastructureLayers(infrastructure, layers.infrastructure, {
+      WATCHTOWER: layers.infraWatchtowers,
+      WATER_POINT: layers.infraWaterPoints,
+      STATION: layers.infraFireStations,
+      FIREBREAK: layers.infraFirebreaks,
+    });
     list.push(...infraLayers);
     const retardantLayer = createRetardantLayer(retardantData, layers.retardant);
     if (retardantLayer) list.push(retardantLayer);
     return list;
-  }, [tierConfig.useDeckGL, resources, infrastructure, retardantData, layers.resources, layers.infrastructure, layers.retardant, layers.rscTrucks, layers.rscAircraft, layers.rscPersonnel, layers.rscEquipment]);
+  }, [tierConfig.useDeckGL, resources, infrastructure, retardantData, layers.resources, layers.infrastructure, layers.retardant, layers.rscTrucks, layers.rscAircraft, layers.rscPersonnel, layers.rscEquipment, layers.infraWatchtowers, layers.infraWaterPoints, layers.infraFireStations, layers.infraFirebreaks]);
 
   // Dispatch layers: routes + teams — recomputes only when dispatch state changes
   const dispatchDeckLayers = useMemo(() => {
@@ -1553,30 +1567,31 @@ export default function RicerMap({ weather = null, weatherLoading = false }: Ric
           </Source>
         )}
 
-        {/* ═══ Model risk grid ═══ */}
+        {/* ═══ Model risk surface ═══
+            One point per 0.1° model cell, blended into a continuous surface whose
+            kernel spans roughly one cell at every zoom. Cells under the model's
+            "moderate" threshold carry no weight, so quiet areas stay clear. */}
         {riskGrid && riskGrid.features.length > 0 && (
           <Source id="risk-model" type="geojson" data={riskGrid}>
             <Layer
-              id="risk-model-fill"
-              type="fill"
+              id="risk-model-heat"
+              type="heatmap"
+              maxzoom={14}
               layout={{ visibility: layers.riskModel ? 'visible' : 'none' }}
               paint={{
-                'fill-color': [
-                  'match', ['get', 'level'],
-                  'very_high', RISK_LEVEL_COLORS.very_high,
-                  'high', RISK_LEVEL_COLORS.high,
-                  'moderate', RISK_LEVEL_COLORS.moderate,
-                  RISK_LEVEL_COLORS.low,
+                'heatmap-weight': ['interpolate', ['linear'], ['get', 'score'], 0.0952, 0, 0.12, 0.3, 0.25, 0.55, 0.5, 0.8, 0.75, 1],
+                'heatmap-intensity': 1,
+                'heatmap-radius': ['interpolate', ['exponential', 2], ['zoom'], 7, 18, 8, 36, 12, 576],
+                'heatmap-color': [
+                  'interpolate', ['linear'], ['heatmap-density'],
+                  0, 'rgba(0,0,0,0)',
+                  0.15, rgbaCss(RISK_LEVEL_COLORS.moderate, 0.1),
+                  0.4, rgbaCss(RISK_LEVEL_COLORS.moderate, 0.2),
+                  0.65, rgbaCss(RISK_LEVEL_COLORS.high, 0.32),
+                  0.85, rgbaCss(RISK_LEVEL_COLORS.very_high, 0.42),
+                  1, rgbaCss(RISK_LEVEL_COLORS.very_high, 0.5),
                 ],
-                // Low-risk cells stay transparent so the layer only draws the
-                // eye to where risk is elevated; it fades as the user zooms in.
-                'fill-opacity': [
-                  'interpolate', ['linear'], ['zoom'],
-                  8, ['match', ['get', 'level'], 'very_high', 0.55, 'high', 0.42, 'moderate', 0.28, 0],
-                  12, ['match', ['get', 'level'], 'very_high', 0.4, 'high', 0.3, 'moderate', 0.2, 0],
-                  14, ['match', ['get', 'level'], 'very_high', 0.22, 'high', 0.16, 'moderate', 0.1, 0],
-                ],
-                'fill-antialias': false,
+                'heatmap-opacity': ['interpolate', ['linear'], ['zoom'], 8, 0.85, 13, 0.5],
               }}
             />
           </Source>
@@ -1879,6 +1894,23 @@ export default function RicerMap({ weather = null, weatherLoading = false }: Ric
                 'circle-opacity': fireSpreadOpacity,
                 'circle-stroke-width': 1,
                 'circle-stroke-color': 'rgba(0,0,0,0.3)',
+              }}
+            />
+          </Source>
+        )}
+
+        {forestRoadData && (
+          <Source id="forest-roads" type="geojson" data={forestRoadData}>
+            <Layer
+              id="forest-roads-line"
+              type="line"
+              minzoom={8}
+              layout={{ visibility: layers.forestRoads ? 'visible' : 'none', 'line-cap': 'round', 'line-join': 'round' }}
+              paint={{
+                'line-color': FOREST_ROAD_COLOR,
+                'line-width': ['interpolate', ['linear'], ['zoom'], 8, 0.6, 11, 1.4, 14, 2.6],
+                'line-dasharray': [2, 1.5],
+                'line-opacity': ['interpolate', ['linear'], ['zoom'], 8, 0.55, 12, 0.9],
               }}
             />
           </Source>

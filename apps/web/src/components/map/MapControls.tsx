@@ -93,10 +93,6 @@ const LAYER_ICONS: Record<string, string> = {
   riskModel: 'cpu',
 };
 
-const UNAVAILABLE_LAYERS = new Set([
-  'forestRoads',
-]);
-
 /** Maps layer toggle keys to tile availability store keys */
 const LAYER_TILE_KEY: Partial<Record<string, keyof ReturnType<typeof useMapStore.getState>['tileAvailability']>> = {
   effisFWI: 'effisFwi',
@@ -178,18 +174,14 @@ function LayerRow({ layerKey, indent }: { layerKey: LayerKey; indent?: boolean }
   const tileAvailability = useMapStore((s) => s.tileAvailability);
   const lk = LAYER_KEY_MAP[layerKey];
   const icon = LAYER_ICONS[layerKey];
-  const isUnavailable = UNAVAILABLE_LAYERS.has(layerKey);
   const tileKey = LAYER_TILE_KEY[layerKey];
   const tilesDown = tileKey ? !tileAvailability[tileKey] : false;
 
   return (
-    <div className={`flex items-center justify-between min-h-[36px] ${indent ? 'ps-4' : ''} ${isUnavailable ? 'opacity-50' : ''}`}>
+    <div className={`flex items-center justify-between min-h-[36px] ${indent ? 'ps-4' : ''}`}>
       <span className="flex items-center gap-1.5 text-xs text-foreground">
         {icon && <Icon name={icon as Parameters<typeof Icon>[0]['name']} size={14} className="text-muted-foreground" aria-hidden />}
         {t(lk as TranslationKey)}
-        {isUnavailable && (
-          <span className="text-[9px] text-muted-foreground">({t('comingSoon')})</span>
-        )}
         {tilesDown && (
           <span className="text-accent-fire" title={t('serviceDown' as TranslationKey)}>
             <Icon name="warning" size={12} aria-hidden />
@@ -200,7 +192,6 @@ function LayerRow({ layerKey, indent }: { layerKey: LayerKey; indent?: boolean }
         checked={layers[layerKey as keyof typeof layers] ?? false}
         onCheckedChange={() => toggleLayer(layerKey as Parameters<typeof toggleLayer>[0])}
         label={t(lk as TranslationKey)}
-        disabled={isUnavailable}
       />
     </div>
   );

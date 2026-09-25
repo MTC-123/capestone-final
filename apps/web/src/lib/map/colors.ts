@@ -100,6 +100,15 @@ export const NDVI_COLORS = {
 /**
  * Water reservoir colors
  */
+/** `#rrggbb` → `rgba(r,g,b,a)` for MapLibre colour ramps. */
+export function rgbaCss(hex: string, alpha: number): string {
+  const n = parseInt(hex.slice(1), 16);
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${alpha})`;
+}
+
+/** Forest tracks (pistes): amber, dashed, matching the legend swatch. */
+export const FOREST_ROAD_COLOR = '#b45309';
+
 export const RESERVOIR_COLORS = {
   marker: '#3b82f6',    // blue-500
   label: '#1e40af',     // blue-800

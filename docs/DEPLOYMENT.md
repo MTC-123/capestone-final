@@ -16,7 +16,8 @@ The app degrades gracefully: anything marked *optional* can be added later, and 
 | 6 | Vercel Blob (Storage tab) | Report photos (otherwise stored in MongoDB) | `BLOB_READ_WRITE_TOKEN` | Recommended |
 | 7 | [NASA FIRMS](https://firms.modaps.eosdis.nasa.gov/api/map_key/) | Satellite fire detections | `FIRMS_MAP_KEY` | Optional |
 | 8 | [OpenWeatherMap](https://home.openweathermap.org/users/sign_up) | Weather overlay | `NEXT_PUBLIC_OWM_API_KEY` | Optional |
-| 9 | [GraphHopper](https://graphhopper.com/dashboard/#/register) Cloud | Road routes, ETAs and isochrones (otherwise straight-line estimates) | `GRAPHHOPPER_API_KEY` | Optional |
+| 9 | [TomTom](https://developer.tomtom.com/user/register) | Road routes with live traffic, ETAs and reachable ranges (otherwise straight-line estimates) | `TOMTOM_API_KEY` | Optional |
+| 9b | [GraphHopper](https://graphhopper.com/dashboard/#/register) Cloud | Backup routing provider if TomTom fails | `GRAPHHOPPER_API_KEY` | Optional |
 | 10 | [Ably](https://ably.com/sign-up) | Live in-app updates | `ABLY_API_KEY` | Optional |
 | 11 | [Resend](https://resend.com/signup) | Email notifications | `RESEND_API_KEY` | Optional |
 | 12 | [Twilio](https://www.twilio.com/try-twilio) WhatsApp sandbox | WhatsApp alerts. Each recipient first sends the join code; the sandbox session lasts 72 h | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_NUMBER` | Optional (card) |

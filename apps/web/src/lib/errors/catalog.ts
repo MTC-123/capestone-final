@@ -274,8 +274,8 @@ export const ERROR_CATALOG = {
     developerMessage: 'Routing service request timeout',
     userMessageKey: 'errorRoutingTimeout',
     remediationHints: [{ title: 'Try again in a moment.' }],
-    rootCauses: ['GraphHopper timeout', 'Network latency', 'Slow routing calculation'],
-    resolutionSteps: ['Retry request', 'Check GraphHopper service status', 'Verify network connectivity'],
+    rootCauses: ['Routing provider timeout', 'Network latency', 'Slow routing calculation'],
+    resolutionSteps: ['Retry request', 'Check the TomTom / GraphHopper status pages', 'Verify network connectivity'],
   },
   6001: {
     code: 6001,
@@ -340,8 +340,8 @@ export const ERROR_CATALOG = {
     developerMessage: 'Routing service unavailable',
     userMessageKey: 'errorRoutingServiceUnavailable',
     remediationHints: [{ title: 'Try again later or contact support if issue persists.' }],
-    rootCauses: ['GraphHopper service down', 'Network connectivity issue', 'Mapbox fallback also failed'],
-    resolutionSteps: ['Check GraphHopper container status', 'Verify GRAPHHOPPER_URL in environment', 'Check Mapbox API key'],
+    rootCauses: ['TomTom and GraphHopper both unavailable', 'Network connectivity issue', 'Daily TomTom quota used up'],
+    resolutionSteps: ['Check TOMTOM_API_KEY and its quota in the TomTom dashboard', 'Check GRAPHHOPPER_URL / GRAPHHOPPER_API_KEY', 'Dispatch continues on straight-line estimates meanwhile'],
   },
   6007: {
     code: 6007,

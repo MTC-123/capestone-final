@@ -17,6 +17,18 @@ describe('FIRMS Transform Module', () => {
   });
 
   describe('transformFirmsToGeoJSON', () => {
+    it('reads live VIIRS rows: unpadded HHMM times and single-letter confidence', async () => {
+      const { logger } = await import('@/lib/observability/logger');
+      // Verbatim row from the FIRMS area API (VIIRS_SNPP_NRT), 24 Sep 2026.
+      const csv =
+        'latitude,longitude,bright_ti4,scan,track,acq_date,acq_time,satellite,instrument,confidence,version,bright_ti5,frp,daynight\n' +
+        '33.84544,-5.33354,304.5,0.45,0.47,2026-09-24,251,N,VIIRS,n,2.0NRT,286.58,0.96,N';
+      const [feature] = transformFirmsToGeoJSON(csv).features;
+      expect(feature.properties.acqDateTime).toBe('2026-09-24 02:51');
+      expect(feature.properties.confidence).toBe('nominal');
+      expect(logger.warn).not.toHaveBeenCalled();
+    });
+
     it('should transform valid CSV to GeoJSON', () => {
       const csv = `latitude,longitude,brightness,scan,track,acq_date,acq_time,satellite,instrument,confidence,version,bright_t31,frp,daynight
 33.5,-5.1,350.5,1.2,1.1,2024-02-09,1345,N,VIIRS,high,2.0NRT,310.5,45.2,D`;

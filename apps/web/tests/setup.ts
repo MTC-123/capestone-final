@@ -7,6 +7,11 @@ import { cleanup } from '@testing-library/react';
 
 expect.extend(matchers);
 
+// Road routing in tests goes to the (mocked) GraphHopper client only; suites
+// that exercise TomTom or the failover chain set their own environment.
+process.env.GRAPHHOPPER_URL ??= 'http://graphhopper.test';
+delete process.env.TOMTOM_API_KEY;
+
 afterEach(() => {
   cleanup();
 });

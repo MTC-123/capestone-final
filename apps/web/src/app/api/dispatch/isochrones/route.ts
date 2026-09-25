@@ -10,7 +10,7 @@ import { getCurrentUser } from '@/lib/auth';
 import { withApiHandler } from '@/lib/errors/withApiHandler';
 import { AppError } from '@/lib/errors/AppError';
 import { logger } from '@/lib/observability/logger';
-import { GraphHopperClient } from '@/lib/routing/graphhopper';
+import { routing } from '@/lib/routing';
 import { getCachedIsochrone, setCachedIsochrone } from '@/lib/routing/cache';
 import type { Coordinates, RoutingProfile } from '@/lib/routing/types';
 
@@ -83,17 +83,16 @@ export const POST = withApiHandler(async (request: Request) => {
 
     const response = NextResponse.json(cached);
     response.headers.set('X-Cache', 'HIT');
-    response.headers.set('Cache-Control', 'public, s-maxage=3600');
+    response.headers.set('Cache-Control', 'private, max-age=600');
     return response;
   }
 
-  // Cache miss - call GraphHopper
+  // Cache miss - ask the routing providers (TomTom, then GraphHopper)
   const startTime = Date.now();
   let isochroneResponse;
 
   try {
-    const graphhopper = new GraphHopperClient();
-    isochroneResponse = await graphhopper.getIsochrone({
+    isochroneResponse = await routing.getIsochrone({
       origin: originCoords,
       profile: routingProfile,
       times,
@@ -146,7 +145,7 @@ export const POST = withApiHandler(async (request: Request) => {
 
   const response = NextResponse.json(isochroneResponse);
   response.headers.set('X-Cache', 'MISS');
-  response.headers.set('Cache-Control', 'public, s-maxage=3600');
+  response.headers.set('Cache-Control', 'private, max-age=600');
 
   return response;
 });

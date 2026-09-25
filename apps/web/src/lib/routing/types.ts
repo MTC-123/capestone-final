@@ -11,7 +11,7 @@ export type Coordinates = [number, number]; // [longitude, latitude]
 
 export type RoutingProfile = 'fire_truck' | 'car' | 'foot';
 
-export type RoutingProvider = 'graphhopper' | 'mapbox';
+export type RoutingProvider = 'tomtom' | 'graphhopper' | 'estimate';
 
 // ============================================
 // Request Types

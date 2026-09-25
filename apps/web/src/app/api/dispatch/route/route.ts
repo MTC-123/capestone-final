@@ -10,7 +10,7 @@ import { getCurrentUser } from '@/lib/auth';
 import { withApiHandler } from '@/lib/errors/withApiHandler';
 import { AppError } from '@/lib/errors/AppError';
 import { logger } from '@/lib/observability/logger';
-import { GraphHopperClient } from '@/lib/routing/graphhopper';
+import { routing } from '@/lib/routing';
 import { getCachedRoute, setCachedRoute } from '@/lib/routing/cache';
 import { SlidingWindowRateLimiter } from '@/lib/ratelimit/slidingWindow';
 import { haversineDistance } from '@/lib/dispatch/geospatial';
@@ -116,13 +116,12 @@ export const POST = withApiHandler(async (request: Request) => {
     return response;
   }
 
-  // Cache miss - call GraphHopper
+  // Cache miss - ask the routing providers (TomTom, then GraphHopper)
   const startTime = Date.now();
   let routeResponse;
 
   try {
-    const graphhopper = new GraphHopperClient();
-    routeResponse = await graphhopper.getRoute({
+    routeResponse = await routing.getRoute({
       origin: originCoords,
       destination: destinationCoords,
       profile: routingProfile,
@@ -160,7 +159,7 @@ export const POST = withApiHandler(async (request: Request) => {
         },
         alternatives: [],
         metadata: {
-          provider: 'graphhopper' as const,
+          provider: 'estimate' as const,
           cached: false,
           computed_at: new Date().toISOString(),
         },
@@ -208,7 +207,7 @@ export const POST = withApiHandler(async (request: Request) => {
   const response = NextResponse.json(routeResponse);
   response.headers.set('X-Cache', 'MISS');
   response.headers.set('X-RateLimit-Remaining', String(rateLimitResult.remaining));
-  response.headers.set('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=1800'); // 1hr cache
+  response.headers.set('Cache-Control', 'private, max-age=600');
 
   return response;
 });
