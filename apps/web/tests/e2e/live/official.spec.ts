@@ -31,6 +31,8 @@ for (const path of ROUTES) {
 test('the command palette opens with the keyboard and navigates', async ({ page }, testInfo) => {
   test.skip(/pixel|iphone/.test(testInfo.project.name), 'no hardware keyboard on phones');
   await page.goto('/reports-list');
+  // The shortcut is registered on hydration; press it once the page is interactive.
+  await page.waitForLoadState('networkidle');
   await page.keyboard.press(process.platform === 'darwin' ? 'Meta+k' : 'Control+k');
   const dialog = page.getByRole('dialog');
   await expect(dialog).toBeVisible();

@@ -39,7 +39,10 @@ export default defineConfig({
     // Signs in once per persona (official, resident) for the live suite.
     { name: 'setup', testMatch: /live\/auth\.setup\.ts/ },
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
-    { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
+    // Playwright drives service-worker networking only in Chromium; in its
+    // Firefox build, worker-proxied cross-origin fetches (map tiles) fail. The
+    // offline flow is covered on Chromium engines.
+    { name: 'firefox', use: { ...devices['Desktop Firefox'], serviceWorkers: 'block' } },
     { name: 'webkit', use: { ...devices['Desktop Safari'] } },
     { name: 'pixel-7', use: { ...devices['Pixel 7'] } },
     { name: 'iphone-14', use: { ...devices['iPhone 14'] } },
