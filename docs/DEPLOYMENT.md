@@ -33,7 +33,7 @@ Run it twice, once for each secret.
 
 ## 2. Database (Atlas M0)
 
-1. Create a free **M0** cluster (region: *eu-west* or closest to Morocco).
+1. Create a free **M0** cluster on AWS **eu-west-3 (Paris)**, next to the Vercel functions (`cdg1` in `vercel.json`).
 2. Under **Database Access**, add a user with read/write on the `ricer` database.
 3. Under **Network Access**, allow `0.0.0.0/0`. Vercel's egress IPs aren't fixed, so access is protected by the credentials.
 4. Copy the connection string and add `/ricer`: `mongodb+srv://USER:PASS@cluster.mongodb.net/ricer?retryWrites=true&w=majority`.
