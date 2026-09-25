@@ -107,7 +107,7 @@ export default function WeatherWidget({
                 </div>
                 <div className="flex items-center justify-center gap-1.5 rounded-lg px-2 py-1.5" style={{ backgroundColor: `${risk.color}20` }}>
                   <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: risk.color }} />
-                  <span className="text-[11px] font-bold" style={{ color: risk.color }}>
+                  <span className="text-[11px] font-bold text-foreground">
                     {t(risk.labelKey as TranslationKey)}
                   </span>
                   <span className="text-[10px] text-muted-foreground">({(risk.score * 100).toFixed(0)}%)</span>

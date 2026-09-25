@@ -11,6 +11,13 @@ import { defineConfig, devices } from '@playwright/test';
  */
 const baseURL = process.env.E2E_BASE_URL ?? 'http://localhost:3000';
 
+// Vercel preview deployments sit behind Deployment Protection; CI passes the
+// project's "Protection Bypass for Automation" secret to reach them.
+const bypass = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
+const baseHeaders: Record<string, string> = bypass
+  ? { 'x-vercel-protection-bypass': bypass, 'x-vercel-set-bypass-cookie': 'true' }
+  : {};
+
 export default defineConfig({
   testDir: './tests/e2e',
   fullyParallel: true,
@@ -24,6 +31,7 @@ export default defineConfig({
   },
   use: {
     baseURL,
+    extraHTTPHeaders: baseHeaders,
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
@@ -41,7 +49,7 @@ export default defineConfig({
       use: {
         ...devices['Desktop Chrome'],
         locale: 'ar-MA',
-        extraHTTPHeaders: { 'Accept-Language': 'ar-MA,ar;q=0.9' },
+        extraHTTPHeaders: { ...baseHeaders, 'Accept-Language': 'ar-MA,ar;q=0.9' },
       },
     },
   ].map((project) => (project.name === 'setup' ? project : { ...project, dependencies: ['setup'] })),

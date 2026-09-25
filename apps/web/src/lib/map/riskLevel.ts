@@ -6,15 +6,18 @@ export interface RiskInfo {
   level: RiskLevel5;
   score: number;
   color: string;
+  /** Text colour that stays readable (WCAG AA) on a solid `color` background. */
+  onColor: string;
   labelKey: string;
 }
 
-const RISK_THRESHOLDS: { min: number; level: RiskLevel5; color: string; labelKey: string }[] = [
-  { min: 0.8, level: 'extreme', color: '#991b1b', labelKey: 'riskExtreme' },
-  { min: 0.6, level: 'eleve', color: '#ef4444', labelKey: 'riskHigh' },
-  { min: 0.4, level: 'moyen', color: '#f59e0b', labelKey: 'riskModerate' },
-  { min: 0.2, level: 'faible', color: '#84cc16', labelKey: 'riskLow' },
-  { min: 0, level: 'tresFaible', color: '#22c55e', labelKey: 'riskVeryLow' },
+const INK = '#111827';
+const RISK_THRESHOLDS: { min: number; level: RiskLevel5; color: string; onColor: string; labelKey: string }[] = [
+  { min: 0.8, level: 'extreme', color: '#991b1b', onColor: '#ffffff', labelKey: 'riskExtreme' },
+  { min: 0.6, level: 'eleve', color: '#ef4444', onColor: INK, labelKey: 'riskHigh' },
+  { min: 0.4, level: 'moyen', color: '#f59e0b', onColor: INK, labelKey: 'riskModerate' },
+  { min: 0.2, level: 'faible', color: '#84cc16', onColor: INK, labelKey: 'riskLow' },
+  { min: 0, level: 'tresFaible', color: '#22c55e', onColor: INK, labelKey: 'riskVeryLow' },
 ];
 
 /**
@@ -34,7 +37,7 @@ export function getRiskInfo(weather: WeatherData | null): RiskInfo | null {
   if (!weather) return null;
   const score = getRiskScore(weather);
   const match = RISK_THRESHOLDS.find((t) => score >= t.min) ?? RISK_THRESHOLDS[RISK_THRESHOLDS.length - 1];
-  return { level: match.level, score, color: match.color, labelKey: match.labelKey };
+  return { level: match.level, score, color: match.color, onColor: match.onColor, labelKey: match.labelKey };
 }
 
 /** Badge tone for UI components */

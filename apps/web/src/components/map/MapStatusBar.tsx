@@ -23,8 +23,8 @@ export default function MapStatusBar({ weather, activeIncidents, lastUpdated }: 
     <div className="absolute left-3 right-3 top-3 z-10 flex items-center justify-between gap-2 rounded-xl px-2.5 py-2 shadow-glass glass sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:justify-start sm:px-3">
       {/* Risk badge */}
       <div
-        className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold text-white ${isHighRisk ? 'animate-pulse' : ''}`}
-        style={{ backgroundColor: riskColor }}
+        className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold ${isHighRisk ? 'animate-pulse' : ''}`}
+        style={{ backgroundColor: riskColor, color: risk?.onColor ?? '#ffffff' }}
       >
         <Icon name="warning" size={12} aria-hidden />
         {risk ? t(risk.labelKey as TranslationKey) : '—'}
