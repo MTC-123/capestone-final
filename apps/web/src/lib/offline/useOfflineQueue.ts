@@ -12,6 +12,7 @@ import {
   enqueueReport as engineEnqueueReport,
   getLastSyncAt,
   initSyncEngine,
+  isOnline,
   resumeAfterAuth as engineResumeAfterAuth,
   retrySubmission as engineRetry,
   syncNow as engineSyncNow,
@@ -47,7 +48,7 @@ let refreshSeq = 0;
 const useOfflineQueueStore = create<OfflineQueueInternalState>((set, get) => ({
   items: [],
   counts: emptyCounts(),
-  online: typeof navigator === 'undefined' ? true : navigator.onLine,
+  online: isOnline(),
   syncing: false,
   lastSyncAt: undefined,
   _refresh: async () => {
@@ -147,7 +148,7 @@ export function __resetOfflineQueueForTests(): void {
   useOfflineQueueStore.setState({
     items: [],
     counts: emptyCounts(),
-    online: typeof navigator === 'undefined' ? true : navigator.onLine,
+    online: isOnline(),
     syncing: false,
     lastSyncAt: undefined,
   });

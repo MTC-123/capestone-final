@@ -30,6 +30,10 @@ export { expect };
 
 /** WCAG 2.2 A/AA scan; fails on serious and critical violations. */
 export async function expectAccessible(page: Page, options: { exclude?: string[] } = {}) {
+  // Scan the settled page: entrance fades would otherwise be measured mid-opacity.
+  await page.evaluate(() =>
+    Promise.all(document.getAnimations().filter((a) => a.effect?.getTiming().iterations !== Infinity).map((a) => a.finished.catch(() => undefined)))
+  );
   let builder = new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']);
   // Map canvases are graphical; their controls are covered separately.
   for (const selector of ['.maplibregl-canvas', ...(options.exclude ?? [])]) builder = builder.exclude(selector);

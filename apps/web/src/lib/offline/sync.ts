@@ -41,7 +41,8 @@ export function getLastSyncAt(): string | undefined {
   return lastSyncAt;
 }
 
-function isOnline(): boolean {
+/** Browser connectivity; Node 21+ servers expose `navigator` without `onLine`, which must read as online. */
+export function isOnline(): boolean {
   if (typeof navigator === 'undefined' || typeof navigator.onLine !== 'boolean') return true;
   return navigator.onLine;
 }
