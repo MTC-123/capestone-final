@@ -28,12 +28,12 @@ jobs:
     name: Dependency review
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-    # Needs the repository's Dependency graph setting; the npm audit job below
-    # is the blocking dependency check, so this one reports without gating.
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v7
+      # Needs the repository's Dependency graph setting; the npm audit job below
+      # is the blocking dependency check, so this one reports without gating.
       - uses: actions/dependency-review-action@v5
+        continue-on-error: true
         with:
           fail-on-severity: high
 
