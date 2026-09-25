@@ -1,6 +1,6 @@
 # Evaluation: requirements, tests and results
 
-Test run of 25 September 2026 on the `overhaul` branch: Next.js 16.3.6, React 19.3, Node 22 LTS.
+Results of 25 September 2026: local runs on the `overhaul` branch, then the live production deployment built from `main` (https://ricer-ifrane.vercel.app). Next.js 16.3.6, React 19.3, Node 22 LTS.
 
 **Machine:** Apple M5, 24 GB RAM, local MongoDB 7 replica set in Docker.
 
@@ -12,9 +12,11 @@ The figures below come from this machine. They are not a capacity promise for th
 |---|---|---|
 | Type check | `npm run typecheck` | Pass |
 | Lint | `npm run lint` | 0 errors; 38 warnings, all React Compiler advisories. CI caps warnings at 38, so no new ones can land |
-| Unit and integration | `npm run test:unit` | **1,754 / 1,754 pass** (150 files) |
+| Unit and integration | `npm run test:unit` | **1,844 / 1,844 pass** (153 files) |
 | Real-database integration | `npm run test:db` | **16 / 16 pass** |
-| Live cross-device e2e | `npx playwright test tests/e2e/live` | **172 pass, 25 skipped by design, 1 fail** → fixed and re-run (iPad: 26 / 26 pass) |
+| Live cross-device e2e (local) | `npx playwright test tests/e2e/live` | **172 pass, 25 skipped by design, 1 fail** → fixed and re-run (iPad: 26 / 26 pass) |
+| Live cross-device e2e (**production**) | `E2E_BASE_URL=https://ricer-ifrane.vercel.app npx playwright test tests/e2e/live` | **171 / 171 pass**, 0 failures (tests that write data excluded) |
+| Static security analysis | CodeQL `security-extended` on every pull request | **0 open alerts** in shipped code |
 | Load | `npm run perf:k6` | **0 errors** in 14,001 requests; p95 ≤ 21 ms at 50 users |
 | Dependency audit | `npm audit --omit=dev` | **0 vulnerabilities** (was 40 before the overhaul) |
 | Production build | `next build` | Pass |
@@ -43,6 +45,8 @@ The 25 skipped cases are deliberate: each one-off check runs once, on Chromium o
 | Upload validation | db: *deduplicates uploads by idempotency key and refuses non-images*; unit: file-signature checks and EXIF stripping | Pass |
 | Input validation | db: *rejects reports outside Morocco and photos the reporter does not own*; zod schemas on mutating routes | Pass |
 | Supply chain | `npm audit --omit=dev`: 0; CI runs CodeQL, dependency review and a critical-level audit | Pass |
+| No shared caching of signed-in data | unit: `cachePolicy.test.ts` checks every authenticated route; production: an anonymous request straight after an official's returns 401, not a CDN copy | Pass |
+| No stack traces to clients | unit: `withApiHandler.test.ts`: a production error never includes a stack, whatever the request headers | Pass |
 
 ### Reliability and concurrency
 
@@ -52,6 +56,7 @@ The 25 skipped cases are deliberate: each one-off check runs once, on Chromium o
 | Multi-vehicle dispatch is all-or-nothing | db: *is all-or-nothing when one of several vehicles is already taken* | Pass |
 | Idempotent report submission | db: *creates exactly one report for 8 concurrent submissions with the same clientSubmissionId*; *rejects another user replaying someone else's submission id* | Pass |
 | Offline-first reporting | e2e: *a report written offline is kept on the device and sent once the network returns*; unit: offline store, sync, triggers, queue hook | Pass |
+| Road routing failover | unit: `tomtom.test.ts`: TomTom first (live traffic, truck-aware), GraphHopper next, then a straight-line estimate labelled `estimate` | Pass |
 | Graceful degradation | `/api/health` reports each dependency and lists the active integrations; detections return an empty set with `X-Detection-Status: unavailable` when every source fails | Pass |
 | Backup and restore | Rehearsed `mongodump` → restore into a clean database, with record counts compared ([runbook](runbooks/backup-restore.md)) | Pass |
 
@@ -88,6 +93,18 @@ Totals across the run:
 - **Requests:** 14,001 over 3,408 iterations, **0 failed**.
 - **Reads:** p50 6 ms, p95 13.8 ms.
 - **Report submissions:** p50 33 ms, p95 165 ms.
+
+## Defects found and fixed during evaluation
+
+| Area | Defect | Fix |
+|---|---|---|
+| Security | Eleven signed-in API routes were cacheable by the CDN, so an anonymous visitor could receive an official's data | `Cache-Control: private` on every authenticated route, with a regression test over all of them |
+| Security | A request header could make production errors return full stack traces | Stack traces only in local development; test inverted |
+| Offline | Node 22 exposes `navigator` without `onLine` on the server, so pages rendered as offline and then hydrated online | One shared connectivity check that treats a missing `onLine` as online |
+| Fire database | Cause, commune and search filters used SQL-only JSON filters and failed on MongoDB | Native nested-field matching, with literal (escaped) search text |
+| Map | Infrastructure sub-filters had no effect; co-located markers hid each other; firebreaks stored as points never drew | Filters wired through; stations at the true point with vehicles and resources ringed around them |
+| Satellite data | One satellite, a box around Ifrane town only, unpadded times ("25:1") | Three VIIRS satellites over the Middle Atlas for 48 h; correct times |
+| Accessibility | Risk badge used white text on light risk colours | A readable text colour per risk level (WCAG AA) |
 
 ## Known limits
 
