@@ -91,7 +91,7 @@ export function PMAWorkflowPanel() {
                       {wf.aircraftType} × {wf.aircraftCount ?? 1}
                     </span>
                   )}
-                  <span className="text-xs text-muted-foreground ml-auto">
+                  <span className="text-xs text-muted-foreground ms-auto">
                     {new Date(wf.createdAt).toLocaleString()}
                   </span>
                 </div>
@@ -119,7 +119,7 @@ export function PMAWorkflowPanel() {
                             {t(getStepLabelKey(step) as TranslationKey)}
                           </span>
                           {stepEntry && (
-                            <span className="text-xs text-muted-foreground ml-2">
+                            <span className="text-xs text-muted-foreground ms-2">
                               {new Date(stepEntry.timestamp).toLocaleString()}
                               {stepEntry.actor && ` — ${stepEntry.actor}`}
                             </span>

@@ -1,14 +1,17 @@
 'use client';
 
+import '@/lib/map/maplibreSetup';
 import { useMemo } from 'react';
 import { Map, Marker, NavigationControl, Popup } from 'react-map-gl/maplibre';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useFireRecordStore } from '@/store/useFireRecordStore';
 import { RecordStatusBadge } from './RecordStatusBadge';
+import { Icon } from '@/components/ui/Icon';
 import Link from 'next/link';
 import { useState } from 'react';
 import type { FireEventRecord } from '@/types';
 import 'maplibre-gl/dist/maplibre-gl.css';
+import { getMapStyle } from '@/lib/map/styles';
 
 const INITIAL_VIEW = {
   longitude: -5.1,
@@ -16,7 +19,7 @@ const INITIAL_VIEW = {
   zoom: 8,
 };
 
-export function FireRecordMapView() {
+export default function FireRecordMapView() {
   const { t } = useTranslation();
   const { records } = useFireRecordStore();
   const [selected, setSelected] = useState<FireEventRecord | null>(null);
@@ -36,18 +39,23 @@ export function FireRecordMapView() {
 
   if (markers.length === 0) {
     return (
-      <div className="flex h-80 items-center justify-center text-sm text-muted-foreground" data-testid="fire-record-map-empty">
-        {t('fireRecordNoRecords')}
+      <div className="flex h-80 flex-col items-center justify-center gap-3 text-center" data-testid="fire-record-map-empty">
+        <span className="grid h-14 w-14 place-items-center rounded-2xl bg-surface-2 text-muted-foreground">
+          <Icon name="map" size={26} aria-hidden />
+        </span>
+        <p className="text-sm text-muted-foreground">{t('fireRecordNoRecords')}</p>
       </div>
     );
   }
 
   return (
-    <div className="h-[500px] w-full rounded-lg overflow-hidden" data-testid="fire-record-map-view">
+    <div className="h-[500px] w-full rounded-2xl overflow-hidden" data-testid="fire-record-map-view">
       <Map
         initialViewState={INITIAL_VIEW}
         style={{ width: '100%', height: '100%' }}
-        mapStyle={`https://api.maptiler.com/maps/streets/style.json?key=${process.env.NEXT_PUBLIC_MAPTILER_KEY || 'placeholder'}`}
+        mapStyle={getMapStyle(
+          typeof document !== 'undefined' && document.documentElement.classList.contains('dark') ? 'dark' : 'streets'
+        ) as string}
       >
         <NavigationControl position="top-right" />
 
@@ -64,8 +72,8 @@ export function FireRecordMapView() {
           >
             <div
               className={`h-3 w-3 rounded-full border-2 border-white shadow ${
-                record.recordStatus === 'LOCKED' ? 'bg-green-500' :
-                record.recordStatus === 'VERIFIED' ? 'bg-blue-500' : 'bg-amber-500'
+                record.recordStatus === 'LOCKED' ? 'bg-success' :
+                record.recordStatus === 'VERIFIED' ? 'bg-primary' : 'bg-warning'
               }`}
             />
           </Marker>
@@ -86,7 +94,7 @@ export function FireRecordMapView() {
               <div className="space-y-1 p-1 text-xs">
                 <RecordStatusBadge status={selected.recordStatus} />
                 <p className="font-medium">
-                  {(loc?.locationName ?? loc?.commune ?? '') as string}
+                  <bdi>{(loc?.locationName ?? loc?.commune ?? '') as string}</bdi>
                 </p>
                 {selected.burnAreaHa != null && (
                   <p>{selected.burnAreaHa} ha</p>

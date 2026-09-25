@@ -5,12 +5,15 @@ import { useTranslation } from '@/hooks/useTranslation';
 import { useFireRecordStore } from '@/store/useFireRecordStore';
 import { InlineStatusUpdate } from './InlineStatusUpdate';
 import { Icon } from '@/components/ui/Icon';
+import { Button } from '@/components/ui/Button';
+import { SkeletonBox } from '@/components/ui/Skeleton';
+import { cn } from '@/lib/cn';
 
 export function FireRecordTableV2() {
   const { t } = useTranslation();
   const {
     records, isLoading, pagination, fetchRecords,
-    filters, setFilters,
+    filters, setFilters, clearFilters,
     comparisonIds, toggleComparison,
   } = useFireRecordStore();
 
@@ -31,9 +34,9 @@ export function FireRecordTableV2() {
   if (isLoading && records.length === 0) {
     return (
       <div className="p-6 space-y-3" aria-busy="true" aria-label={t('loading')}>
-        <div className="h-10 animate-pulse rounded-xl bg-muted" />
+        <SkeletonBox className="h-10 rounded-xl" />
         {Array.from({ length: 5 }).map((_, i) => (
-          <div key={i} className="h-12 animate-pulse rounded-xl bg-muted-foreground/10" />
+          <SkeletonBox key={i} className="h-12 rounded-xl" />
         ))}
       </div>
     );
@@ -41,8 +44,18 @@ export function FireRecordTableV2() {
 
   if (records.length === 0) {
     return (
-      <div className="p-8 text-center text-muted-foreground" data-testid="fire-record-empty">
-        {t('fireRecordNoRecords')}
+      <div className="flex flex-col items-center gap-3 p-12 text-center" data-testid="fire-record-empty">
+        <span className="grid h-14 w-14 place-items-center rounded-2xl bg-surface-2 text-muted-foreground">
+          <Icon name="fire" size={26} aria-hidden />
+        </span>
+        <p className="text-sm text-muted-foreground">{t('fireRecordNoRecords')}</p>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => { clearFilters(); fetchRecords(false); }}
+        >
+          {t('clearFilters' as Parameters<typeof t>[0])}
+        </Button>
       </div>
     );
   }
@@ -50,14 +63,14 @@ export function FireRecordTableV2() {
   return (
     <div data-testid="fire-record-table-v2">
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-border text-left">
+        <table className="w-full text-[13px]">
+          <thead className="sticky top-0 z-10 bg-surface">
+            <tr className="border-b border-border text-start">
               <th className="px-3 py-2 w-8">
                 <span className="sr-only">{t('compare' as Parameters<typeof t>[0])}</span>
               </th>
               <th
-                className="px-3 py-2 font-medium text-muted-foreground cursor-pointer hover:text-foreground"
+                className="px-3 py-2 font-medium text-muted-foreground cursor-pointer select-none hover:text-foreground"
                 onClick={() => handleSort('createdAt')}
               >
                 <span className="inline-flex items-center gap-1">
@@ -69,7 +82,7 @@ export function FireRecordTableV2() {
                 {t('location' as Parameters<typeof t>[0])}
               </th>
               <th
-                className="px-3 py-2 font-medium text-muted-foreground cursor-pointer hover:text-foreground"
+                className="px-3 py-2 text-end font-medium text-muted-foreground cursor-pointer select-none hover:text-foreground"
                 onClick={() => handleSort('burnAreaHa')}
               >
                 <span className="inline-flex items-center gap-1">
@@ -80,7 +93,7 @@ export function FireRecordTableV2() {
               <th className="hidden md:table-cell px-3 py-2 font-medium text-muted-foreground">
                 {t('fireRecordCause' as Parameters<typeof t>[0])}
               </th>
-              <th className="hidden md:table-cell px-3 py-2 font-medium text-muted-foreground">
+              <th className="hidden md:table-cell px-3 py-2 text-end font-medium text-muted-foreground">
                 {t('responseTime' as Parameters<typeof t>[0])}
               </th>
               <th className="px-3 py-2 font-medium text-muted-foreground">
@@ -104,7 +117,7 @@ export function FireRecordTableV2() {
               return (
                 <tr
                   key={record.id}
-                  className={`border-b border-border/50 hover:bg-muted/30 ${isSelected ? 'bg-primary/5' : ''}`}
+                  className={cn('border-b border-border/50 hover:bg-surface-2', isSelected && 'bg-primary/5')}
                 >
                   <td className="px-3 py-2">
                     <label className="inline-flex h-11 w-11 items-center justify-center cursor-pointer">
@@ -113,7 +126,7 @@ export function FireRecordTableV2() {
                         checked={isSelected}
                         onChange={() => toggleComparison(record.id)}
                         disabled={!isSelected && comparisonIds.length >= 5}
-                        className="rounded"
+                        className="rounded accent-primary"
                         aria-label={`${t('compare' as Parameters<typeof t>[0])} ${record.id.slice(-8)}`}
                       />
                     </label>
@@ -123,12 +136,14 @@ export function FireRecordTableV2() {
                       {formatDate(date)}
                     </Link>
                   </td>
-                  <td className="px-3 py-2 text-xs truncate max-w-[120px] sm:max-w-[200px] md:max-w-none">{locationStr}</td>
-                  <td className="px-3 py-2 text-xs">
+                  <td className="px-3 py-2 text-xs truncate max-w-[120px] sm:max-w-[200px] md:max-w-none">
+                    <bdi>{locationStr}</bdi>
+                  </td>
+                  <td className="px-3 py-2 text-end font-mono text-xs tabular">
                     {record.burnAreaHa != null ? `${record.burnAreaHa} ha` : '—'}
                   </td>
                   <td className="hidden md:table-cell px-3 py-2 text-xs">{causeStr}</td>
-                  <td className="hidden md:table-cell px-3 py-2 text-xs">{responseTime}</td>
+                  <td className="hidden md:table-cell px-3 py-2 text-end font-mono text-xs tabular">{responseTime}</td>
                   <td className="px-3 py-2">
                     <InlineStatusUpdate recordId={record.id} status={record.recordStatus} />
                   </td>
@@ -141,13 +156,9 @@ export function FireRecordTableV2() {
 
       {pagination.hasMore && (
         <div className="p-4 text-center">
-          <button
-            onClick={() => fetchRecords(true)}
-            disabled={isLoading}
-            className="rounded border border-border px-4 py-2 text-sm font-medium hover:bg-muted disabled:opacity-50"
-          >
+          <Button variant="secondary" size="sm" onClick={() => fetchRecords(true)} disabled={isLoading} isLoading={isLoading}>
             {isLoading ? t('loading') : t('fireRecordLoadMore')}
-          </button>
+          </Button>
         </div>
       )}
     </div>

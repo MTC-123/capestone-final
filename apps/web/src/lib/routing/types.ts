@@ -11,7 +11,7 @@ export type Coordinates = [number, number]; // [longitude, latitude]
 
 export type RoutingProfile = 'fire_truck' | 'car' | 'foot';
 
-export type RoutingProvider = 'graphhopper' | 'mapbox';
+export type RoutingProvider = 'tomtom' | 'graphhopper' | 'estimate';
 
 // ============================================
 // Request Types
@@ -178,5 +178,5 @@ export interface RoutingClientConfig {
   baseUrl: string;
   timeout?: number; // milliseconds, default 10000
   retries?: number; // default 2
-  apiKey?: string; // For Mapbox
+  apiKey?: string; // GraphHopper Cloud API key
 }

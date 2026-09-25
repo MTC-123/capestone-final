@@ -97,67 +97,6 @@ npm run generate:errors
 
 ## Service Scripts (`/services/`)
 
-### start-notification-worker.ts
-Starts the background WhatsApp notification worker process.
-
-**Purpose:**
-Processes queued notification jobs and sends WhatsApp messages via Twilio.
-
-**Usage:**
-```bash
-npm run worker:start
-```
-
-**Environment variables required:**
-```env
-REDIS_URL=redis://localhost:6379
-TWILIO_ACCOUNT_SID=AC...
-TWILIO_AUTH_TOKEN=...
-TWILIO_WHATSAPP_NUMBER=whatsapp:+...
-```
-
-**How it works:**
-1. Connects to Redis queue
-2. Polls queue every 2 seconds
-3. Processes up to 5 jobs per batch
-4. Sends WhatsApp messages via Twilio
-5. Implements retry logic (max 3 attempts)
-6. Moves failed jobs to dead letter queue
-
-**Features:**
-- **Rate limiting**: 1 second delay between Twilio calls
-- **Exponential backoff**: Failed jobs requeued with delay
-- **Dead letter queue**: Permanently failed jobs preserved
-- **Graceful shutdown**: Handles SIGINT/SIGTERM
-
-**Monitoring:**
-Logs structured JSON to stdout:
-```json
-{
-  "timestamp": "2024-02-07T15:00:00Z",
-  "level": "info",
-  "event": "worker_started"
-}
-```
-
-**When to run:**
-- In production: Run as a persistent background service
-- In development: Run in separate terminal when testing notifications
-- After code changes: Restart worker to pick up changes
-
-**Deployment:**
-```bash
-# Production (with PM2)
-pm2 start npm --name "ricer-worker" -- run worker:start
-
-# Docker
-CMD ["npm", "run", "worker:start"]
-```
-
----
-
-## Deployment Scripts (`/deploy/`)
-
 ### verify-deploy.ts
 Verifies deployment health and configuration.
 
@@ -217,7 +156,6 @@ All scripts are accessible via npm:
 {
   "db:fix-indexes": "node scripts/db/fix-mongodb-indexes.js",
   "generate:errors": "tsx scripts/generate/generate-error-catalog.ts",
-  "worker:start": "tsx scripts/services/start-notification-worker.ts",
   "deploy:verify": "tsx scripts/deploy/verify-deploy.ts"
 }
 ```

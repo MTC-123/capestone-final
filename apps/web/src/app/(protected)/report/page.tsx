@@ -1,46 +1,50 @@
 'use client';
 
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useTranslation } from '@/hooks/useTranslation';
 import { ReportWizard } from '@/components/report/ReportWizard';
+import { SyncStatusPill } from '@/components/offline';
 import { Icon } from '@/components/ui/Icon';
+import { PageContainer, PageHeader } from '@/components/ui/PageHeader';
 
 export default function ReportPage() {
-  const { t, language } = useTranslation();
-  const isRTL = language === 'ar';
-  const textAlign = isRTL ? 'text-right' : 'text-left';
+  const { t } = useTranslation();
+  const params = useSearchParams();
 
   return (
-    <div className="mx-auto max-w-6xl p-3 sm:p-4 md:p-6 page-enter">
-      <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between" dir={isRTL ? 'rtl' : 'ltr'}>
-        <div className={textAlign}>
-          <Link
-            href="/reports-list"
-            className="mb-3 inline-flex items-center gap-2 rounded-lg border border-border/60 bg-surface-2 px-3 py-2 text-sm font-semibold text-muted-foreground transition hover:bg-muted hover:text-foreground"
-          >
-            <Icon name={isRTL ? 'chevronRight' : 'list'} size={16} aria-hidden />
-            {t('reportsBackToHistory')}
-          </Link>
-          <p className="mb-2 text-xs font-bold uppercase text-primary">
-            {t('reportHeroKicker')}
-          </p>
-          <h1 className="text-fluid-4xl font-bold text-foreground">
-            {t('reportFireTitle')}
-          </h1>
-          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-            {t('reportFireDesc')}
-          </p>
+    <PageContainer className="max-w-3xl">
+      {params.get('request') === 'pending' && (
+        <div className="mb-6 flex items-start gap-3 rounded-xl border border-info/25 bg-info-muted px-4 py-3 text-sm text-info-foreground">
+          <Icon name="clock" size={17} className="mt-0.5" />
+          <p>{t('reportPendingRequest')}</p>
         </div>
-        <div className="rounded-lg border border-danger/20 bg-danger/5 px-3 py-2.5 text-sm text-danger sm:px-4 sm:py-3">
-          <span className="font-bold">{t('emergencyNumber')}</span>
-          <span className="mx-2">-</span>
-          {t('emergencyReminderShort')}
-        </div>
-      </div>
-
-      <div className="rounded-lg border border-border/60 bg-surface p-3 shadow-elev-2 sm:p-6">
+      )}
+      <PageHeader
+        eyebrow={
+          <span className="inline-flex items-center gap-2">
+            <Icon name="wifiOff" size={13} />
+            {t('reportWorksOffline')}
+          </span>
+        }
+        title={t('reportHeroTitle')}
+        description={t('reportHeroLead')}
+        actions={
+          <>
+            <SyncStatusPill />
+            <Link
+              href="/reports-list"
+              className="inline-flex h-9 items-center gap-2 rounded-[10px] border border-border bg-surface px-3 text-sm font-medium text-muted-foreground hover:text-foreground"
+            >
+              <Icon name="list" size={16} />
+              {t('reportsBackToHistory')}
+            </Link>
+          </>
+        }
+      />
+      <div className="rounded-2xl border border-border bg-surface p-4 shadow-elev-1 sm:p-7">
         <ReportWizard />
       </div>
-    </div>
+    </PageContainer>
   );
 }

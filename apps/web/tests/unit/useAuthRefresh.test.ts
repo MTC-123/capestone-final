@@ -50,88 +50,34 @@ describe('useAuthRefresh', () => {
     globalThis.fetch = originalFetch;
   });
 
-  it('fires a warning toast at 10 minutes', async () => {
+  it('renews the session silently every 12 minutes without toasts', async () => {
     const { useAuthRefresh } = await import('@/hooks/useAuthRefresh');
     renderHook(() => useAuthRefresh());
 
-    // Advance to just before 10 minutes
-    await vi.advanceTimersByTimeAsync(10 * 60 * 1000 - 1);
+    await vi.advanceTimersByTimeAsync(12 * 60 * 1000);
+    expect(globalThis.fetch).toHaveBeenCalledWith('/api/auth/token', { method: 'POST' });
     expect(mockAddToast).not.toHaveBeenCalled();
-
-    // Advance to exactly 10 minutes
-    await vi.advanceTimersByTimeAsync(1);
-    expect(mockAddToast).toHaveBeenCalledTimes(1);
-    expect(mockAddToast).toHaveBeenCalledWith('sessionExpiringWarning', 'warning');
+    expect(mockReplace).not.toHaveBeenCalled();
   });
 
-  it('calls refresh endpoint at 12 minutes', async () => {
-    const fetchMock = vi.fn(() => Promise.resolve(makeResponse(true)));
-    globalThis.fetch = fetchMock;
-
+  it('signs out and returns to /signin (with next) when renewal fails', async () => {
+    globalThis.fetch = vi.fn(() => Promise.resolve(makeResponse(false, 401)));
     const { useAuthRefresh } = await import('@/hooks/useAuthRefresh');
     renderHook(() => useAuthRefresh());
 
-    // Advance to 12 minutes
     await vi.advanceTimersByTimeAsync(12 * 60 * 1000);
-
-    expect(fetchMock).toHaveBeenCalledWith('/api/auth/token', { method: 'POST' });
-  });
-
-  it('reschedules timers on successful refresh', async () => {
-    const fetchMock = vi.fn(() => Promise.resolve(makeResponse(true)));
-    globalThis.fetch = fetchMock;
-
-    const { useAuthRefresh } = await import('@/hooks/useAuthRefresh');
-    renderHook(() => useAuthRefresh());
-
-    // First cycle: advance to 12 min to trigger refresh
-    await vi.advanceTimersByTimeAsync(12 * 60 * 1000);
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-
-    // After successful refresh, timers are rescheduled.
-    // Advance another 10 min for the new warning toast
-    mockAddToast.mockClear();
-    await vi.advanceTimersByTimeAsync(10 * 60 * 1000);
-    expect(mockAddToast).toHaveBeenCalledWith('sessionExpiringWarning', 'warning');
-  });
-
-  it('redirects to /signin when refresh returns a non-ok response', async () => {
-    globalThis.fetch = vi.fn(() => Promise.resolve(makeResponse(false)));
-
-    const { useAuthRefresh } = await import('@/hooks/useAuthRefresh');
-    renderHook(() => useAuthRefresh());
-
-    // Advance to 12 minutes to trigger the refresh
-    await vi.advanceTimersByTimeAsync(12 * 60 * 1000);
-
     expect(mockLogout).toHaveBeenCalled();
-    expect(mockReplace).toHaveBeenCalledWith('/signin');
+    expect(mockReplace).toHaveBeenCalledWith(expect.stringMatching(/^\/signin\?next=/));
   });
 
-  it('redirects to /signin when refresh throws a network error', async () => {
-    globalThis.fetch = vi.fn(() => Promise.reject(new Error('Network error')));
-
-    const { useAuthRefresh } = await import('@/hooks/useAuthRefresh');
-    renderHook(() => useAuthRefresh());
-
-    // Advance to 12 minutes
-    await vi.advanceTimersByTimeAsync(12 * 60 * 1000);
-
-    expect(mockLogout).toHaveBeenCalled();
-    expect(mockReplace).toHaveBeenCalledWith('/signin');
-  });
-
-  it('clears timers on unmount', async () => {
-    const clearTimeoutSpy = vi.spyOn(globalThis, 'clearTimeout');
-
-    const { useAuthRefresh } = await import('@/hooks/useAuthRefresh');
-    const { unmount } = renderHook(() => useAuthRefresh());
-
-    unmount();
-
-    // clearTimeout should be called for both the warning and refresh timers
-    expect(clearTimeoutSpy).toHaveBeenCalled();
-
-    clearTimeoutSpy.mockRestore();
+  it('shares one in-flight refresh between concurrent callers', async () => {
+    let resolve: (r: Response) => void = () => undefined;
+    globalThis.fetch = vi.fn(() => new Promise<Response>((r) => (resolve = r)));
+    const { refreshSession } = await import('@/lib/api/fetchWithAuth');
+    const a = refreshSession();
+    const b = refreshSession();
+    resolve(makeResponse(true));
+    await expect(Promise.all([a, b])).resolves.toEqual([true, true]);
+    expect(globalThis.fetch).toHaveBeenCalledTimes(1);
   });
 });

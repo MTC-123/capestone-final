@@ -1,99 +1,63 @@
 'use client';
 
-import { useEffect, useCallback, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
+function isTyping(target: EventTarget | null) {
+  const el = target as HTMLElement | null;
+  return !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable);
+}
+
+/**
+ * Global shortcuts. Everything except "?" and Esc uses a modifier so no
+ * single printable key triggers an action (WCAG 2.1.4 Character Key Shortcuts).
+ *   Mod+K  command palette      Alt+N  new report
+ *   Alt+F  fullscreen map       ?      shortcut help      Esc  close help
+ */
 export function useKeyboardShortcuts() {
   const router = useRouter();
   const [showOverlay, setShowOverlay] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
 
-  const handleKeyDown = useCallback(
-    (e: KeyboardEvent) => {
-      // Skip when focus is in input/textarea/contenteditable
-      const target = e.target as HTMLElement;
-      if (
-        target.tagName === 'INPUT' ||
-        target.tagName === 'TEXTAREA' ||
-        target.tagName === 'SELECT' ||
-        target.isContentEditable
-      ) {
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      const key = e.key.toLowerCase();
+      if ((e.metaKey || e.ctrlKey) && key === 'k') {
+        e.preventDefault();
+        setPaletteOpen((v) => !v);
         return;
       }
+      if (e.key === 'Escape') {
+        setShowOverlay(false);
+        return;
+      }
+      if (isTyping(e.target)) return;
 
-      switch (e.key) {
-        case 'f':
-        case 'F': {
-          e.preventDefault();
-          const mapEl = document.querySelector('[data-ricer-map-ready]');
-          if (mapEl) {
-            if (document.fullscreenElement) {
-              document.exitFullscreen();
-            } else {
-              mapEl.requestFullscreen();
-            }
-          }
-          break;
-        }
-        case 'r':
-        case 'R': {
-          if (!e.ctrlKey && !e.metaKey) {
-            e.preventDefault();
-            window.location.reload();
-          }
-          break;
-        }
-        case 'n':
-        case 'N': {
+      if (e.key === '?' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault();
+        setShowOverlay((v) => !v);
+        return;
+      }
+      if (!e.altKey || e.metaKey || e.ctrlKey) return;
+
+      // Alt+letter produces special characters on macOS, so match on the physical key.
+      switch (e.code) {
+        case 'KeyN':
           e.preventDefault();
           router.push('/report');
           break;
-        }
-        case 'l':
-        case 'L': {
+        case 'KeyF': {
           e.preventDefault();
-          document.dispatchEvent(new CustomEvent('ricer:toggle-layers'));
-          break;
-        }
-        case 'g':
-        case 'G': {
-          e.preventDefault();
-          document.dispatchEvent(new CustomEvent('ricer:toggle-legend'));
-          break;
-        }
-        case 'w':
-        case 'W': {
-          e.preventDefault();
-          document.dispatchEvent(new CustomEvent('ricer:toggle-weather'));
-          break;
-        }
-        case 'd':
-        case 'D': {
-          e.preventDefault();
-          const isDark = document.documentElement.classList.contains('dark');
-          const newTheme = isDark ? 'light' : 'dark';
-          document.documentElement.classList.toggle('dark', newTheme === 'dark');
-          localStorage.setItem('theme', newTheme);
-          break;
-        }
-        case 'Escape': {
-          setShowOverlay(false);
-          document.dispatchEvent(new CustomEvent('ricer:close-panels'));
-          break;
-        }
-        case '?': {
-          e.preventDefault();
-          setShowOverlay((prev) => !prev);
+          const mapEl = document.querySelector('[data-ricer-map-ready]');
+          if (document.fullscreenElement) void document.exitFullscreen();
+          else void mapEl?.requestFullscreen();
           break;
         }
       }
-    },
-    [router]
-  );
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [router]);
 
-  useEffect(() => {
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [handleKeyDown]);
-
-  return { showOverlay, setShowOverlay };
+  return { showOverlay, setShowOverlay, paletteOpen, setPaletteOpen };
 }

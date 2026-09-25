@@ -89,7 +89,8 @@ export function PhaseCard({ phase, index, summary, isActive, isCompleted }: Phas
         className={cn(
           'px-4 py-3 text-sm font-semibold normal-case tracking-normal',
           isActive && 'text-primary',
-          isCompleted && 'text-success-foreground'
+          isCompleted && 'text-success-foreground',
+          !isActive && !isCompleted && 'text-foreground'
         )}
       >
         <div className="flex items-center gap-3 w-full">
@@ -97,8 +98,8 @@ export function PhaseCard({ phase, index, summary, isActive, isCompleted }: Phas
           <span
             className={cn(
               'flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold',
-              isCompleted && 'bg-success text-white',
-              isActive && 'bg-primary text-white',
+              isCompleted && 'bg-success text-on-success',
+              isActive && 'bg-primary text-primary-foreground',
               !isActive && !isCompleted && 'bg-muted text-muted-foreground'
             )}
           >
@@ -111,7 +112,7 @@ export function PhaseCard({ phase, index, summary, isActive, isCompleted }: Phas
             )}
           </span>
 
-          <div className="flex-1 text-left min-w-0">
+          <div className="flex-1 text-start min-w-0">
             <div className="flex items-center gap-2">
               <span className="truncate">{t(PHASE_LABELS[phase] as Parameters<typeof t>[0])}</span>
               <Badge
@@ -137,7 +138,7 @@ export function PhaseCard({ phase, index, summary, isActive, isCompleted }: Phas
                 style={{ width: `${pct}%` }}
               />
             </div>
-            <span className="text-[11px] text-muted-foreground font-mono w-8 text-right">{pct}%</span>
+            <span className="text-[11px] text-muted-foreground font-mono w-8 text-end">{pct}%</span>
           </div>
         </div>
       </AccordionTrigger>
@@ -164,23 +165,25 @@ export function PhaseCard({ phase, index, summary, isActive, isCompleted }: Phas
 
         {/* Add task inline */}
         {isViewing && (
-          <div className="flex items-center gap-2 mt-3 pt-2 border-t border-border/30">
+          <div className="mt-3 flex items-center gap-2 rounded-xl border border-dashed border-border px-3 py-2 focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/15">
             <Icon name="plus" size={16} className="text-muted-foreground shrink-0" aria-hidden={true} />
             <input
               type="text"
+              dir="auto"
+              aria-label={t('taskPlaceholder')}
               value={newTask}
               onChange={(e) => setNewTask(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') handleAddTask();
               }}
               placeholder={t('taskPlaceholder')}
-              className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/50"
+              className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
             />
             {newTask.trim() && (
               <button
                 type="button"
                 onClick={handleAddTask}
-                className="text-xs font-medium text-primary hover:underline"
+                className="shrink-0 rounded-md bg-primary px-2.5 py-1 text-xs font-semibold text-primary-foreground hover:brightness-110"
               >
                 {t('addTask')}
               </button>

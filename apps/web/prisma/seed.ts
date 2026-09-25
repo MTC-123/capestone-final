@@ -1,847 +1,747 @@
-import { PrismaClient } from '@prisma/client';
+/**
+ * RICER Ifrane — demo database seed.
+ *
+ * Re-runnable: wipes the demo collections (deleteMany, dependency order)
+ * then inserts a full, internally-consistent dataset — a live "campagne
+ * 2026" wildfire season for Ifrane Province — using a seeded PRNG so every
+ * run produces the exact same data (same counts, same reference numbers).
+ *
+ * Refuses to run against NODE_ENV=production unless SEED_ALLOW_PRODUCTION=true.
+ *
+ * Usage: npm run prisma:seed   (== npx tsx prisma/seed.ts)
+ */
+import { PrismaClient, Prisma } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
+import { createRng, referenceNumber, jitter as jitterPoint } from './seed-data/rng';
+import { point, zoneByKey, STATIONS, TOWNS, type ForestZoneKey } from './seed-data/geo';
+import { CIVILIANS, OFFICIALS, OFFICIAL_REQUESTS } from './seed-data/users';
+import { INCIDENTS } from './seed-data/incidents';
+import { ORIGIN_REPORTS, buildAdditionalReports, type ReportSeed } from './seed-data/reports';
+import { VEHICLES, TEAMS } from './seed-data/fleet';
+import { EQUIPMENT, RETARDANT_PRODUCTS, INFRASTRUCTURE } from './seed-data/equipment';
+import {
+  AGENCY_STATUSES,
+  COMMUNICATION_LOGS,
+  ICS_ASSIGNMENTS,
+  POI_ACTIVATION_SLOT,
+  MUTUAL_AID_SLOT,
+} from './seed-data/coordination';
+import { CAMPAIGN_2026, CHECKLIST_ITEMS } from './seed-data/campaign';
+import { buildFireEventRecord, DEBRIEFING_INCIDENT_INDICES, EQUIPMENT_AUDIT_INCIDENT_INDEX } from './seed-data/fireRecords';
+import { buildAuditLogs, buildNotificationDeliveries } from './seed-data/auditNotifications';
+
 const prisma = new PrismaClient();
+const SEED = 20260601;
+const BCRYPT_COST = 12;
+
+// ── Guard rails ──────────────────────────────────────────────────────────
+if (process.env.NODE_ENV === 'production' && process.env.SEED_ALLOW_PRODUCTION !== 'true') {
+  console.error(
+    '\nRefusing to seed: NODE_ENV=production.\n' +
+      'This wipes and repopulates demo collections. If you really mean to seed the\n' +
+      'Atlas demo database on purpose, re-run with SEED_ALLOW_PRODUCTION=true.\n'
+  );
+  process.exit(1);
+}
+
+function haversineKm(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
+  const R = 6371;
+  const dLat = ((b.lat - a.lat) * Math.PI) / 180;
+  const dLng = ((b.lng - a.lng) * Math.PI) / 180;
+  const s1 = Math.sin(dLat / 2) ** 2 + Math.cos((a.lat * Math.PI) / 180) * Math.cos((b.lat * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(s1), Math.sqrt(1 - s1));
+}
+
+const COMMUNE_BY_ZONE: Record<ForestZoneKey, string> = {
+  cedreGouraud: TOWNS.ifrane.name,
+  michlifenSlopes: TOWNS.ifrane.name,
+  parcCentral: TOWNS.ifrane.name,
+  tizguit: TOWNS.ifrane.name,
+  jbelHebri: TOWNS.ifrane.name,
+  ainLeuhForest: TOWNS.ainLeuh.name,
+  timahditeForest: TOWNS.timahdite.name,
+  tighboula: TOWNS.benSmim.name,
+  ainVittelForest: TOWNS.ifrane.name,
+  ajdirAzrou: TOWNS.azrou.name,
+};
+
+async function wipe() {
+  // Children first, then parents, mirroring the FK-shaped references that
+  // Mongo doesn't enforce for us.
+  await prisma.notificationDelivery.deleteMany({});
+  await prisma.auditLog.deleteMany({});
+  await prisma.debriefing.deleteMany({});
+  await prisma.equipmentAudit.deleteMany({});
+  await prisma.phaseChecklist.deleteMany({});
+  await prisma.campaign.deleteMany({});
+  await prisma.mutualAidRequest.deleteMany({});
+  await prisma.iCSAssignment.deleteMany({});
+  await prisma.pOIActivation.deleteMany({});
+  await prisma.communicationLog.deleteMany({});
+  await prisma.agencyStatus.deleteMany({});
+  await prisma.fireEventRecord.deleteMany({});
+  await prisma.dispatch.deleteMany({});
+  await prisma.vehicle.deleteMany({});
+  await prisma.team.deleteMany({});
+  await prisma.resource.deleteMany({});
+  await prisma.equipment.deleteMany({});
+  await prisma.retardantProduct.deleteMany({});
+  await prisma.infrastructure.deleteMany({});
+  await prisma.report.deleteMany({});
+  await prisma.incident.deleteMany({});
+  await prisma.officialRequest.deleteMany({});
+  await prisma.refreshToken.deleteMany({});
+  await prisma.user.deleteMany({});
+}
 
 async function main() {
-  console.log('Starting seed...');
+  const r = createRng(SEED);
+  const counts: Record<string, number> = {};
 
-  // Hash password for test users
-  const hashedPassword = await bcrypt.hash('password123', 10);
+  console.log('Wiping demo collections...');
+  await wipe();
 
-  // Create test users
-  const civilian = await prisma.user.upsert({
-    where: { cin: 'AB123456' },
-    update: {},
-    create: {
-      cin: 'AB123456',
-      phone: '+212612345678',
-      password: hashedPassword,
-      role: 'CIVILIAN',
-    },
+  // ── Users ────────────────────────────────────────────────────────────
+  console.log('Seeding users...');
+  const civilianIds = CIVILIANS.map(() => r.objectId());
+  const officialIds = OFFICIALS.map(() => r.objectId());
+
+  const civilianData = await Promise.all(
+    CIVILIANS.map(async (c, i) => ({
+      id: civilianIds[i],
+      cin: c.cin,
+      phone: c.phone,
+      password: await bcrypt.hash(c.password, BCRYPT_COST),
+      role: 'CIVILIAN' as const,
+      fullName: c.fullName,
+      email: c.email,
+    }))
+  );
+  const officialData = await Promise.all(
+    OFFICIALS.map(async (o, i) => ({
+      id: officialIds[i],
+      cin: o.cin,
+      phone: o.phone,
+      password: await bcrypt.hash(o.password, BCRYPT_COST),
+      role: 'OFFICIAL' as const,
+      fullName: o.fullName,
+      department: o.department,
+      position: o.position,
+      email: o.email,
+    }))
+  );
+  await prisma.user.createMany({ data: [...civilianData, ...officialData] });
+  counts.User = civilianData.length + officialData.length;
+
+  // Agency the primary official-per-department maps to, for authorship on
+  // coordination records.
+  const officialAgencyOrder: Record<number, string> = { 0: 'DEF', 1: 'PROTECTION_CIVILE', 2: 'GENDARMERIE_ROYALE', 3: 'AUTORITES_LOCALES' };
+  function officialIndexForAgency(agency?: string): number {
+    if (!agency) return 0;
+    const idx = Object.entries(officialAgencyOrder).find(([, a]) => a === agency)?.[0];
+    return idx ? Number(idx) : 0;
+  }
+
+  // ── Official requests (pending approvals) ───────────────────────────
+  console.log('Seeding official requests...');
+  const officialRequestIds = OFFICIAL_REQUESTS.map(() => r.objectId());
+  const civilianIdByCin = new Map(CIVILIANS.map((c, i) => [c.cin, civilianIds[i]]));
+  await prisma.officialRequest.createMany({
+    data: OFFICIAL_REQUESTS.map((req, i) => ({
+      id: officialRequestIds[i],
+      userId: civilianIdByCin.get(req.civilianCin)!,
+      department: req.department,
+      position: req.position,
+      justification: req.justification,
+      status: 'PENDING' as const,
+      createdAt: new Date('2026-09-14T09:00:00Z'),
+    })),
+  });
+  counts.OfficialRequest = OFFICIAL_REQUESTS.length;
+
+  // ── Incidents ────────────────────────────────────────────────────────
+  console.log('Seeding incidents...');
+  const incidentIds = INCIDENTS.map(() => r.objectId());
+  // Report ids are pre-generated (before report content) so incidents can
+  // reference the report that triggered them, and vice versa.
+  const NUM_REPORTS = 40;
+  const reportIds = Array.from({ length: NUM_REPORTS }, () => r.objectId());
+
+  const incidentGeo = INCIDENTS.map((inc) => {
+    const zone = zoneByKey(inc.zoneKey);
+    const [lat, lng] = jitterPoint(r, zone.lat, zone.lng, zone.radius);
+    return { lat, lng, zone };
   });
 
-  const official = await prisma.user.upsert({
-    where: { cin: 'CD789012' },
-    update: {},
-    create: {
-      cin: 'CD789012',
-      phone: '+212687654321',
-      password: hashedPassword,
-      role: 'OFFICIAL',
-      department: 'HCEFLCD',
-      position: 'مدير العمليات الميدانية',
-    },
-  });
+  const incidentCreatedAt = INCIDENTS.map((inc) => new Date(inc.createdAt));
+  const incidentUpdatedAt = INCIDENTS.map((inc, i) => (inc.updatedAt ? new Date(inc.updatedAt) : incidentCreatedAt[i]));
 
-  console.log('Users created');
-
-  // Create fire incidents around Ifrane (GeoJSON location + IncidentStatus)
   await prisma.incident.createMany({
-    data: [
-      {
-        location: { type: 'Point', coordinates: [-5.1056, 33.5275] },
-        cause: 'CAMPFIRE_UNATTENDED',
-        severity: 3,
-        status: 'ETEINT',
-        description: 'حريق نار مخيم بالقرب من المركز',
-      },
-      {
-        location: { type: 'Point', coordinates: [-5.1123, 33.5312] },
-        cause: 'CIGARETTE',
-        severity: 2,
-        status: 'ETEINT',
-        description: 'حريق صغير بسبب سيجارة',
-      },
-      {
-        location: { type: 'Point', coordinates: [-5.0987, 33.5198] },
-        cause: 'AGRICULTURAL_BURNING',
-        severity: 4,
-        status: 'INTERVENTION',
-        description: 'حريق زراعي خارج عن السيطرة',
-      },
-      {
-        location: { type: 'Point', coordinates: [-5.1189, 33.5356] },
-        cause: 'LIGHTNING',
-        severity: 5,
-        status: 'ALERTE',
-        description: 'حريق كبير بسبب صاعقة',
-      },
-      {
-        location: { type: 'Point', coordinates: [-5.1134, 33.5243] },
-        cause: 'ELECTRICAL',
-        severity: 2,
-        status: 'ETEINT',
-      },
-      {
-        location: { type: 'Point', coordinates: [-5.0923, 33.5389] },
-        cause: 'UNKNOWN',
-        severity: 3,
-        status: 'MAITRISE',
-      },
-      {
-        location: { type: 'Point', coordinates: [-5.1212, 33.5156] },
-        cause: 'ARSON',
-        severity: 4,
-        status: 'ALERTE',
-        description: 'حريق متعمد - تحت التحقيق',
-      },
-      {
-        location: { type: 'Point', coordinates: [-5.1045, 33.5423] },
-        cause: 'EQUIPMENT_MALFUNCTION',
-        severity: 2,
-        status: 'ETEINT',
-      },
-      {
-        location: { type: 'Point', coordinates: [-5.0889, 33.5089] },
-        cause: 'CAMPFIRE_UNATTENDED',
-        severity: 3,
-        status: 'VIGILANCE',
-      },
-      {
-        location: { type: 'Point', coordinates: [-5.1167, 33.5467] },
-        cause: 'OTHER',
-        severity: 2,
-        status: 'VIGILANCE',
-      },
-      {
-        location: { type: 'Point', coordinates: [-5.0956, 33.5234] },
-        cause: 'CIGARETTE',
-        severity: 1,
-        status: 'ETEINT',
-      },
-      {
-        location: { type: 'Point', coordinates: [-5.1089, 33.5178] },
-        cause: 'LIGHTNING',
-        severity: 4,
-        status: 'INTERVENTION',
-      },
-    ],
+    data: INCIDENTS.map((inc, i) => ({
+      id: incidentIds[i],
+      location: point(incidentGeo[i].lat, incidentGeo[i].lng),
+      cause: inc.cause,
+      severity: inc.severity,
+      status: inc.status,
+      description: inc.description,
+      reportId: inc.originReportIndex !== undefined ? reportIds[inc.originReportIndex] : undefined,
+      investigationStatus: inc.investigationStatus,
+      investigationNotes: inc.investigationNotes,
+      legalFollowUp: inc.legalFollowUp,
+      createdAt: incidentCreatedAt[i],
+      updatedAt: incidentUpdatedAt[i],
+    })),
+  });
+  counts.Incident = INCIDENTS.length;
+
+  const activeIndices = INCIDENTS.map((inc, i) => (inc.active ? i : -1)).filter((i) => i >= 0);
+  const activeSlots = activeIndices.map((i) => ({
+    incidentIndex: i,
+    id: incidentIds[i],
+    lat: incidentGeo[i].lat,
+    lng: incidentGeo[i].lng,
+    createdAt: incidentCreatedAt[i],
+  }));
+
+  // ── Reports ──────────────────────────────────────────────────────────
+  console.log('Seeding reports...');
+  const additionalReports = buildAdditionalReports(r, NUM_REPORTS - ORIGIN_REPORTS.length);
+  // Link a handful of the extra reports as second/third confirmations of
+  // the live incidents (realistic — multiple citizens report the same fire).
+  const confirmPool = Array.from({ length: additionalReports.length }, (_, i) => i);
+  const confirmIdxs = r.pickN(confirmPool, 5);
+  confirmIdxs.forEach((idx) => {
+    additionalReports[idx].linkedIncidentIndex = r.pick(activeIndices);
+  });
+  const allReportSeeds: ReportSeed[] = [...ORIGIN_REPORTS, ...additionalReports];
+
+  const originIncidentIndexByReportIndex = new Map<number, number>();
+  INCIDENTS.forEach((inc, i) => {
+    if (inc.originReportIndex !== undefined) originIncidentIndexByReportIndex.set(inc.originReportIndex, i);
   });
 
-  console.log('✅ Incidents created');
-
-  // Create reports
+  let refSeq = 1;
   await prisma.report.createMany({
-    data: [
-      {
-        userId: civilian.id,
-        latitude: 33.5275,
-        longitude: -5.1056,
-        description: 'رأيت دخانا كثيفا بالقرب من الغابة',
+    data: allReportSeeds.map((rep, i) => {
+      const createdAt = new Date(rep.createdAt);
+      const originIdx = originIncidentIndexByReportIndex.get(i);
+      const incidentId = originIdx !== undefined ? incidentIds[originIdx] : rep.linkedIncidentIndex !== undefined ? incidentIds[rep.linkedIncidentIndex] : undefined;
+      return {
+        id: reportIds[i],
+        userId: civilianIds[rep.civilianIndex],
+        latitude: rep.lat,
+        longitude: rep.lng,
+        description: rep.description,
         images: [],
-        status: 'PENDING',
-        cause: 'UNKNOWN',
-      },
-      {
-        userId: civilian.id,
-        latitude: 33.5312,
-        longitude: -5.1123,
-        description: 'حريق صغير في الحديقة العامة',
-        images: [],
-        status: 'IN_PROGRESS',
-        cause: 'CIGARETTE',
-      },
-      {
-        userId: civilian.id,
-        latitude: 33.5198,
-        longitude: -5.0987,
-        description: 'حريق كبير بحاجة إلى تدخل سريع',
-        images: [],
-        status: 'IN_PROGRESS',
-        cause: 'AGRICULTURAL_BURNING',
-      },
-      {
-        userId: civilian.id,
-        latitude: 33.5356,
-        longitude: -5.1189,
-        description: 'سمعت انفجارا وبعدها ظهر الحريق',
-        images: [],
-        status: 'COMPLETED',
-        cause: 'ELECTRICAL',
-      },
-      {
-        userId: civilian.id,
-        latitude: 33.5243,
-        longitude: -5.1134,
-        description: 'دخان أسود يتصاعد من المنطقة الصناعية',
-        images: [],
-        status: 'COMPLETED',
-        cause: 'EQUIPMENT_MALFUNCTION',
-      },
-    ],
+        status: rep.status,
+        cause: rep.cause,
+        incidentId,
+        anonymous: rep.anonymous,
+        contactPhone: rep.anonymous ? undefined : rep.contactPhone,
+        characteristics: rep.characteristics as unknown as Prisma.InputJsonValue,
+        referenceNumber: referenceNumber(createdAt, refSeq++),
+        clientSubmissionId: r.uuid(),
+        createdAt,
+        updatedAt: createdAt,
+      };
+    }),
   });
+  counts.Report = allReportSeeds.length;
 
-  console.log('✅ Reports created');
-
-  // Create equipment — Ifrane Province vehicles across departments
-  await prisma.equipment.createMany({
-    data: [
-      { name: 'VPI-01', type: 'VPI', status: 'OPERATIONNEL', quantity: 1, latitude: 33.5228, longitude: -5.1107, department: 'Protection Civile', lastMaintenance: new Date('2025-01-15') },
-      { name: 'VPI-02', type: 'VPI', status: 'OPERATIONNEL', quantity: 1, latitude: 33.4894, longitude: -5.1532, department: 'Protection Civile', lastMaintenance: new Date('2025-02-01') },
-      { name: 'CC-01', type: 'CAMION_CITERNE', status: 'OPERATIONNEL', quantity: 1, latitude: 33.5350, longitude: -5.1200, department: 'DPEFLCD', lastMaintenance: new Date('2024-12-01') },
-      { name: 'CC-02', type: 'CAMION_CITERNE', status: 'EN_MAINTENANCE', quantity: 1, latitude: 33.4400, longitude: -5.2200, department: 'DPEFLCD', lastMaintenance: new Date('2025-01-20') },
-      { name: 'AMB-01', type: 'VEHICULE_LIAISON', status: 'OPERATIONNEL', quantity: 1, latitude: 33.5228, longitude: -5.1107, department: 'MI' },
-      { name: '4x4-01', type: 'VEHICULE_LIAISON', status: 'OPERATIONNEL', quantity: 1, latitude: 33.5600, longitude: -5.0800, department: 'GR', lastMaintenance: new Date('2025-01-10') },
-      { name: '4x4-02', type: 'VEHICULE_LIAISON', status: 'EN_PANNE', quantity: 1, latitude: 33.5000, longitude: -5.1500, department: 'GR' },
-      { name: 'PMP-01', type: 'MOTOPOMPE', status: 'OPERATIONNEL', quantity: 1, latitude: 33.4500, longitude: -5.1000, department: 'DPEFLCD', lastMaintenance: new Date('2024-11-15') },
-      { name: 'خراطيم مياه', type: 'AUTRE', status: 'OPERATIONNEL', quantity: 50, department: 'DPEFLCD' },
-      { name: 'بدلات واقية', type: 'AUTRE', status: 'OPERATIONNEL', quantity: 40, department: 'DPEFLCD' },
-      { name: 'أجهزة لاسلكي', type: 'AUTRE', status: 'OPERATIONNEL', quantity: 20, department: 'DPEFLCD', lastMaintenance: new Date('2024-12-10') },
-      { name: 'طائرات بدون طيار', type: 'AUTRE', status: 'OPERATIONNEL', quantity: 3, department: 'DPEFLCD', lastMaintenance: new Date('2024-12-05') },
-    ],
+  // ── Fleet: vehicles + teams ──────────────────────────────────────────
+  console.log('Seeding vehicles and teams...');
+  const vehicleIds = VEHICLES.map(() => r.objectId());
+  const vehicleAssignedIncidentId: (string | undefined)[] = [];
+  await prisma.vehicle.createMany({
+    data: VEHICLES.map((v, i) => {
+      const station = STATIONS[v.baseStation];
+      const base = point(station.lat, station.lng);
+      let location = base;
+      let assignedTo: string | undefined;
+      if (v.assignedActiveSlot !== undefined && activeSlots[v.assignedActiveSlot]) {
+        const target = activeSlots[v.assignedActiveSlot];
+        assignedTo = target.id;
+        if (v.status === 'ON_SCENE') location = point(target.lat, target.lng);
+        else if (v.status === 'EN_ROUTE') location = point((station.lat + target.lat) / 2, (station.lng + target.lng) / 2);
+      }
+      vehicleAssignedIncidentId.push(assignedTo);
+      return {
+        id: vehicleIds[i],
+        callSign: v.callSign,
+        type: v.type,
+        status: v.status,
+        capabilities: v.capabilities,
+        baseLocation: base,
+        location,
+        assignedTo,
+        capacity: v.capacity,
+      };
+    }),
   });
+  counts.Vehicle = VEHICLES.length;
 
-  console.log('✅ Equipment created');
-
-  // Create retardant products — Ifrane Province storage locations
-  await prisma.retardantProduct.createMany({
-    data: [
-      { name: 'Phos-Chek LC95A', type: 'RETARDANT', quantity: 2000, unit: 'L', storageLocation: 'Dépôt DPEFLCD Ifrane', storageLat: 33.5350, storageLng: -5.1200, acquisitionDate: new Date('2024-06-01') },
-      { name: 'Mousse AFFF 3%', type: 'MOUSSE', quantity: 800, unit: 'L', storageLocation: 'Caserne PC Ifrane', storageLat: 33.5228, storageLng: -5.1107, acquisitionDate: new Date('2024-03-15') },
-      { name: 'Gel FireIce', type: 'GEL', quantity: 350, unit: 'L', storageLocation: 'Dépôt Azrou', storageLat: 33.4894, storageLng: -5.1532, acquisitionDate: new Date('2024-09-01') },
-      { name: 'Retardant Class A', type: 'RETARDANT', quantity: 80, unit: 'L', storageLocation: 'Poste Ain Leuh', storageLat: 33.4400, storageLng: -5.2200, acquisitionDate: new Date('2023-12-01'), expiryDate: new Date('2025-12-01') },
-    ],
+  const teamIds = TEAMS.map(() => r.objectId());
+  const teamAssignedIncidentId: (string | undefined)[] = [];
+  await prisma.team.createMany({
+    data: TEAMS.map((t, i) => {
+      const station = STATIONS[t.baseStation];
+      let location = point(station.lat, station.lng);
+      let assignedTo: string | undefined;
+      if (t.assignedActiveSlot !== undefined && activeSlots[t.assignedActiveSlot]) {
+        const target = activeSlots[t.assignedActiveSlot];
+        assignedTo = target.id;
+        if (t.status === 'ON_SCENE') location = point(target.lat, target.lng);
+        else if (t.status === 'EN_ROUTE') location = point((station.lat + target.lat) / 2, (station.lng + target.lng) / 2);
+      }
+      teamAssignedIncidentId.push(assignedTo);
+      return {
+        id: teamIds[i],
+        name: t.name,
+        type: t.type,
+        status: t.status,
+        location,
+        assignedTo,
+        capacity: t.capacity,
+        equipment: t.equipment,
+      };
+    }),
   });
+  counts.Team = TEAMS.length;
 
-  console.log('✅ Retardant products created');
-
-  // Create infrastructure — real Ifrane Province locations
-  await prisma.infrastructure.createMany({
-    data: [
-      // Water points
-      { name: "Point d'eau Dayet Aoua", type: 'WATER_POINT', status: 'OPERATIONNEL', latitude: 33.4753, longitude: -5.0639, capacity: 50000, capacityUnit: 'L' },
-      { name: "Point d'eau Tizi n'Tretten", type: 'WATER_POINT', status: 'OPERATIONNEL', latitude: 33.5100, longitude: -5.0900, capacity: 25000, capacityUnit: 'L' },
-      // Fire breaks
-      { name: 'Tranchée Pare-Feu Cèdre Gouraud', type: 'FIREBREAK', status: 'OPERATIONNEL', latitude: 33.4100, longitude: -5.1600, capacity: 12, capacityUnit: 'km' },
-      { name: 'Tranchée Pare-Feu Jbel Hebri', type: 'FIREBREAK', status: 'DEGRADE', latitude: 33.5800, longitude: -5.0500, capacity: 8, capacityUnit: 'km' },
-      // Watchtowers
-      { name: 'Poste Vigie Jbel Hebri', type: 'WATCHTOWER', status: 'OPERATIONNEL', latitude: 33.5850, longitude: -5.0450 },
-      { name: 'Poste Vigie Tighboula', type: 'WATCHTOWER', status: 'OPERATIONNEL', latitude: 33.4300, longitude: -5.2000 },
-      // Forest roads
-      { name: 'Piste Forestière Ain Leuh–Azrou', type: 'FOREST_ROAD', status: 'OPERATIONNEL', latitude: 33.4650, longitude: -5.1800, capacity: 22, capacityUnit: 'km' },
-      // Helipad
-      { name: 'Héliport Ifrane', type: 'HELIPAD', status: 'OPERATIONNEL', latitude: 33.5130, longitude: -5.1080 },
-      // Stations
-      { name: 'Caserne Protection Civile Ifrane', type: 'STATION', status: 'OPERATIONNEL', latitude: 33.5228, longitude: -5.1107 },
-      { name: 'CEDEFO Azrou', type: 'STATION', status: 'OPERATIONNEL', latitude: 33.4894, longitude: -5.1532 },
-    ],
-  });
-
-  console.log('✅ Infrastructure created');
-
-  // Create resources
+  // Minimal legacy `Resource` rows so /api/geo/resources keeps working.
   await prisma.resource.createMany({
     data: [
-      {
-        type: 'TRUCK',
-        name: 'شاحنة إطفاء 1',
-        location: { type: 'Point', coordinates: [-5.1056, 33.5275] },
-        status: 'Disponible',
-      },
-      {
-        type: 'TRUCK',
-        name: 'شاحنة إطفاء 2',
-        location: { type: 'Point', coordinates: [-5.1123, 33.5312] },
-        status: 'En route',
-        assignedTo: 'Incident en cours',
-      },
-      {
-        type: 'TRUCK',
-        name: 'شاحنة إطفاء 3',
-        location: { type: 'Point', coordinates: [-5.0987, 33.5198] },
-        status: 'Sur place',
-        assignedTo: 'Zone agricole',
-      },
-      {
-        type: 'AIRCRAFT',
-        name: 'Avion bombardier 1',
-        location: { type: 'Point', coordinates: [-5.1200, 33.5400] },
-        status: 'Disponible',
-      },
-      {
-        type: 'AIRCRAFT',
-        name: 'Hélicoptère 1',
-        location: { type: 'Point', coordinates: [-5.0900, 33.5300] },
-        status: 'En mission',
-        assignedTo: 'Zone forestière nord',
-      },
-      {
-        type: 'PERSONNEL',
-        name: 'Équipe pompiers A',
-        location: { type: 'Point', coordinates: [-5.1056, 33.5275] },
-        status: 'Disponible',
-      },
-      {
-        type: 'PERSONNEL',
-        name: 'Équipe pompiers B',
-        location: { type: 'Point', coordinates: [-5.0987, 33.5198] },
-        status: 'En intervention',
-        assignedTo: 'Incident agricole',
-      },
-      {
-        type: 'EQUIPMENT',
-        name: 'Groupe électrogène',
-        location: { type: 'Point', coordinates: [-5.1056, 33.5275] },
-        status: 'Disponible',
-      },
+      { type: 'TRUCK', name: 'FT-IFR-01', location: point(STATIONS.pcIfrane.lat, STATIONS.pcIfrane.lng), status: 'Disponible' },
+      { type: 'TRUCK', name: 'FT-AZR-02', location: point(activeSlots[1].lat, activeSlots[1].lng), status: 'Sur place', assignedTo: 'Cèdre Gouraud' },
+      { type: 'AIRCRAFT', name: 'HELI-DEF-01', location: point(STATIONS.helipadIfrane.lat, STATIONS.helipadIfrane.lng), status: 'En route', assignedTo: 'Cèdre Gouraud' },
+      { type: 'PERSONNEL', name: 'Équipe Sol Ifrane Bravo', location: point(activeSlots[0].lat, activeSlots[0].lng), status: 'Sur place', assignedTo: "Parc National d'Ifrane" },
+      { type: 'PERSONNEL', name: 'Équipe Sol Azrou Alpha', location: point(STATIONS.pcAzrou.lat, STATIONS.pcAzrou.lng), status: 'Disponible' },
+      { type: 'EQUIPMENT', name: 'Groupe électrogène', location: point(STATIONS.pcIfrane.lat, STATIONS.pcIfrane.lng), status: 'Disponible' },
     ],
   });
+  counts.Resource = 6;
 
-  console.log('✅ Resources created');
-
-  // Create risk basins (polygon geometries around Ifrane)
-  await prisma.riskBasin.createMany({
-    data: [
-      {
-        name: 'Zone forestière nord',
-        geometry: {
-          type: 'Polygon',
-          coordinates: [[
-            [-5.1300, 33.5450],
-            [-5.1100, 33.5500],
-            [-5.0900, 33.5450],
-            [-5.0900, 33.5350],
-            [-5.1100, 33.5300],
-            [-5.1300, 33.5350],
-            [-5.1300, 33.5450],
-          ]],
-        },
-        riskLevel: 4,
-        description: 'Zone boisée dense au nord de Ifrane',
+  // ── Dispatch records for the active incidents ───────────────────────
+  console.log('Seeding dispatch records...');
+  const dispatchData: Prisma.DispatchCreateManyInput[] = [];
+  VEHICLES.forEach((v, i) => {
+    if (v.assignedActiveSlot === undefined) return;
+    const slot = activeSlots[v.assignedActiveSlot];
+    if (!slot) return;
+    const station = STATIONS[v.baseStation];
+    const distanceKm = Math.round(haversineKm(station, slot) * 10) / 10;
+    const durationMin = Math.round((distanceKm / 35) * 60 + r.int(2, 8));
+    const assignedAt = new Date(slot.createdAt.getTime() + r.int(2, 15) * 60_000);
+    const eta = new Date(assignedAt.getTime() + durationMin * 60_000);
+    const status: 'ASSIGNED' | 'EN_ROUTE' | 'ARRIVED' = v.status === 'ON_SCENE' ? 'ARRIVED' : v.status === 'EN_ROUTE' ? 'EN_ROUTE' : 'ASSIGNED';
+    dispatchData.push({
+      id: r.objectId(),
+      incidentId: slot.id,
+      vehicleId: vehicleIds[i],
+      status,
+      route: {
+        type: 'LineString',
+        coordinates: [[station.lng, station.lat], [slot.lng, slot.lat]],
       },
-      {
-        name: 'Zone agricole sud',
-        geometry: {
-          type: 'Polygon',
-          coordinates: [[
-            [-5.1200, 33.5250],
-            [-5.1000, 33.5250],
-            [-5.0800, 33.5200],
-            [-5.0800, 33.5100],
-            [-5.1000, 33.5100],
-            [-5.1200, 33.5150],
-            [-5.1200, 33.5250],
-          ]],
-        },
-        riskLevel: 2,
-        description: 'Terrains agricoles au sud',
-      },
-      {
-        name: 'Périphérie urbaine',
-        geometry: {
-          type: 'Polygon',
-          coordinates: [[
-            [-5.1150, 33.5350],
-            [-5.0950, 33.5350],
-            [-5.0950, 33.5250],
-            [-5.1150, 33.5250],
-            [-5.1150, 33.5350],
-          ]],
-        },
-        riskLevel: 1,
-        description: 'Zone urbaine périphérique',
-      },
-    ],
-  });
-
-  console.log('✅ Risk basins created');
-
-  // Create truck deployments
-  await prisma.truckDeployment.createMany({
-    data: [
-      {
-        truckId: 'TRUCK-001',
-        truckName: 'شاحنة إطفاء 1',
-        latitude: 33.5275,
-        longitude: -5.1056,
-        status: 'Disponible',
-      },
-      {
-        truckId: 'TRUCK-002',
-        truckName: 'شاحنة إطفاء 2',
-        latitude: 33.5312,
-        longitude: -5.1123,
-        status: 'En route',
-        assignedTo: 'Incident en cours',
-      },
-      {
-        truckId: 'TRUCK-003',
-        truckName: 'شاحنة إطفاء 3',
-        latitude: 33.5198,
-        longitude: -5.0987,
-        status: 'Sur place',
-        assignedTo: 'Zone agricole',
-      },
-      {
-        truckId: 'TRUCK-004',
-        truckName: 'سيارة تدخل سريع 1',
-        latitude: 33.5356,
-        longitude: -5.1189,
-        status: 'Disponible',
-      },
-      {
-        truckId: 'TRUCK-005',
-        truckName: 'سيارة تدخل سريع 2',
-        latitude: 33.5243,
-        longitude: -5.1134,
-        status: 'En route',
-        assignedTo: 'منطقة صناعية',
-      },
-    ],
-  });
-
-  console.log('✅ Truck deployments created');
-
-  // Create dispatch teams around Ifrane
-  await prisma.team.createMany({
-    data: [
-      {
-        name: 'Station 1 Alpha',
-        type: 'GROUND_CREW',
-        status: 'AVAILABLE',
-        location: { type: 'Point', coordinates: [-5.1056, 33.5275] },
-        capacity: 5,
-        equipment: ['truck', 'hoses', 'axes'],
-      },
-      {
-        name: 'Station 2 Bravo',
-        type: 'GROUND_CREW',
-        status: 'AVAILABLE',
-        location: { type: 'Point', coordinates: [-5.1189, 33.5356] },
-        capacity: 4,
-        equipment: ['truck', 'hoses'],
-      },
-      {
-        name: 'Aerial Unit Charlie',
-        type: 'AERIAL_SUPPORT',
-        status: 'AVAILABLE',
-        location: { type: 'Point', coordinates: [-5.0923, 33.5389] },
-        capacity: 3,
-        equipment: ['helicopter', 'bambi_bucket'],
-      },
-      {
-        name: 'Command Post Delta',
-        type: 'COMMAND_UNIT',
-        status: 'AVAILABLE',
-        location: { type: 'Point', coordinates: [-5.1100, 33.5300] },
-        capacity: 6,
-        equipment: ['command_vehicle', 'comms'],
-      },
-    ],
-  });
-
-  console.log('✅ Dispatch teams created');
-
-  // Create dispatch vehicles around Ifrane
-  await prisma.vehicle.deleteMany({});
-  await prisma.vehicle.createMany({
-    data: [
-      {
-        callSign: 'FT-001',
-        type: 'FIRE_TRUCK',
-        status: 'AVAILABLE',
-        capabilities: ['water_pump', 'ladder', 'foam'],
-        baseLocation: { type: 'Point', coordinates: [-5.1056, 33.5275] },
-        location: { type: 'Point', coordinates: [-5.1056, 33.5275] },
-        capacity: 5000,
-      },
-      {
-        callSign: 'FT-002',
-        type: 'FIRE_TRUCK',
-        status: 'AVAILABLE',
-        capabilities: ['water_pump', 'hose_reel'],
-        baseLocation: { type: 'Point', coordinates: [-5.1189, 33.5356] },
-        location: { type: 'Point', coordinates: [-5.1189, 33.5356] },
-        capacity: 3000,
-      },
-      {
-        callSign: 'WT-001',
-        type: 'WATER_TANKER',
-        status: 'AVAILABLE',
-        capabilities: ['water_tank', 'pump'],
-        baseLocation: { type: 'Point', coordinates: [-5.0923, 33.5389] },
-        location: { type: 'Point', coordinates: [-5.0923, 33.5389] },
-        capacity: 10000,
-      },
-      {
-        callSign: 'CMD-001',
-        type: 'COMMAND',
-        status: 'AVAILABLE',
-        capabilities: ['comms', 'gps', 'mapping'],
-        baseLocation: { type: 'Point', coordinates: [-5.1100, 33.5300] },
-        location: { type: 'Point', coordinates: [-5.1100, 33.5300] },
-        capacity: 0,
-      },
-    ],
-  });
-
-  console.log('✅ Dispatch vehicles created');
-
-  // ── Fetch recently-seeded incidents for linking ──────────────────────────
-  const recentIncidents = await prisma.incident.findMany({
-    orderBy: { createdAt: 'desc' },
-    take: 3,
-  });
-  const incDraft    = recentIncidents[0]; // newest (ongoing)
-  const incVerified = recentIncidents[1]; // recent 2026
-  const incLocked   = recentIncidents[2]; // historic 2025
-
-  if (!incDraft || !incVerified || !incLocked) {
-    console.warn('⚠️  Not enough incidents to seed FireEventRecords — skipping enrichment');
-  } else {
-
-    // ── 3a. FireEventRecord (3 records) ────────────────────────────────────
-    await prisma.fireEventRecord.createMany({
-      data: [
-        {
-          incidentId: incLocked.id,
-          alertSource: 'FIRMS_SATELLITE',
-          ignitionAt: new Date('2025-07-14T11:30:00Z'),
-          alertReceivedAt: new Date('2025-07-14T12:05:00Z'),
-          verifiedAt: new Date('2025-07-14T12:20:00Z'),
-          firstResponseAt: new Date('2025-07-14T12:45:00Z'),
-          onSceneAt: new Date('2025-07-14T13:10:00Z'),
-          containedAt: new Date('2025-07-14T18:30:00Z'),
-          extinguishedAt: new Date('2025-07-15T08:00:00Z'),
-          locationDetail: {
-            commune: 'Ifrane',
-            province: 'Ifrane',
-            region: 'Fès-Meknès',
-            forestName: 'Forêt de Cèdres du Moyen Atlas',
-            altitude: 1680,
-            slope: 15,
-            aspect: 'NW',
-            coordinates: [-5.1056, 33.5275],
-          },
-          causeDetail: {
-            probable: 'CAMPFIRE_UNATTENDED',
-            confirmed: true,
-            investigationRef: 'INV-2025-071',
-            notes: 'Traces de bivouac retrouvées sur site',
-          },
-          damageDetail: {
-            areaBurned: 12.4,
-            arboricultural: 8.2,
-            maquis: 4.2,
-            reforestation: 0,
-            privatePropertyDamage: false,
-            casualties: 0,
-          },
-          responseDetail: {
-            commanderName: 'Khalid Benali',
-            commanderRank: 'Capitaine',
-            teamsDeployed: ['Station 1 Alpha', 'Station 2 Bravo'],
-            vehiclesDeployed: ['VPI-01', 'CC-01'],
-            waterUsed: 24000,
-            retardantUsed: 800,
-            aircraftSupport: false,
-          },
-          weatherAtTime: {
-            temperature: 34,
-            humidity: 18,
-            windSpeed: 42,
-            windDirection: 'NE',
-            fwi: 38,
-          },
-          burnPerimeter: {
-            type: 'Polygon',
-            coordinates: [[
-              [-5.1100, 33.5300],
-              [-5.1000, 33.5310],
-              [-5.0960, 33.5280],
-              [-5.0950, 33.5240],
-              [-5.1010, 33.5220],
-              [-5.1090, 33.5230],
-              [-5.1100, 33.5300],
-            ]],
-          },
-          burnAreaHa: 12.4,
-          burnCentroid: [-5.1025, 33.5265],
-          burnBoundingBox: [-5.1100, 33.5220, -5.0950, 33.5310],
-          recordStatus: 'LOCKED',
-          lockedSections: ['location', 'cause', 'damage', 'response', 'weather'],
-          auditTrail: [
-            { action: 'CREATED',  actor: 'CD789012', at: '2025-07-14T12:05:00Z' },
-            { action: 'VERIFIED', actor: 'CD789012', at: '2025-07-14T12:20:00Z' },
-            { action: 'LOCKED',   actor: 'CD789012', at: '2025-07-16T09:00:00Z' },
-          ],
-        },
-        {
-          incidentId: incVerified.id,
-          alertSource: 'CITIZEN_REPORT',
-          ignitionAt: new Date('2026-02-03T14:20:00Z'),
-          alertReceivedAt: new Date('2026-02-03T14:35:00Z'),
-          verifiedAt: new Date('2026-02-03T15:00:00Z'),
-          firstResponseAt: new Date('2026-02-03T15:30:00Z'),
-          onSceneAt: new Date('2026-02-03T16:00:00Z'),
-          containedAt: new Date('2026-02-03T20:45:00Z'),
-          locationDetail: {
-            commune: 'Azrou',
-            province: 'Ifrane',
-            region: 'Fès-Meknès',
-            forestName: 'Forêt Ajdir',
-            altitude: 1520,
-            slope: 20,
-            aspect: 'S',
-            coordinates: [-5.1123, 33.5312],
-          },
-          causeDetail: {
-            probable: 'AGRICULTURAL_BURNING',
-            confirmed: false,
-            investigationRef: 'INV-2026-012',
-            notes: "Enquête en cours — champs adjacents brûlés",
-          },
-          damageDetail: {
-            areaBurned: 3.7,
-            arboricultural: 2.1,
-            maquis: 1.6,
-            reforestation: 0,
-            privatePropertyDamage: false,
-            casualties: 0,
-          },
-          responseDetail: {
-            commanderName: 'Youssef Idrissi',
-            commanderRank: 'Lieutenant',
-            teamsDeployed: ['Station 1 Alpha'],
-            vehiclesDeployed: ['VPI-02'],
-            waterUsed: 6000,
-            retardantUsed: 0,
-            aircraftSupport: false,
-          },
-          weatherAtTime: {
-            temperature: 22,
-            humidity: 25,
-            windSpeed: 18,
-            windDirection: 'SW',
-            fwi: 12,
-          },
-          recordStatus: 'VERIFIED',
-          lockedSections: ['location', 'response'],
-          auditTrail: [
-            { action: 'CREATED',  actor: 'CD789012', at: '2026-02-03T14:35:00Z' },
-            { action: 'VERIFIED', actor: 'CD789012', at: '2026-02-04T09:00:00Z' },
-          ],
-        },
-        {
-          incidentId: incDraft.id,
-          alertSource: 'PATROL',
-          ignitionAt: new Date('2026-03-15T10:10:00Z'),
-          alertReceivedAt: new Date('2026-03-15T10:25:00Z'),
-          recordStatus: 'DRAFT',
-          lockedSections: [],
-          auditTrail: [
-            { action: 'CREATED', actor: 'CD789012', at: '2026-03-15T10:25:00Z' },
-          ],
-        },
-      ],
+      distance: distanceKm,
+      duration: durationMin,
+      eta,
+      assignedBy: officialIds[0],
+      assignedAt,
+      arrivedAt: status === 'ARRIVED' ? eta : undefined,
     });
-
-    console.log('✅ FireEventRecords created');
-
-    // Fetch the records we just created (newest 3)
-    const recentFireRecords = await prisma.fireEventRecord.findMany({
-      orderBy: { createdAt: 'desc' },
-      take: 3,
-    });
-    const frDraft    = recentFireRecords[0];
-    const frVerified = recentFireRecords[1];
-    const frLocked   = recentFireRecords[2];
-
-    // ── 3b. Campaign ───────────────────────────────────────────────────────
-    await prisma.campaign.upsert({
-      where: { year: 2026 },
-      update: {},
-      create: {
-        year: 2026,
-        label: 'Campagne Anti-Incendies 2026',
-        status: 'ACTIVE',
-        activePhase: 'ALERTE',
-        seasonStart: new Date('2026-05-01'),
-        seasonEnd: new Date('2026-10-31'),
-        notes: 'Saison à risque élevé — conditions météorologiques sèches persistantes depuis janvier',
-        createdBy: 'CD789012',
+  });
+  TEAMS.forEach((t, i) => {
+    if (t.assignedActiveSlot === undefined) return;
+    const slot = activeSlots[t.assignedActiveSlot];
+    if (!slot) return;
+    const station = STATIONS[t.baseStation];
+    const distanceKm = Math.round(haversineKm(station, slot) * 10) / 10;
+    const durationMin = Math.round((distanceKm / 12) * 60 + r.int(3, 10)); // ground crews move slower
+    const assignedAt = new Date(slot.createdAt.getTime() + r.int(2, 15) * 60_000);
+    const eta = new Date(assignedAt.getTime() + durationMin * 60_000);
+    const status: 'ASSIGNED' | 'EN_ROUTE' | 'ARRIVED' = t.status === 'ON_SCENE' ? 'ARRIVED' : t.status === 'EN_ROUTE' ? 'EN_ROUTE' : 'ASSIGNED';
+    dispatchData.push({
+      id: r.objectId(),
+      incidentId: slot.id,
+      teamId: teamIds[i],
+      status,
+      route: {
+        type: 'LineString',
+        coordinates: [[station.lng, station.lat], [slot.lng, slot.lat]],
       },
+      distance: distanceKm,
+      duration: durationMin,
+      eta,
+      assignedBy: officialIds[0],
+      assignedAt,
+      arrivedAt: status === 'ARRIVED' ? eta : undefined,
     });
+  });
+  await prisma.dispatch.createMany({ data: dispatchData });
+  counts.Dispatch = dispatchData.length;
 
-    console.log('✅ Campaign created');
+  // ── Equipment, retardant, infrastructure ─────────────────────────────
+  console.log('Seeding equipment, retardant stock and infrastructure...');
+  await prisma.equipment.createMany({
+    data: EQUIPMENT.map((e) => ({
+      id: r.objectId(),
+      name: e.name,
+      type: e.type,
+      status: e.status,
+      quantity: e.quantity,
+      department: e.department,
+      latitude: e.lat,
+      longitude: e.lng,
+      lastMaintenance: e.lastMaintenance ? new Date(e.lastMaintenance) : undefined,
+      notes: e.notes,
+    })),
+  });
+  counts.Equipment = EQUIPMENT.length;
 
-    // ── 3c. Debriefing (2 records) ─────────────────────────────────────────
-    if (frLocked && frVerified) {
-      await prisma.debriefing.createMany({
-        data: [
-          {
-            fireRecordId: frLocked.id,
-            date: new Date('2025-07-18T09:00:00Z'),
-            superficieIncendiee: 12.4,
-            heureDeclenchement: '11:30',
-            typeEssence: "Cèdre de l'Atlas",
-            alertePrecoce: true,
-            alertePrecoceDetail: 'Détection FIRMS 35 minutes après le démarrage estimé',
-            premiereIntervention: 'CEDEFO',
-            premiereInterventionDetail: 'VPI-01 arrivé en 40 minutes',
-            vegetationSecondaire: 'Chêne vert, bruyère',
-            topographie: ['FORTE_PENTE', 'VALLON'],
-            pistesForestieres: true,
-            pistesAmenagees: true,
-            trancheesPF: true,
-            trancheesPFAmenagees: false,
-            pointsEau: true,
-            pointsEauAccessible: true,
-            pointsEauRempli: true,
-            pointsEauUtilise: true,
-            fonctionnaliteVPI: true,
-            fonctionnaliteVPIDetail: 'VPI-01 et VPI-02 opérationnels tout au long de l\'intervention',
-            incidentLutte: 'Aucun incident notable',
-            quAvaitEtePlanifie: 'Intervention rapide avec 2 équipes sol et coordination aérienne en réserve',
-            quEstCeQuiEstArrive: 'Vent NE imprévu a accéléré la propagation vers NW — 3ème équipe demandée en renfort',
-            pourquoi: 'Prévision météo METEONORM non transmise en temps réel au COS',
-            prochaineFois: 'Intégrer flux météo temps réel dans la radio COS et alertes automatiques',
-            observationsParticulieres: 'Coopération DPEFLCD/Protection Civile exemplaire',
-            animateurNom: 'Benali',
-            animateurQualite: 'Chef de secteur DPEFLCD',
-            participants: [
-              { nom: 'Benali',   prenom: 'Khalid',  poste: 'COS' },
-              { nom: 'Idrissi',  prenom: 'Youssef', poste: "Chef d'équipe PC" },
-              { nom: 'Marzouki', prenom: 'Fatima',  poste: 'Agent DPEFLCD' },
-            ],
-            status: 'completed',
-          },
-          {
-            fireRecordId: frVerified.id,
-            date: new Date('2026-02-10T10:00:00Z'),
-            superficieIncendiee: 3.7,
-            typeEssence: 'Chêne vert',
-            topographie: ['PENTE_MODEREE'],
-            pistesForestieres: true,
-            pistesAmenagees: false,
-            pointsEau: true,
-            pointsEauAccessible: true,
-            pointsEauRempli: false,
-            pointsEauUtilise: true,
-            participants: [],
-            status: 'draft',
-          },
+  await prisma.retardantProduct.createMany({
+    data: RETARDANT_PRODUCTS.map((p) => ({
+      id: r.objectId(),
+      name: p.name,
+      type: p.type,
+      quantity: p.quantity,
+      unit: p.unit,
+      storageLocation: p.storageLocation,
+      storageLat: p.lat,
+      storageLng: p.lng,
+      acquisitionDate: new Date(p.acquisitionDate),
+      expiryDate: p.expiryDate ? new Date(p.expiryDate) : undefined,
+      notes: p.notes,
+    })),
+  });
+  counts.RetardantProduct = RETARDANT_PRODUCTS.length;
+
+  await prisma.infrastructure.createMany({
+    data: INFRASTRUCTURE.map((i) => ({
+      id: r.objectId(),
+      name: i.name,
+      type: i.type,
+      status: i.status,
+      latitude: i.lat,
+      longitude: i.lng,
+      capacity: i.capacity,
+      capacityUnit: i.capacityUnit,
+      lastInspectionDate: i.lastInspectionDate ? new Date(i.lastInspectionDate) : undefined,
+      notes: i.notes,
+    })),
+  });
+  counts.Infrastructure = INFRASTRUCTURE.length;
+
+  // ── Coordination: agencies, comms, ICS, POI, mutual aid ──────────────
+  console.log('Seeding coordination records...');
+  await prisma.agencyStatus.createMany({
+    data: AGENCY_STATUSES.map((a) => ({
+      id: r.objectId(),
+      agency: a.agency,
+      status: a.status,
+      unitsAvailable: a.unitsAvailable,
+      unitsDeployed: a.unitsDeployed,
+      aviationStatus: a.aviationStatus,
+      contactName: a.contactName,
+      contactPhone: a.contactPhone,
+      contactEmail: a.contactEmail,
+      notes: a.notes,
+      lastHeartbeat: new Date('2026-09-24T10:55:00Z'),
+      updatedBy: OFFICIALS[0].cin,
+    })),
+  });
+  counts.AgencyStatus = AGENCY_STATUSES.length;
+
+  await prisma.communicationLog.createMany({
+    data: COMMUNICATION_LOGS.map((log) => {
+      const slot = activeSlots[log.activeSlot];
+      const authorIdx = officialIndexForAgency(log.fromAgency);
+      return {
+        id: r.objectId(),
+        incidentId: slot.id,
+        category: log.category,
+        fromAgency: log.fromAgency,
+        toAgency: log.toAgency,
+        message: log.message,
+        authorId: officialIds[authorIdx],
+        authorCin: OFFICIALS[authorIdx].cin,
+        createdAt: new Date(slot.createdAt.getTime() + log.minutesOffset * 60_000),
+      };
+    }),
+  });
+  counts.CommunicationLog = COMMUNICATION_LOGS.length;
+
+  await prisma.iCSAssignment.createMany({
+    data: ICS_ASSIGNMENTS.map((ics, i) => {
+      const slot = activeSlots[ics.activeSlot];
+      return {
+        id: r.objectId(),
+        incidentId: slot.id,
+        role: ics.role,
+        assigneeName: ics.assigneeName,
+        assigneeAgency: ics.assigneeAgency,
+        assigneePhone: ics.assigneePhone,
+        assignedBy: OFFICIALS[0].cin,
+        assignedAt: new Date(slot.createdAt.getTime() + (15 + i * 5) * 60_000),
+        notes: ics.notes,
+      };
+    }),
+  });
+  counts.ICSAssignment = ICS_ASSIGNMENTS.length;
+
+  const poiSlot = activeSlots[POI_ACTIVATION_SLOT];
+  await prisma.pOIActivation.create({
+    data: {
+      incidentId: poiSlot.id,
+      level: 'POI_2',
+      activatedBy: OFFICIALS[0].cin,
+      activatedAt: new Date(poiSlot.createdAt.getTime() + 90 * 60_000),
+      notes: 'Escalade suite à la confirmation de propagation vers le versant nord (drone DPEFLCD).',
+    },
+  });
+  counts.POIActivation = 1;
+
+  const mutualAidSlot = activeSlots[MUTUAL_AID_SLOT];
+  await prisma.mutualAidRequest.create({
+    data: {
+      incidentId: mutualAidSlot.id,
+      requestingProvince: 'Ifrane',
+      targetProvince: 'Meknès',
+      resourceType: 'Camions-citernes (2) et équipe sol supplémentaire',
+      justification: "Moyens locaux engagés à saturation sur l'incendie de la cédraie de Gouraud ; renfort nécessaire pour tenir la ligne nord.",
+      status: 'APPROVED',
+      respondedAt: new Date(mutualAidSlot.createdAt.getTime() + 130 * 60_000),
+      respondedBy: OFFICIALS[0].cin,
+      responseNotes: 'Renfort approuvé par la province de Meknès — délai de route estimé à 1h20.',
+      requestedBy: OFFICIALS[3].cin,
+      createdAt: new Date(mutualAidSlot.createdAt.getTime() + 105 * 60_000),
+    },
+  });
+  counts.MutualAidRequest = 1;
+
+  // ── Campaign 2026 ─────────────────────────────────────────────────────
+  console.log('Seeding campaign 2026...');
+  const campaign = await prisma.campaign.create({
+    data: {
+      year: CAMPAIGN_2026.year,
+      label: CAMPAIGN_2026.label,
+      status: CAMPAIGN_2026.status,
+      activePhase: CAMPAIGN_2026.activePhase,
+      seasonStart: new Date(CAMPAIGN_2026.seasonStart),
+      seasonEnd: new Date(CAMPAIGN_2026.seasonEnd),
+      notes: CAMPAIGN_2026.notes,
+      createdBy: OFFICIALS[0].cin,
+    },
+  });
+  counts.Campaign = 1;
+
+  await prisma.phaseChecklist.createMany({
+    data: CHECKLIST_ITEMS.map((item) => ({
+      id: r.objectId(),
+      campaignId: campaign.id,
+      phase: item.phase,
+      task: item.task,
+      responsibleUnit: item.responsibleUnit,
+      deadline: new Date(item.deadline),
+      status: item.status,
+      notes: item.notes,
+      completedBy: item.completedBy,
+      completedAt: item.completedAt ? new Date(item.completedAt) : undefined,
+      sortOrder: item.sortOrder,
+    })),
+  });
+  counts.PhaseChecklist = CHECKLIST_ITEMS.length;
+
+  // ── Fire event records for extinguished/closed incidents ────────────
+  console.log('Seeding fire event records...');
+  const resolvedIndices = INCIDENTS.map((inc, i) => ({ inc, i })).filter(({ inc }) => inc.status === 'ETEINT' || inc.status === 'MAITRISE' || inc.status === 'COMPLETED').map(({ i }) => i);
+
+  const fireRecordIdByIncidentIndex = new Map<number, string>();
+  const fireRecordCreateData: Prisma.FireEventRecordCreateManyInput[] = [];
+  const fireRecordBurnAreaByIndex = new Map<number, number>();
+
+  for (const i of resolvedIndices) {
+    const inc = INCIDENTS[i];
+    const geo = incidentGeo[i];
+    const zone = geo.zone;
+    const built = buildFireEventRecord(r, {
+      incidentIndex: i,
+      incidentId: incidentIds[i],
+      actorCin: OFFICIALS[0].cin,
+      cause: inc.cause,
+      severity: inc.severity,
+      status: inc.status,
+      createdAt: incidentCreatedAt[i],
+      updatedAt: incidentUpdatedAt[i],
+      lat: geo.lat,
+      lng: geo.lng,
+      commune: COMMUNE_BY_ZONE[inc.zoneKey],
+      forestName: zone.name,
+      legalFollowUp: inc.legalFollowUp,
+    });
+    const id = r.objectId();
+    fireRecordIdByIncidentIndex.set(i, id);
+    fireRecordBurnAreaByIndex.set(i, built.burnAreaHa);
+    fireRecordCreateData.push({ id, ...(built.data as Prisma.FireEventRecordCreateManyInput) });
+  }
+  await prisma.fireEventRecord.createMany({ data: fireRecordCreateData });
+  counts.FireEventRecord = fireRecordCreateData.length;
+
+  // ── Debriefings ───────────────────────────────────────────────────────
+  console.log('Seeding debriefings...');
+  const debriefingSpecs: Array<{ idx: number; data: Prisma.DebriefingCreateManyInput }> = [
+    {
+      idx: DEBRIEFING_INCIDENT_INDICES[0], // major Parc National lightning fire
+      data: {
+        id: r.objectId(),
+        fireRecordId: fireRecordIdByIncidentIndex.get(DEBRIEFING_INCIDENT_INDICES[0])!,
+        date: new Date(incidentCreatedAt[DEBRIEFING_INCIDENT_INDICES[0]].getTime() + 4 * 86_400_000),
+        superficieIncendiee: fireRecordBurnAreaByIndex.get(DEBRIEFING_INCIDENT_INDICES[0]),
+        heureDeclenchement: '11:30',
+        typeEssence: "Cèdre de l'Atlas",
+        alertePrecoce: true,
+        alertePrecoceDetail: 'Détection FIRMS 35 minutes après le démarrage estimé, confirmée par le poste vigie Michlifen.',
+        premiereIntervention: 'CEDEFO / Protection Civile',
+        premiereInterventionDetail: 'VPI-01 et FT-IFR-03 arrivés en moins de 40 minutes.',
+        vegetationSecondaire: 'Chêne vert, genévrier',
+        topographie: ['FORTE_PENTE', 'VALLON'],
+        pistesForestieres: true,
+        pistesAmenagees: true,
+        trancheesPF: true,
+        trancheesPFAmenagees: true,
+        pointsEau: true,
+        pointsEauAccessible: true,
+        pointsEauRempli: true,
+        pointsEauUtilise: true,
+        fonctionnaliteVPI: true,
+        fonctionnaliteVPIDetail: 'Ensemble du parc VPI opérationnel tout au long de l\'intervention.',
+        incidentLutte: 'Aucun incident notable, une légère brûlure superficielle sans arrêt de travail.',
+        quAvaitEtePlanifie: "Intervention rapide avec deux équipes sol et appui aérien en réserve à Meknès.",
+        quEstCeQuiEstArrive: "Vent de secteur nord-est plus soutenu que prévu, propagation accélérée en cime sur le versant nord ; renfort mutuel sollicité.",
+        pourquoi: "Prévision météo locale non actualisée en temps réel au niveau du COS.",
+        prochaineFois: "Intégrer un flux météo temps réel (vent, humidité) directement dans le tableau de bord du COS.",
+        observationsParticulieres: 'Coordination DPEFLCD / Protection Civile / Gendarmerie jugée exemplaire par l\'ensemble des intervenants.',
+        animateurNom: 'Benali',
+        animateurQualite: 'Chef du Centre Provincial de Gestion des Risques',
+        participants: [
+          { nom: 'Benali', prenom: 'Karim', poste: 'COS' },
+          { nom: 'Alaoui', prenom: 'Hassan', poste: 'Commandant Protection Civile' },
+          { nom: 'Idrissi', prenom: 'Youssef', poste: "Chef d'équipe DPEFLCD" },
         ],
-      });
-    }
+        status: 'completed',
+      },
+    },
+    {
+      idx: DEBRIEFING_INCIDENT_INDICES[1], // arson case on the Michlifen slopes
+      data: {
+        id: r.objectId(),
+        fireRecordId: fireRecordIdByIncidentIndex.get(DEBRIEFING_INCIDENT_INDICES[1])!,
+        date: new Date(incidentCreatedAt[DEBRIEFING_INCIDENT_INDICES[1]].getTime() + 3 * 86_400_000),
+        superficieIncendiee: fireRecordBurnAreaByIndex.get(DEBRIEFING_INCIDENT_INDICES[1]),
+        heureDeclenchement: '20:15',
+        typeEssence: 'Chêne vert',
+        alertePrecoce: false,
+        alertePrecoceDetail: "Départs multiples simultanés — détection tardive de nuit, alerte via appel citoyen.",
+        premiereIntervention: 'Protection Civile',
+        premiereInterventionDetail: 'FT-AZR-02 mobilisé en urgence de nuit.',
+        vegetationSecondaire: 'Maquis, broussailles sèches',
+        topographie: ['PENTE_MODEREE'],
+        pistesForestieres: true,
+        pistesAmenagees: false,
+        trancheesPF: false,
+        pointsEau: true,
+        pointsEauAccessible: true,
+        pointsEauRempli: true,
+        pointsEauUtilise: true,
+        incidentLutte: "Périmètre de sécurité renforcé après indices de malveillance relevés sur site.",
+        quAvaitEtePlanifie: "Aucune planification spécifique — départs de feu imprévisibles en pleine nuit.",
+        quEstCeQuiEstArrive: "Trois foyers distincts allumés à quelques minutes d'intervalle, ralentissant la réponse initiale.",
+        pourquoi: "Absence de patrouille nocturne dédiée sur ce secteur en dehors des pics de risque déclarés.",
+        prochaineFois: "Renforcer la surveillance nocturne par drone thermique sur les secteurs sensibles identifiés.",
+        observationsParticulieres: 'Dossier transmis à la Gendarmerie Royale — enquête en cours.',
+        animateurNom: 'Alaoui',
+        animateurQualite: 'Commandant, Caserne Protection Civile Ifrane',
+        participants: [
+          { nom: 'Alaoui', prenom: 'Hassan', poste: 'COS' },
+          { nom: 'Tazi', prenom: 'Rachid', poste: 'Gendarmerie Royale' },
+        ],
+        status: 'completed',
+      },
+    },
+  ];
+  await prisma.debriefing.createMany({ data: debriefingSpecs.map((d) => d.data) });
+  counts.Debriefing = debriefingSpecs.length;
 
-    console.log('✅ Debriefings created');
-
-    // ── 3d. CommunicationLog (4 entries) ───────────────────────────────────
-    await prisma.communicationLog.createMany({
-      data: [
-        {
-          incidentId: incLocked.id,
-          category: 'ALERT_SENT',
-          fromAgency: 'PROTECTION_CIVILE',
-          toAgency: 'DEF',
-          message: 'Alerte feu de forêt — zone Cèdre Gouraud, surface estimée 5 ha, vent NE 40 km/h. VPI-01 en route.',
-          authorId: official.id,
-          authorCin: 'CD789012',
-        },
-        {
-          incidentId: incLocked.id,
-          category: 'ORDER_GIVEN',
-          fromAgency: 'DEF',
-          toAgency: 'PROTECTION_CIVILE',
-          message: 'Engagement de VPI-02 et CC-01. Station 2 Bravo déployée. COS désigné : Capitaine Benali.',
-          authorId: official.id,
-          authorCin: 'CD789012',
-        },
-        {
-          incidentId: incVerified.id,
-          category: 'ESCALATION',
-          fromAgency: 'GENDARMERIE_ROYALE',
-          toAgency: 'AUTORITES_LOCALES',
-          message: "Escalade demandée — périmètre de sécurité insuffisant sur RN8. Renfort Gendarmerie requis.",
-          authorId: official.id,
-          authorCin: 'CD789012',
-        },
-        {
-          incidentId: incDraft.id,
-          category: 'STATUS_UPDATE',
-          fromAgency: 'PROTECTION_CIVILE',
-          message: 'SITREP 15h30 — Incendie localisé, pas de propagation, 1 équipe sur place. Situation stable.',
-          authorId: official.id,
-          authorCin: 'CD789012',
-        },
+  // ── Equipment audit (Annexe 2) for the flagship incident ─────────────
+  console.log('Seeding equipment audit...');
+  const auditIdx = EQUIPMENT_AUDIT_INCIDENT_INDEX;
+  const auditZone = incidentGeo[auditIdx].zone;
+  await prisma.equipmentAudit.create({
+    data: {
+      fireRecordId: fireRecordIdByIncidentIndex.get(auditIdx)!,
+      verificationDate: new Date(incidentCreatedAt[auditIdx].getTime() + 2 * 86_400_000),
+      auditType: 'general',
+      dpeflcd: 'Direction Provinciale des Eaux et Forêts — Ifrane',
+      secteur: auditZone.name,
+      foret: auditZone.name,
+      canton: COMMUNE_BY_ZONE[INCIDENTS[auditIdx].zoneKey],
+      lieudit: auditZone.name,
+      items: [
+        { category: 'VPI', name: 'VPI-01', quantiteEngagee: 1, quantiteRendue: 1, quantitePerdue: 0, fonctionnel: true, aEntretenir: true, aRemplacer: false, quantiteNecessaire: 2, quantitePresente: 2 },
+        { category: 'Motopompe', name: 'PMP-01', quantiteEngagee: 2, quantiteRendue: 2, quantitePerdue: 0, fonctionnel: true, aEntretenir: false, aRemplacer: false, quantiteNecessaire: 2, quantitePresente: 2 },
+        { category: 'Outillage manuel', name: 'Battes à feu', quantiteEngagee: 20, quantiteRendue: 17, quantitePerdue: 3, fonctionnel: true, aEntretenir: false, aRemplacer: true, quantiteNecessaire: 20, quantitePresente: 17 },
+        { category: 'Protection individuelle', name: 'Tenues ignifugées', quantiteEngagee: 15, quantiteRendue: 15, quantitePerdue: 0, fonctionnel: true, aEntretenir: true, aRemplacer: false, quantiteNecessaire: 15, quantitePresente: 15 },
+        { category: 'Communication', name: 'Radios VHF portatives', quantiteEngagee: 10, quantiteRendue: 9, quantitePerdue: 1, fonctionnel: true, aEntretenir: false, aRemplacer: true, quantiteNecessaire: 10, quantitePresente: 9 },
       ],
-    });
+      signedBy: OFFICIALS[0].fullName,
+      signedByRole: OFFICIALS[0].position,
+      donateur: 'DPEFLCD Ifrane',
+      recepteur: 'Caserne Protection Civile Ifrane',
+      status: 'validated',
+    },
+  });
+  counts.EquipmentAudit = 1;
 
-    console.log('✅ CommunicationLogs created');
+  // ── Audit log + notification delivery ────────────────────────────────
+  console.log('Seeding audit log and notification deliveries...');
+  const auditEntries = buildAuditLogs({
+    r,
+    officialCin: OFFICIALS[0].cin,
+    officialId: officialIds[0],
+    civilianCin: CIVILIANS[0].cin,
+    civilianId: civilianIds[0],
+    activeIncidentId: activeSlots[1].id,
+    primaryFireRecordId: fireRecordIdByIncidentIndex.get(9),
+    officialRequestIds,
+    reportIds,
+  });
+  await prisma.auditLog.createMany({
+    data: auditEntries.map((e) => ({ id: r.objectId(), ...e })) as Prisma.AuditLogCreateManyInput[],
+  });
+  counts.AuditLog = auditEntries.length;
 
-    // ── 3e. AgencyStatus (3 entries, idempotent via upsert) ────────────────
-    // MongoDB does not support skipDuplicates in createMany, so use upsert per agency
-    for (const agencyData of [
-      {
-        agency: 'PROTECTION_CIVILE' as const,
-        status: 'ONLINE' as const,
-        unitsAvailable: 4,
-        unitsDeployed: 2,
-        contactName: 'Commandant Hassan Alaoui',
-        contactPhone: '+212537566000',
-        contactEmail: 'commandement@pc-ifrane.ma',
-        notes: '2 VPI opérationnels sur province; CC-02 en maintenance planifiée',
-        lastHeartbeat: new Date(),
-      },
-      {
-        agency: 'GENDARMERIE_ROYALE' as const,
-        status: 'ONLINE' as const,
-        unitsAvailable: 6,
-        unitsDeployed: 1,
-        contactName: 'Commandant Rachid Tazi',
-        contactPhone: '+212537567100',
-        notes: 'Brigade territoriale Ifrane — couverture nord/est de la province',
-        lastHeartbeat: new Date(),
-      },
-      {
-        agency: 'DEF' as const,
-        status: 'STANDBY' as const,
-        unitsAvailable: 3,
-        unitsDeployed: 0,
-        aviationStatus: 'CL-215 prépositionné à la base aérienne de Meknès',
-        contactName: 'Colonel Mustapha Alami',
-        contactPhone: '+212537568200',
-        notes: 'Prêt pour intervention PMA sur demande préfectorale',
-        lastHeartbeat: new Date(),
-      },
-    ]) {
-      await prisma.agencyStatus.upsert({
-        where: { agency: agencyData.agency },
-        update: agencyData,
-        create: agencyData,
-      });
-    }
+  const notificationEntries = buildNotificationDeliveries({
+    r,
+    officialPhones: OFFICIALS.map((o) => o.phone),
+    officialEmails: OFFICIALS.map((o) => o.email!).filter(Boolean),
+    activeIncidentId: activeSlots[1].id,
+    reportIds,
+  });
+  await prisma.notificationDelivery.createMany({
+    data: notificationEntries.map((e) => ({ id: r.objectId(), ...e })) as Prisma.NotificationDeliveryCreateManyInput[],
+  });
+  counts.NotificationDelivery = notificationEntries.length;
 
-    console.log('✅ AgencyStatuses created');
-
-    // ── 3f. POIActivation (2 entries) ──────────────────────────────────────
-    await prisma.pOIActivation.createMany({
-      data: [
-        {
-          incidentId: incLocked.id,
-          level: 'POI_1',
-          activatedBy: 'CD789012',
-          activatedAt: new Date('2025-07-14T12:30:00Z'),
-          deactivatedAt: new Date('2025-07-15T09:00:00Z'),
-          notes: 'POI 1 activé suite à détection FIRMS confirmée sur terrain',
-        },
-        {
-          incidentId: incVerified.id,
-          level: 'POI_2',
-          activatedBy: 'CD789012',
-          activatedAt: new Date('2026-02-03T16:00:00Z'),
-          notes: 'POI 2 activé — propagation vers zone habitée confirmée par patrouille',
-        },
-      ],
-    });
-
-    console.log('✅ POIActivations created');
-
-  } // end enrichment block
-
-  console.log('Seed completed successfully.');
+  // ── Summary ───────────────────────────────────────────────────────────
+  console.log('\nSeed complete. Collection counts:');
+  const width = Math.max(...Object.keys(counts).map((k) => k.length)) + 2;
+  for (const [model, count] of Object.entries(counts)) {
+    console.log(`  ${model.padEnd(width)} ${count}`);
+  }
+  console.log(`\nDemo credentials:`);
+  console.log(`  Civilian — CIN ${CIVILIANS[0].cin} / password123`);
+  console.log(`  Official — CIN ${OFFICIALS[0].cin} / password123`);
 }
 
 main()

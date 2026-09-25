@@ -20,6 +20,7 @@ import type { TranslationKey } from '@/i18n/translations';
 import { KpiCard } from '@/components/ui/KpiCard';
 import { Card } from '@/components/ui/Card';
 import { Icon } from '@/components/ui/Icon';
+import { SkeletonBox } from '@/components/ui/Skeleton';
 import { EmptyState } from '../EmptyState';
 
 const COLORS = [
@@ -56,14 +57,14 @@ export function OverviewPanel() {
       <div aria-busy="true" aria-label={t('loading')}>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="animate-pulse rounded-xl border border-border bg-muted p-4 space-y-3">
-              <div className="h-4 w-1/3 rounded-xl bg-muted-foreground/10" />
-              <div className="h-8 w-1/2 rounded-xl bg-muted-foreground/10" />
+            <div key={i} className="rounded-2xl border border-border bg-surface p-4 space-y-3">
+              <SkeletonBox className="h-4 w-1/3" />
+              <SkeletonBox className="h-8 w-1/2" />
             </div>
           ))}
         </div>
-        <div className="animate-pulse rounded-xl border border-border bg-muted p-6 mb-8">
-          <div className="h-[300px] rounded-xl bg-muted-foreground/10" />
+        <div className="rounded-2xl border border-border bg-surface p-6 mb-8">
+          <SkeletonBox className="h-[300px] w-full" />
         </div>
       </div>
     );
@@ -186,8 +187,8 @@ export function OverviewPanel() {
                     dataKey="count"
                     label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                   >
-                    {causesData.map((_entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    {causesData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} aria-label={`${entry.name}: ${entry.count}`} />
                     ))}
                   </Pie>
                   <Tooltip

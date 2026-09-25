@@ -1,14 +1,14 @@
 'use client';
 
+import '@/lib/map/maplibreSetup';
 import { useState, useCallback, useMemo } from 'react';
-import ReactMapGL, { Marker, Popup, Source, Layer } from 'react-map-gl';
-import type { MapLayerMouseEvent } from 'react-map-gl';
+import ReactMapGL, { Marker, Popup, Source, Layer } from 'react-map-gl/maplibre';
+import type { MapLayerMouseEvent } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { IFRANE_COORDINATES } from '@/config/constants';
 import type { TruckDeployment } from '@/types';
 import { Icon } from '@/components/ui/Icon';
 import { getMapStyle } from '@/lib/map/styles';
-import { TRUCK_STATUS_COLORS } from '@/lib/map/colors';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useEquipmentStore } from '@/store/useEquipmentStore';
 import type { TranslationKey } from '@/i18n/translations';
@@ -20,14 +20,20 @@ const STATUS_TRANSLATION_MAP: Record<string, TranslationKey> = {
 };
 
 const STATUS_CSS_COLORS: Record<string, string> = {
-  'Disponible': 'text-green-600',
-  'En route': 'text-orange-600',
-  'En intervention': 'text-red-600',
+  'Disponible': 'text-success',
+  'En route': 'text-warning',
+  'En intervention': 'text-danger',
 };
 
-const truckColor = (status: string) => {
-  return TRUCK_STATUS_COLORS[status] || '#ef4444';
+// DOM-rendered marker/legend accents (theme-aware). Distinct from the raw hex
+// used in the maplibre GL paint expressions below, which cannot resolve CSS variables.
+const STATUS_ACCENT: Record<string, string> = {
+  'Disponible': 'hsl(var(--success))',
+  'En route': 'hsl(var(--warning))',
+  'En intervention': 'hsl(var(--danger))',
 };
+
+const truckColor = (status: string) => STATUS_ACCENT[status] ?? 'hsl(var(--danger))';
 
 interface TruckMapProps {
   trucks: TruckDeployment[];
@@ -139,20 +145,20 @@ export default function TruckMap({ trucks, onDispatch }: TruckMapProps) {
     <div className="relative">
       {/* Picking mode banner */}
       {pickingLocation && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1001] bg-primary text-primary-foreground px-4 py-2 rounded-lg shadow-lg text-sm font-semibold flex items-center gap-2">
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1001] bg-primary text-primary-foreground px-4 py-2 rounded-[10px] shadow-elev-2 text-sm font-semibold flex items-center gap-2">
           <Icon name="mapPin" size={16} aria-hidden />
           {t('pickOnMap' as TranslationKey)}
           <button
             type="button"
             onClick={stopPicking}
-            className="ml-2 opacity-80 hover:opacity-100"
+            className="ms-2 opacity-80 hover:opacity-100"
           >
             <Icon name="close" size={16} aria-hidden />
           </button>
         </div>
       )}
 
-      <div className="h-[300px] sm:h-[400px] md:h-[500px] rounded-lg shadow-[0_10px_25px_-5px_rgb(0_0_0/0.1)] overflow-hidden">
+      <div className="h-[300px] sm:h-[400px] md:h-[500px] rounded-2xl shadow-elev-2 overflow-hidden">
         <ReactMapGL
           longitude={IFRANE_COORDINATES.lng}
           latitude={IFRANE_COORDINATES.lat}
@@ -252,7 +258,7 @@ export default function TruckMap({ trucks, onDispatch }: TruckMapProps) {
                         <button
                           type="button"
                           onClick={() => onDispatch(truck)}
-                          className="mt-2 w-full rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary/90 transition-colors"
+                          className="mt-2 w-full rounded-[10px] bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground transition-colors hover:brightness-110"
                         >
                           {t('dispatchToIncident')}
                         </button>
@@ -336,32 +342,32 @@ export default function TruckMap({ trucks, onDispatch }: TruckMapProps) {
       </div>
 
       {/* Legend */}
-      <div className="absolute bottom-4 left-4 z-[1000] rounded-lg bg-white p-3 sm:p-4 shadow-lg max-w-[calc(100%-1.5rem)]">
-        <div className="mb-3 text-sm font-bold">{t('truckStatuses')}</div>
+      <div className="absolute bottom-4 start-4 z-[1000] max-w-[calc(100%-1.5rem)] rounded-2xl border border-border bg-surface p-3 shadow-elev-2 sm:p-4">
+        <div className="mb-3 text-sm font-bold text-foreground">{t('truckStatuses')}</div>
         <div className="space-y-2">
           {(['Disponible', 'En route', 'En intervention'] as const).map((status) => (
             <div key={status} className="flex items-center gap-2">
-              <div className={STATUS_CSS_COLORS[status] || 'text-red-600'}>
+              <div className={STATUS_CSS_COLORS[status] || 'text-danger'}>
                 <Icon name="truck" aria-hidden={true} size={20} />
               </div>
-              <span className="text-sm">{translateStatus(status)}</span>
+              <span className="text-sm text-foreground">{translateStatus(status)}</span>
             </div>
           ))}
         </div>
 
         {/* Resource legend */}
-        <div className="mt-3 pt-3 border-t border-gray-200 space-y-1.5">
+        <div className="mt-3 space-y-1.5 border-t border-border pt-3">
           <div className="flex items-center gap-2">
-            <span className="h-3 w-3 rounded-full bg-[#22c55e] border border-white shadow-sm" />
-            <span className="text-xs text-gray-600">{t('tabEquipment')}</span>
+            <span className="h-3 w-3 rounded-full border border-white shadow-sm" style={{ backgroundColor: 'hsl(var(--success))' }} />
+            <span className="text-xs text-muted-foreground">{t('tabEquipment')}</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="h-3 w-3 rounded-full bg-[#3b82f6] border border-white shadow-sm" />
-            <span className="text-xs text-gray-600">{t('tabInfrastructure')}</span>
+            <span className="h-3 w-3 rounded-full border border-white shadow-sm" style={{ backgroundColor: 'hsl(var(--info))' }} />
+            <span className="text-xs text-muted-foreground">{t('tabInfrastructure')}</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="h-3 w-3 rounded-full bg-[#0d9488] border border-white shadow-sm" />
-            <span className="text-xs text-gray-600">{t('tabRetardant')}</span>
+            <span className="h-3 w-3 rounded-full border border-white shadow-sm" style={{ backgroundColor: '#0d9488' }} />
+            <span className="text-xs text-muted-foreground">{t('tabRetardant')}</span>
           </div>
         </div>
       </div>

@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useTranslation } from '@/hooks/useTranslation';
+import { Icon, type IconName } from '@/components/ui/Icon';
+import { cn } from '@/lib/cn';
 
 type CircuitState = 'closed' | 'open' | 'half_open';
 
@@ -10,6 +12,18 @@ interface ServiceStatusProps {
   statusEndpoint: string;
   pollingInterval?: number; // in milliseconds
 }
+
+const STATE_CLASSES: Record<CircuitState, string> = {
+  closed: 'border-success/25 bg-success-muted text-success-foreground',
+  half_open: 'border-warning/25 bg-warning-muted text-warning-foreground',
+  open: 'border-danger/25 bg-danger-muted text-danger-foreground',
+};
+
+const STATE_ICONS: Record<CircuitState, IconName> = {
+  closed: 'check-circle',
+  half_open: 'refresh',
+  open: 'warning',
+};
 
 export function ServiceStatus({
   serviceName,
@@ -39,52 +53,6 @@ export function ServiceStatus({
     return () => clearInterval(interval);
   }, [statusEndpoint, pollingInterval]);
 
-  const getStatusColor = () => {
-    switch (state) {
-      case 'closed':
-        return 'bg-green-100 text-green-800 border-green-200';
-      case 'half_open':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'open':
-        return 'bg-red-100 text-red-800 border-red-200';
-    }
-  };
-
-  const getStatusIcon = () => {
-    switch (state) {
-      case 'closed':
-        return (
-          <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-            <path
-              fillRule="evenodd"
-              d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-              clipRule="evenodd"
-            />
-          </svg>
-        );
-      case 'half_open':
-        return (
-          <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-            <path
-              fillRule="evenodd"
-              d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-              clipRule="evenodd"
-            />
-          </svg>
-        );
-      case 'open':
-        return (
-          <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-            <path
-              fillRule="evenodd"
-              d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-              clipRule="evenodd"
-            />
-          </svg>
-        );
-    }
-  };
-
   const getStatusLabel = () => {
     switch (state) {
       case 'closed':
@@ -102,9 +70,12 @@ export function ServiceStatus({
 
   return (
     <div
-      className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-medium ${getStatusColor()}`}
+      className={cn(
+        'inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium',
+        STATE_CLASSES[state]
+      )}
     >
-      {getStatusIcon()}
+      <Icon name={STATE_ICONS[state]} size={14} aria-hidden />
       <span>
         {serviceName}: {getStatusLabel()}
       </span>

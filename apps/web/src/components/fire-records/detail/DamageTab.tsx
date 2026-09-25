@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from '@/hooks/useTranslation';
 import { TextField } from './FieldEditor';
 import { SectionLockButton } from './SectionLockButton';
+import { Button } from '@/components/ui/Button';
 import { VEGETATION_TYPES } from '@/lib/fire-records/validation';
 import type { DamageDetail, VegetationType } from '@/types/fire-record';
 
@@ -99,7 +100,7 @@ export function DamageTab({ recordId, data, isLocked, isReadOnly, onSave, onLock
               className={[
                 'rounded-full px-2.5 py-0.5 text-xs font-medium border transition-colors',
                 (form.vegetationTypes ?? []).includes(vt as VegetationType)
-                  ? 'bg-primary text-white border-primary'
+                  ? 'bg-primary text-primary-foreground border-primary'
                   : 'border-border text-muted-foreground hover:border-primary',
                 disabled ? 'opacity-50' : '',
               ].join(' ')}
@@ -111,9 +112,9 @@ export function DamageTab({ recordId, data, isLocked, isReadOnly, onSave, onLock
       </div>
 
       {!disabled && (
-        <button onClick={handleSave} disabled={saving} className="rounded bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-50">
+        <Button variant="primary" onClick={handleSave} disabled={saving} isLoading={saving}>
           {saving ? t('loading') : t('save' as Parameters<typeof t>[0])}
-        </button>
+        </Button>
       )}
     </div>
   );

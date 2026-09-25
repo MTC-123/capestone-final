@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Mock withApiHandler to just call the handler directly
 vi.mock('@/lib/errors/withApiHandler', () => ({
-  withApiHandler: (fn: Function) => fn,
+  withApiHandler: (fn: (...args: unknown[]) => unknown) => fn,
 }));
 
 const mockRequest = new Request('http://localhost/api/weather/wind');
@@ -12,7 +12,7 @@ describe('Wind API route', () => {
     vi.restoreAllMocks();
     vi.resetModules();
     vi.mock('@/lib/errors/withApiHandler', () => ({
-      withApiHandler: (fn: Function) => fn,
+      withApiHandler: (fn: (...args: unknown[]) => unknown) => fn,
     }));
   });
 
@@ -53,7 +53,7 @@ describe('Wind API route', () => {
 
     vi.resetModules();
     vi.mock('@/lib/errors/withApiHandler', () => ({
-      withApiHandler: (fn: Function) => fn,
+      withApiHandler: (fn: (...args: unknown[]) => unknown) => fn,
     }));
     const { GET } = await import('@/app/api/weather/wind/route');
 
@@ -68,7 +68,7 @@ describe('Wind API route', () => {
 
     vi.resetModules();
     vi.mock('@/lib/errors/withApiHandler', () => ({
-      withApiHandler: (fn: Function) => fn,
+      withApiHandler: (fn: (...args: unknown[]) => unknown) => fn,
     }));
     const { GET } = await import('@/app/api/weather/wind/route');
 

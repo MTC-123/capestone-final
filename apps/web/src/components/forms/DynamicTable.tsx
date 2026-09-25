@@ -33,7 +33,7 @@ function CellInput({
   disabled?: boolean;
 }) {
   const baseClass =
-    'w-full rounded-md border border-input bg-surface px-2 py-1.5 text-sm text-foreground outline-none transition focus:ring-2 focus:ring-ring';
+    'w-full rounded-[10px] border border-input bg-surface px-2 py-1.5 text-sm text-foreground outline-none transition focus:ring-2 focus:ring-ring';
 
   if (col.type === 'select') {
     return (
@@ -80,11 +80,11 @@ export function DynamicTable({
     <div className="space-y-3">
       {/* Desktop table */}
       <div className="hidden sm:block overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
+        <table className="w-full text-[13px]">
+          <thead className="sticky top-0 bg-surface">
             <tr className="border-b border-input">
               {columns.map((col) => (
-                <th key={col.key} className="px-2 py-2 text-left font-semibold text-foreground">
+                <th key={col.key} className="px-2 py-2 text-start font-semibold text-foreground">
                   {col.label}
                 </th>
               ))}
@@ -93,7 +93,7 @@ export function DynamicTable({
           </thead>
           <tbody>
             {rows.map((row, ri) => (
-              <tr key={ri} className="border-b border-input/50">
+              <tr key={ri} className="border-b border-input/50 hover:bg-surface-2">
                 {columns.map((col) => (
                   <td key={col.key} className="px-2 py-1.5">
                     <CellInput
@@ -130,7 +130,7 @@ export function DynamicTable({
       {/* Mobile card layout */}
       <div className="flex flex-col gap-3 sm:hidden">
         {rows.map((row, ri) => (
-          <div key={ri} className="rounded-lg border border-input bg-surface p-3 space-y-2">
+          <div key={ri} className="rounded-2xl border border-input bg-surface p-3 space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-muted-foreground">#{ri + 1}</span>
               <button

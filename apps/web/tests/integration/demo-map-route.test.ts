@@ -31,8 +31,8 @@ describe('demo map route', () => {
     vi.clearAllMocks();
     process.env.DATABASE_URL = process.env.DATABASE_URL || 'mongodb://localhost/test';
     process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret';
-    delete process.env.DEMO_AUTO_LOGIN_ENABLED;
-    delete process.env.DEMO_ADMIN_CIN;
+    process.env.DEMO_MODE = 'true';
+    delete process.env.NEXT_PUBLIC_DEMO_MODE;
 
     mockUserFindUnique.mockResolvedValue({
       id: '65f000000000000000000001',
@@ -70,17 +70,36 @@ describe('demo map route', () => {
     }));
   });
 
-  it('can be disabled by environment flag', async () => {
-    process.env.DEMO_AUTO_LOGIN_ENABLED = 'false';
-    const { GET } = await import('@/app/demo/map/route');
-
-    const response = await GET(new Request('https://demo.test/demo/map'));
-
-    expect(response.status).toBe(403);
+  it('does not exist unless DEMO_MODE is exactly "true"', async () => {
+    for (const value of [undefined, 'false', '1', 'TRUE']) {
+      if (value === undefined) delete process.env.DEMO_MODE;
+      else process.env.DEMO_MODE = value;
+      vi.resetModules();
+      registerMocks();
+      const { GET } = await import('@/app/demo/map/route');
+      const response = await GET(new Request('https://demo.test/demo/map'));
+      expect(response.status).toBe(404);
+    }
     expect(mockRefreshTokenCreate).not.toHaveBeenCalled();
   });
 
-  it('redirects with the public forwarded host behind Railway', async () => {
+  it('signs in as the resident persona and lands on the report page', async () => {
+    mockUserFindUnique.mockResolvedValue({
+      id: '65f000000000000000000002',
+      cin: 'AB123456',
+      phone: '+212612345678',
+      role: 'CIVILIAN',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    const { GET } = await import('@/app/demo/map/route');
+    const response = await GET(new Request('https://demo.test/demo/map?as=civilian'));
+    expect(response.status).toBe(302);
+    expect(response.headers.get('location')).toBe('https://demo.test/report');
+    expect(mockUserFindUnique).toHaveBeenCalledWith({ where: { cin: 'AB123456' } });
+  });
+
+  it('redirects with the public forwarded host behind a proxy', async () => {
     const { GET } = await import('@/app/demo/map/route');
 
     const response = await GET(new Request('https://internal-railway:8080/demo/map', {

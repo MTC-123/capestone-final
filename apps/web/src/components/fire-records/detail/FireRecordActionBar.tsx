@@ -85,7 +85,7 @@ export function FireRecordActionBar({ recordId, status, lockedSections, onStatus
         variant="secondary"
         size="sm"
         onClick={handleExportPdf}
-        className="ml-auto"
+        className="ms-auto"
       >
         {t('exportPdf' as Parameters<typeof t>[0])}
       </Button>

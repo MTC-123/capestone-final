@@ -169,7 +169,7 @@ export function DispatchPanel({ incidentId, onClose }: DispatchPanelProps) {
       setSelectedTeamsEnRoute();
 
       // Show success toast
-      addToast('Teams dispatched successfully!', 'success');
+      addToast(t('teamsDispatchedSuccess'), 'success');
 
       // Reset and close
       reset();
@@ -200,7 +200,7 @@ export function DispatchPanel({ incidentId, onClose }: DispatchPanelProps) {
 
       {/* Panel */}
       <div
-        className="fixed right-0 top-0 z-50 h-full w-full max-w-md overflow-y-auto bg-surface shadow-2xl max-md:inset-x-0 max-md:bottom-0 max-md:top-auto max-md:h-[min(86dvh,760px)] max-md:max-w-none max-md:rounded-t-xl max-md:pb-[env(safe-area-inset-bottom)]"
+        className="fixed end-0 top-0 z-50 h-full w-full max-w-md overflow-y-auto bg-surface shadow-elev-3 max-md:inset-x-0 max-md:bottom-0 max-md:top-auto max-md:h-[min(86dvh,760px)] max-md:max-w-none max-md:rounded-t-2xl max-md:pb-[env(safe-area-inset-bottom)]"
         role="dialog"
         aria-modal="true"
         aria-labelledby="dispatch-panel-title"
@@ -227,9 +227,9 @@ export function DispatchPanel({ incidentId, onClose }: DispatchPanelProps) {
         <div className="p-4 space-y-6">
           {/* Incident Info */}
           {incident ? (
-            <div className="bg-muted/50 rounded-lg p-3">
+            <div className="bg-surface-2 rounded-2xl p-3">
               <h3 className="font-medium text-sm mb-1">
-                {t('incident')} #{incident.id.slice(-6)}
+                {t('incident')} #<span className="font-mono">{incident.id.slice(-6)}</span>
               </h3>
               <p className="text-xs text-muted-foreground">
                 {t('severity')}: {incident.severity}/5 • {t('status')}: {incident.status}
@@ -238,14 +238,16 @@ export function DispatchPanel({ incidentId, onClose }: DispatchPanelProps) {
           ) : null}
 
           {/* Tab bar: Teams / Vehicles */}
-          <div className="flex border-b border-border">
+          <div className="flex gap-1 rounded-[10px] border border-border bg-surface-2 p-1" role="tablist">
             <button
               type="button"
+              role="tab"
+              aria-selected={activeTab === 'teams'}
               onClick={() => setActiveTab('teams')}
-              className={`flex-1 text-xs font-medium py-2 border-b-2 transition-colors ${
+              className={`flex-1 rounded-lg py-1.5 text-xs font-semibold transition-colors ${
                 activeTab === 'teams'
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
+                  ? 'bg-primary text-primary-foreground shadow-elev-1'
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
               }`}
             >
               {t('selectTeams') || 'Select Teams'}
@@ -253,11 +255,13 @@ export function DispatchPanel({ incidentId, onClose }: DispatchPanelProps) {
             </button>
             <button
               type="button"
+              role="tab"
+              aria-selected={activeTab === 'vehicles'}
               onClick={() => setActiveTab('vehicles')}
-              className={`flex-1 text-xs font-medium py-2 border-b-2 transition-colors ${
+              className={`flex-1 rounded-lg py-1.5 text-xs font-semibold transition-colors ${
                 activeTab === 'vehicles'
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
+                  ? 'bg-primary text-primary-foreground shadow-elev-1'
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
               }`}
             >
               {t('selectVehicles' as Parameters<typeof t>[0]) || 'Select Vehicles'}
@@ -290,15 +294,15 @@ export function DispatchPanel({ incidentId, onClose }: DispatchPanelProps) {
 
           {/* Error Messages */}
           {routeError && (
-            <div className="bg-destructive/10 text-destructive text-sm rounded-lg p-3">
-              <Icon name="warning" className="inline mr-1" />
+            <div className="bg-danger-muted text-danger-foreground text-sm rounded-2xl p-3">
+              <Icon name="warning" className="inline me-1" />
               {routeError}
             </div>
           )}
 
           {assignmentError && (
-            <div className="bg-destructive/10 text-destructive text-sm rounded-lg p-3">
-              <Icon name="warning" className="inline mr-1" />
+            <div className="bg-danger-muted text-danger-foreground text-sm rounded-2xl p-3">
+              <Icon name="warning" className="inline me-1" />
               {assignmentError}
             </div>
           )}
@@ -308,6 +312,7 @@ export function DispatchPanel({ incidentId, onClose }: DispatchPanelProps) {
         <div className="sticky bottom-0 space-y-2 border-t border-border bg-surface px-4 py-3">
           {activeRoutes.length === 0 ? (
             <Button
+              variant="primary"
               onClick={handleGenerateRoutes}
               disabled={!hasSelections || isGeneratingRoute}
               className="w-full"
@@ -315,31 +320,32 @@ export function DispatchPanel({ incidentId, onClose }: DispatchPanelProps) {
             >
               {isGeneratingRoute ? (
                 <>
-                  <Icon name="loading" className="animate-spin mr-2" />
+                  <Icon name="loading" className="animate-spin me-2" />
                   {t('generatingRoute') || 'Generating Routes...'}
                 </>
               ) : (
                 <>
-                  <Icon name="route" className="mr-2" />
+                  <Icon name="route" className="me-2" />
                   {t('generateRoute') || 'Generate Routes'}
                 </>
               )}
             </Button>
           ) : (
             <Button
+              variant="primary"
               onClick={handleConfirmDispatch}
               disabled={isAssigning}
-              className="w-full bg-primary hover:bg-primary/90"
+              className="w-full"
               data-testid="confirm-dispatch-button"
             >
               {isAssigning ? (
                 <>
-                  <Icon name="loading" className="animate-spin mr-2" />
+                  <Icon name="loading" className="animate-spin me-2" />
                   {t('dispatching') || 'Dispatching...'}
                 </>
               ) : (
                 <>
-                  <Icon name="send" className="mr-2" />
+                  <Icon name="send" className="me-2" />
                   {t('confirmDispatch') || 'Confirm Dispatch'}
                 </>
               )}

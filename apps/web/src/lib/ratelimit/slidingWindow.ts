@@ -1,4 +1,5 @@
 import { getCacheClient } from '@/lib/cache/redis';
+import { isUpstashConfigured } from '@/lib/kv';
 import { logger } from '@/lib/observability/logger';
 
 export interface RateLimitConfig {
@@ -34,8 +35,8 @@ export class SlidingWindowRateLimiter {
     try {
       const client = await getCacheClient();
 
-      // Try Redis-based implementation
-      if (process.env.REDIS_URL) {
+      // Shared store across serverless instances when Upstash is configured
+      if (isUpstashConfigured()) {
         return await this.checkLimitRedis(identifier, now, windowStart, client);
       }
     } catch (error) {

@@ -44,7 +44,7 @@ export const GET = withApiHandler(async (request) => {
   if (cachedData && Date.now() - cachedData.timestamp < CACHE_TTL_MS) {
     const response = NextResponse.json(cachedData.payload);
     response.headers.set('X-Cache', 'HIT');
-    response.headers.set('Cache-Control', 'private, s-maxage=1800, stale-while-revalidate=300');
+    response.headers.set('Cache-Control', 'private, max-age=600');
     return response;
   }
 
@@ -115,6 +115,6 @@ export const GET = withApiHandler(async (request) => {
 
   const response = NextResponse.json(payload);
   response.headers.set('X-Cache', 'MISS');
-  response.headers.set('Cache-Control', 'private, s-maxage=1800, stale-while-revalidate=300');
+  response.headers.set('Cache-Control', 'private, max-age=600');
   return response;
 });

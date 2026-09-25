@@ -22,41 +22,51 @@ import { computePOILevel } from '@/lib/map/poiLevel';
 
 const MapStatusBar = dynamic(() => import('@/components/map/MapStatusBar'), { ssr: false });
 
+const SOURCE_LABELS: Record<string, TranslationKey> = {
+  incidents: 'mapSourceIncidents',
+  resources: 'mapSourceResources',
+  infrastructure: 'mapSourceInfrastructure',
+  firmsDetections: 'mapSourceFirms',
+  effisDetections: 'mapSourceEffis',
+  wind: 'mapSourceWind',
+};
+
+/**
+ * Compact notice listing degraded data sources by name. Raw HTTP details stay
+ * in the logs; users only need to know what is missing and that the map
+ * retries on its own.
+ */
 function MapDataErrorBanner() {
   const { t } = useTranslation();
   const dataErrors = useMapStore((s) => s.dataErrors);
-  const clearAllErrors = useMapStore((s) => s.clearAllErrors);
-  const hasErrors = Object.values(dataErrors).some(err => err !== null);
+  const [dismissedKey, setDismissedKey] = useState('');
+  const failing = Object.entries(dataErrors)
+    .filter(([, err]) => err !== null)
+    .map(([key]) => key);
+  const signature = failing.join(',');
 
-  if (!hasErrors) return null;
-
-  const handleRetry = () => {
-    clearAllErrors();
-    window.location.reload();
-  };
+  if (!failing.length || dismissedKey === signature) return null;
 
   return (
-    <div role="alert" className="absolute left-3 right-3 top-16 z-20 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-warning shadow-xl backdrop-blur-md sm:left-1/2 sm:right-auto sm:top-3 sm:max-w-md sm:-translate-x-1/2 sm:px-4 sm:py-3 sm:text-sm">
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex-1">
-          <div className="font-semibold">{t('mapDataWarning')}</div>
-          <div className="mt-1 text-xs space-y-1">
-            {dataErrors.incidents && <div>• Incidents: {dataErrors.incidents}</div>}
-            {dataErrors.resources && <div>• Resources: {dataErrors.resources}</div>}
-            {dataErrors.infrastructure && <div>• Infrastructure: {dataErrors.infrastructure}</div>}
-            {dataErrors.firmsDetections && <div>• FIRMS Detections: {dataErrors.firmsDetections}</div>}
-            {dataErrors.effisDetections && <div>• EFFIS Detections: {dataErrors.effisDetections}</div>}
-            {dataErrors.wind && <div>• Wind: {dataErrors.wind}</div>}
-          </div>
-        </div>
-        <button
-          onClick={handleRetry}
-          className="text-xs font-medium hover:underline whitespace-nowrap"
-          aria-label={t('retry')}
-        >
-          {t('retry')}
-        </button>
+    <div
+      role="status"
+      className="absolute left-1/2 top-3 z-20 flex max-w-[calc(100%-1.5rem)] -translate-x-1/2 items-center gap-3 rounded-xl border border-warning/30 bg-surface/95 px-3.5 py-2 text-[13px] shadow-elev-2 backdrop-blur"
+    >
+      <Icon name="warning" size={16} className="shrink-0 text-warning" />
+      <div className="min-w-0">
+        <p className="font-medium">{t('mapSourcesDegraded')}</p>
+        <p className="truncate text-xs text-muted-foreground">
+          {failing.map((key) => t(SOURCE_LABELS[key] ?? 'mapSourceIncidents')).join(' · ')} — {t('mapSourcesRetrying')}
+        </p>
       </div>
+      <button
+        type="button"
+        onClick={() => setDismissedKey(signature)}
+        className="ms-1 grid h-7 w-7 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+        aria-label={t('mapDismiss')}
+      >
+        <Icon name="close" size={14} />
+      </button>
     </div>
   );
 }
@@ -387,7 +397,7 @@ export default function MapPage() {
                             onClick={() => handleUpdateIncident('status', s)}
                             className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
                               selectedIncident.properties.status === s
-                                ? 'bg-primary text-white'
+                                ? 'bg-primary text-primary-foreground'
                                 : 'bg-surface-2 text-foreground hover:bg-surface-3'
                             }`}
                           >
@@ -420,7 +430,7 @@ export default function MapPage() {
                   </div>
                 )}
 
-                {selectedIncident && (
+                {selectedIncident && user?.role === 'OFFICIAL' && (
                   <IncidentFireRecordPanel incidentId={selectedIncident.properties.id} />
                 )}
               </>

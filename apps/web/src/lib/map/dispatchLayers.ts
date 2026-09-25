@@ -4,7 +4,7 @@
  */
 
 import { PathLayer, IconLayer, ArcLayer } from '@deck.gl/layers';
-import { circleIcon } from './helpers';
+import { circleIcon, ringOffsets } from './helpers';
 import type { RouteResponse } from '@/lib/routing/types';
 
 export interface RouteLayerData {
@@ -235,12 +235,16 @@ const VEHICLE_STATUS_COLORS: Record<string, string> = {
  */
 export function createVehicleLayer(
   vehicles: VehicleLayerData[],
-  isActive: boolean
+  isActive: boolean,
+  /** Places already drawn at the centre (stations), so vehicles parked there ring around them. */
+  occupied?: ReadonlySet<string>
 ): IconLayer | null {
   if (!isActive || vehicles.length === 0) return null;
 
-  const data = vehicles.map((v) => ({
+  const offsets = ringOffsets(vehicles.map((v) => v.coordinates), 30, -90, occupied);
+  const data = vehicles.map((v, i) => ({
     coordinates: v.coordinates,
+    offset: offsets[i],
     color: VEHICLE_STATUS_COLORS[v.status] ?? '#6b7280',
     vehicleId: v.vehicleId,
     callSign: v.callSign,
@@ -257,11 +261,13 @@ export function createVehicleLayer(
       width: 24,
       height: 24,
     }),
-    getSize: () => 38,
+    getSize: () => 30,
+    getPixelOffset: (d: (typeof data)[0]) => d.offset,
     pickable: true,
     updateTriggers: {
       getPosition: [data.length],
       getIcon: [data.length],
+      getPixelOffset: [data.length, occupied?.size],
     },
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onHover: (info: any) => {

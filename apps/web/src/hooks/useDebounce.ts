@@ -43,7 +43,7 @@ export function useThrottle<T extends (...args: unknown[]) => unknown>(
   callback: T,
   delay: number
 ): (...args: Parameters<T>) => void {
-  const lastRan = useRef<number>(Date.now());
+  const lastRan = useRef<number>(0);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   return useCallback(

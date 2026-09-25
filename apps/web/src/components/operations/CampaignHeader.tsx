@@ -54,11 +54,11 @@ export function CampaignHeader() {
       <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center">
         {/* Campaign info */}
         {activeCampaign ? (
-          <div className="flex w-full flex-col gap-3 sm:flex-1 sm:flex-row sm:items-center">
+          <div className="flex w-full min-w-0 flex-col gap-3 sm:flex-1 sm:flex-row sm:items-center">
             <Icon name="layers" size={20} className="text-primary shrink-0" aria-hidden={true} />
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
-                <h2 className="text-sm font-bold truncate">
+                <h2 className="min-w-0 text-sm font-bold text-balance break-words">
                   {activeCampaign.label} ({activeCampaign.year})
                 </h2>
                 <Badge tone={STATUS_TONE[activeCampaign.status]}>

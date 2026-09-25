@@ -5,8 +5,8 @@ import type { RouteResponse } from '@/lib/routing/types';
 // Mocks
 vi.mock('@/lib/prisma', () => ({
   prisma: {
-    dispatch: { create: vi.fn() },
-    vehicle: { update: vi.fn() },
+    dispatch: { create: vi.fn(), deleteMany: vi.fn() },
+    vehicle: { update: vi.fn(), updateMany: vi.fn() },
   },
 }));
 
@@ -85,6 +85,8 @@ describe('Vehicle Assignment', () => {
       id: 'dispatch-v-001', vehicleId: 'v-1', incidentId: 'inc-1', status: 'ASSIGNED',
     });
     (prisma.vehicle.update as any).mockResolvedValue({ id: 'v-1', status: 'EN_ROUTE' });
+    (prisma.vehicle.updateMany as any).mockResolvedValue({ count: 1 });
+    (prisma.dispatch.deleteMany as any).mockResolvedValue({ count: 0 });
   });
 
   afterEach(() => {
@@ -107,10 +109,8 @@ describe('Vehicle Assignment', () => {
         }),
       });
 
-      expect(prisma.vehicle.update).toHaveBeenCalledWith({
-        where: { id: 'v-1' },
-        data: { status: 'EN_ROUTE', assignedTo: 'inc-1' },
-      });
+      // Status is claimed atomically by assignVehiclesToIncident, not here.
+      expect(prisma.vehicle.update).not.toHaveBeenCalled();
 
       expect(result).toEqual(expect.objectContaining({
         dispatchId: 'dispatch-v-001',
@@ -156,11 +156,6 @@ describe('Vehicle Assignment', () => {
       // Dispatch record should still be created
       expect(prisma.dispatch.create).toHaveBeenCalledOnce();
 
-      // Vehicle should be updated to EN_ROUTE
-      expect(prisma.vehicle.update).toHaveBeenCalledWith({
-        where: { id: 'v-1' },
-        data: { status: 'EN_ROUTE', assignedTo: 'inc-1' },
-      });
 
       // Fallback route should be cached
       expect(setCachedRoute).toHaveBeenCalledOnce();
@@ -205,7 +200,57 @@ describe('Vehicle Assignment', () => {
 
       const results = await assignVehiclesToIncident([v1, v2], makeIncident(), 'user-1');
       expect(results).toHaveLength(2);
-      expect(prisma.vehicle.update).toHaveBeenCalledTimes(2);
+      expect(prisma.vehicle.updateMany).toHaveBeenCalledTimes(2);
+      expect(prisma.vehicle.updateMany).toHaveBeenCalledWith({
+        where: { id: 'v-1', status: 'AVAILABLE' },
+        data: { status: 'EN_ROUTE', assignedTo: 'inc-1' },
+      });
+    });
+
+    it('claims every vehicle before any routing work', async () => {
+      const order: string[] = [];
+      (prisma.vehicle.updateMany as any).mockImplementation(async () => {
+        order.push('claim');
+        return { count: 1 };
+      });
+      mockGetRoute.mockImplementation(async () => {
+        order.push('route');
+        return makeRouteResponse();
+      });
+      await assignVehiclesToIncident([makeVehicle({ id: 'v-1' }), makeVehicle({ id: 'v-2' })], makeIncident(), 'user-1');
+      expect(order.slice(0, 2)).toEqual(['claim', 'claim']);
+    });
+
+    it('rejects with 7001 and releases earlier claims when a vehicle is already taken', async () => {
+      (prisma.vehicle.updateMany as any)
+        .mockResolvedValueOnce({ count: 1 }) // v-1 claimed
+        .mockResolvedValueOnce({ count: 0 }) // v-2 taken by a concurrent request
+        .mockResolvedValue({ count: 1 }); // release of v-1
+
+      await expect(
+        assignVehiclesToIncident([makeVehicle({ id: 'v-1' }), makeVehicle({ id: 'v-2' })], makeIncident(), 'user-1')
+      ).rejects.toMatchObject({ code: 7001 });
+
+      expect(prisma.vehicle.updateMany).toHaveBeenLastCalledWith({
+        where: { id: 'v-1', status: 'EN_ROUTE', assignedTo: 'inc-1' },
+        data: { status: 'AVAILABLE', assignedTo: null },
+      });
+      expect(prisma.dispatch.create).not.toHaveBeenCalled();
+    });
+
+    it('rolls back dispatches and claims when routing fails mid-batch', async () => {
+      (prisma.dispatch.create as any).mockResolvedValueOnce({ id: 'd-1' });
+      mockGetRoute.mockResolvedValueOnce(makeRouteResponse()).mockRejectedValueOnce(new Error('Network error'));
+
+      await expect(
+        assignVehiclesToIncident([makeVehicle({ id: 'v-1' }), makeVehicle({ id: 'v-2' })], makeIncident(), 'user-1')
+      ).rejects.toThrow('Network error');
+
+      expect(prisma.dispatch.deleteMany).toHaveBeenCalledWith({ where: { id: { in: ['d-1'] } } });
+      expect(prisma.vehicle.updateMany).toHaveBeenCalledWith({
+        where: { id: 'v-2', status: 'EN_ROUTE', assignedTo: 'inc-1' },
+        data: { status: 'AVAILABLE', assignedTo: null },
+      });
     });
   });
 });

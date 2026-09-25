@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { unset } from '@/lib/database/unset';
 import { withApiHandler } from '@/lib/errors/withApiHandler';
 import { AppError } from '@/lib/errors/AppError';
 
@@ -38,7 +39,7 @@ export const POST = withApiHandler(async (request: Request) => {
 
   // Deactivate any existing active POI for this incident
   await prisma.pOIActivation.updateMany({
-    where: { incidentId: body.incidentId, deactivatedAt: null },
+    where: { incidentId: body.incidentId, ...unset('deactivatedAt') },
     data: { deactivatedAt: new Date() },
   });
 

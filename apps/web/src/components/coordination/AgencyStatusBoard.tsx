@@ -3,6 +3,8 @@
 import { useCoordinationStore } from '@/store/useCoordinationStore';
 import { useTranslation } from '@/hooks/useTranslation';
 import { SkeletonBox } from '@/components/ui/Skeleton';
+import { Button } from '@/components/ui/Button';
+import { Icon } from '@/components/ui/Icon';
 import { Badge } from '@/components/ui/Badge';
 import { AgencyEditForm } from './AgencyEditForm';
 import { useState } from 'react';
@@ -49,65 +51,82 @@ export function AgencyStatusBoard() {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-      {agencies.map((agency: AgencyStatusRecord) => (
-        <div
-          key={agency.id}
-          className="rounded-lg border border-border bg-surface p-4 shadow-sm"
-        >
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-bold truncate">
-              {t(AGENCY_LABEL_MAP[agency.agency])}
-            </h3>
-            <Badge tone={statusTone(agency.status)}>
-              {t(statusLabelKey(agency.status))}
-            </Badge>
-          </div>
+      {agencies.map((agency: AgencyStatusRecord) => {
+        const total = agency.unitsAvailable + agency.unitsDeployed;
+        const deployedPct = total ? Math.round((agency.unitsDeployed / total) * 100) : 0;
+        return (
+          <article key={agency.id} className="flex flex-col rounded-2xl border border-border bg-surface p-5 shadow-elev-1">
+            <header className="flex items-start justify-between gap-3">
+              <h3 className="text-[15px] font-semibold leading-snug">{t(AGENCY_LABEL_MAP[agency.agency])}</h3>
+              <Badge tone={statusTone(agency.status)} className="shrink-0">
+                {t(statusLabelKey(agency.status))}
+              </Badge>
+            </header>
 
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">{t('unitsAvailable')}</span>
-              <span className="font-semibold">{agency.unitsAvailable}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">{t('unitsDeployed')}</span>
-              <span className="font-semibold">{agency.unitsDeployed}</span>
-            </div>
-            {agency.aviationStatus && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">{t('aviationStatus')}</span>
-                <span className="font-semibold">{agency.aviationStatus}</span>
+            <dl className="mt-4 grid grid-cols-2 gap-2">
+              <div className="rounded-xl bg-surface-2 px-3 py-2.5">
+                <dt className="text-xs text-muted-foreground">{t('unitsAvailable')}</dt>
+                <dd className="mt-0.5 font-mono text-xl font-medium tabular">{agency.unitsAvailable}</dd>
+              </div>
+              <div className="rounded-xl bg-surface-2 px-3 py-2.5">
+                <dt className="text-xs text-muted-foreground">{t('unitsDeployed')}</dt>
+                <dd className="mt-0.5 font-mono text-xl font-medium tabular">{agency.unitsDeployed}</dd>
+              </div>
+            </dl>
+            {total > 0 && (
+              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted" aria-hidden>
+                <div className="h-full rounded-full bg-accent-fire" style={{ width: `${deployedPct}%` }} />
               </div>
             )}
-            {agency.reserveStatus && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">{t('reserveStatus')}</span>
-                <span className="font-semibold">{agency.reserveStatus}</span>
-              </div>
+
+            {(agency.aviationStatus || agency.reserveStatus) && (
+              <dl className="mt-4 space-y-3 text-[13px]">
+                {agency.aviationStatus && (
+                  <div>
+                    <dt className="text-xs font-medium text-muted-foreground">{t('aviationStatus')}</dt>
+                    <dd className="mt-0.5 leading-relaxed text-foreground">
+                      <bdi>{agency.aviationStatus}</bdi>
+                    </dd>
+                  </div>
+                )}
+                {agency.reserveStatus && (
+                  <div>
+                    <dt className="text-xs font-medium text-muted-foreground">{t('reserveStatus')}</dt>
+                    <dd className="mt-0.5 leading-relaxed text-foreground">
+                      <bdi>{agency.reserveStatus}</bdi>
+                    </dd>
+                  </div>
+                )}
+              </dl>
             )}
+
             {agency.contactName && (
-              <div className="pt-2 border-t border-border">
-                <span className="text-xs text-muted-foreground">{t('contactInfo')}</span>
-                <div className="text-xs">{agency.contactName}</div>
-                {agency.contactPhone && <div className="text-xs">{agency.contactPhone}</div>}
+              <div className="mt-4 border-t border-border pt-3 text-[13px]">
+                <p className="text-xs font-medium text-muted-foreground">{t('contactInfo')}</p>
+                <p className="mt-0.5">
+                  <bdi>{agency.contactName}</bdi>
+                </p>
+                {agency.contactPhone && (
+                  <a href={`tel:${agency.contactPhone}`} className="font-mono text-xs text-primary hover:underline">
+                    <bdi>{agency.contactPhone}</bdi>
+                  </a>
+                )}
               </div>
             )}
-          </div>
 
-          {editingAgency === agency.agency ? (
-            <AgencyEditForm
-              agency={agency}
-              onClose={() => setEditingAgency(null)}
-            />
-          ) : (
-            <button
-              onClick={() => setEditingAgency(agency.agency)}
-              className="mt-3 w-full rounded-md border border-border px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-muted transition"
-            >
-              {t('edit')}
-            </button>
-          )}
-        </div>
-      ))}
+            <div className="mt-auto pt-4">
+              {editingAgency === agency.agency ? (
+                <AgencyEditForm agency={agency} onClose={() => setEditingAgency(null)} />
+              ) : (
+                <Button variant="outline" size="sm" className="w-full" onClick={() => setEditingAgency(agency.agency)}>
+                  <Icon name="pencil" size={14} />
+                  {t('edit')}
+                </Button>
+              )}
+            </div>
+          </article>
+        );
+      })}
     </div>
   );
 }

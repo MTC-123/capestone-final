@@ -64,10 +64,12 @@ function parseCSVLine(line: string, index: number): FirmsDetection | null {
    */
   let confidence: 'low' | 'nominal' | 'high' | number;
   const confidenceNum = parseFloat(cols[9]);
+  // VIIRS reports single letters (l / n / h); older feeds spell them out.
+  const confidenceWord = ({ l: 'low', n: 'nominal', h: 'high' } as const)[cols[9].toLowerCase() as 'l' | 'n' | 'h'] ?? cols[9].toLowerCase();
   if (!isNaN(confidenceNum)) {
     confidence = confidenceNum;
-  } else if (['low', 'nominal', 'high'].includes(cols[9].toLowerCase())) {
-    confidence = cols[9].toLowerCase() as 'low' | 'nominal' | 'high';
+  } else if (['low', 'nominal', 'high'].includes(confidenceWord)) {
+    confidence = confidenceWord as 'low' | 'nominal' | 'high';
   } else {
     logger.warn({
       event: 'firms_invalid_confidence',
@@ -86,15 +88,18 @@ function parseCSVLine(line: string, index: number): FirmsDetection | null {
     daynight = 'D'; // Default to day
   }
 
+  // FIRMS drops leading zeros from HHMM (02:51 UTC arrives as "251").
+  const acqTime = cols[6].trim().padStart(4, '0');
+
   return {
-    id: `${latitude},${longitude},${cols[6]}`, // lat,lon,acq_time
+    id: `${latitude},${longitude},${acqTime}`, // lat,lon,acq_time
     latitude,
     longitude,
     brightness,
     scan,
     track,
     acq_date: cols[5],
-    acq_time: cols[6],
+    acq_time: acqTime,
     satellite: cols[7],
     instrument: cols[8],
     confidence,

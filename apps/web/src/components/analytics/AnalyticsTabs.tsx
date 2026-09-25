@@ -51,7 +51,7 @@ export function AnalyticsTabs() {
       <div
         role="tablist"
         aria-label={t('tabOverview')}
-        className="mb-6 flex gap-1 overflow-x-auto rounded-lg border border-border bg-surface-2 p-1 md:flex-wrap md:overflow-visible"
+        className="mb-6 flex gap-1 overflow-x-auto rounded-[10px] border border-border bg-surface-2 p-1 md:flex-wrap md:overflow-visible"
       >
         {TABS.map((tab) => (
           <button
@@ -61,11 +61,11 @@ export function AnalyticsTabs() {
             aria-controls={`panel-${tab.id}`}
             id={`tab-${tab.id}`}
             onClick={() => setActiveTab(tab.id)}
-            className={`rounded-md px-4 py-2 text-sm font-semibold transition ${
+            className={`shrink-0 rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
               activeTab === tab.id
-                ? 'bg-surface text-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground'
-            } shrink-0`}
+                ? 'bg-primary text-primary-foreground shadow-elev-1'
+                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+            }`}
           >
             {t(tab.labelKey)}
           </button>

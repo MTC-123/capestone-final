@@ -10,6 +10,11 @@ import type { CursorPaginationResponse } from '@/types/pagination';
 import { isAlertSource, createAuditEntry } from '@/lib/fire-records/validation';
 import type { Prisma } from '@prisma/client';
 
+/** Literal text for a MongoDB $regex (user input must never be a pattern). */
+function escapeRegex(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 function buildDisplayId(record: {
   alertReceivedAt?: Date | null;
   createdAt: Date;
@@ -27,6 +32,8 @@ function buildDisplayId(record: {
 export const GET = withApiHandler(async (request: Request) => {
   const currentUser = await getCurrentUser(request);
   if (!currentUser) throw new AppError(2000);
+  // Fire records include investigation details: officials only.
+  if (currentUser.role !== 'OFFICIAL') throw new AppError(2001);
 
   const url = new URL(request.url);
   const limit = Math.min(
@@ -65,14 +72,27 @@ export const GET = withApiHandler(async (request: Request) => {
   if (maxArea !== undefined && !isNaN(maxArea)) {
     where.burnAreaHa = { ...(where.burnAreaHa as object || {}), lte: maxArea };
   }
+  // Prisma's JSON `path` filters exist only on SQL connectors. On MongoDB the
+  // nested fields are matched natively, then the typed query is narrowed by id.
+  const nested: Prisma.InputJsonObject[] = [];
   if (search) {
-    where.incidentId = { contains: search };
+    const pattern = { $regex: escapeRegex(search), $options: 'i' };
+    nested.push({
+      $or: [
+        { 'locationDetail.locationName': pattern },
+        { 'locationDetail.commune': pattern },
+        { 'locationDetail.forestName': pattern },
+      ],
+    });
   }
-  if (commune) {
-    where.locationDetail = { path: ['commune'], string_contains: commune };
-  }
-  if (cause) {
-    where.causeDetail = { path: ['category'], equals: cause };
+  if (commune) nested.push({ 'locationDetail.commune': { $regex: escapeRegex(commune), $options: 'i' } });
+  if (cause) nested.push({ 'causeDetail.category': cause });
+  if (nested.length > 0) {
+    const matches = (await prisma.fireEventRecord.findRaw({
+      filter: { $and: nested },
+      options: { projection: { _id: 1 } },
+    })) as unknown as { _id: { $oid: string } }[];
+    where.id = { in: matches.map((m) => m._id.$oid) };
   }
 
   const allowedSortFields = ['createdAt', 'burnAreaHa', 'alertReceivedAt'];

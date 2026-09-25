@@ -5,9 +5,9 @@ describe('useMapStore', () => {
   beforeEach(() => {
     useMapStore.setState({
       viewState: {
-        longitude: -5.1056,
-        latitude: 33.5275,
-        zoom: 13,
+        longitude: -5.15,
+        latitude: 33.46,
+        zoom: 10.3,
         pitch: 0,
         bearing: 0,
         padding: { top: 0, bottom: 0, left: 0, right: 0 },
@@ -46,6 +46,7 @@ describe('useMapStore', () => {
         fireSpread: false,
         retardant: false,
         owmWeather: false,
+        riskModel: true,
       },
       selectedIncidentId: null,
       basemap: 'streets',
@@ -70,15 +71,16 @@ describe('useMapStore', () => {
   describe('defaults', () => {
     it('has Ifrane coordinates in viewState', () => {
       const { viewState } = useMapStore.getState();
-      expect(viewState.longitude).toBe(-5.1056);
-      expect(viewState.latitude).toBe(33.5275);
-      expect(viewState.zoom).toBe(13);
+      expect(viewState.longitude).toBe(-5.15);
+      expect(viewState.latitude).toBe(33.46);
+      expect(viewState.zoom).toBe(10.3);
     });
 
-    it('has all 32 layers with expected defaults', () => {
+    it('has all 34 layers with expected defaults', () => {
       const { layers } = useMapStore.getState();
       const values = Object.values(layers);
-      expect(values).toHaveLength(33);
+      expect(values).toHaveLength(34);
+      expect(layers.riskModel).toBe(true);
       expect(layers.incidents).toBe(true);
       expect(layers.effisFWI).toBe(false);
       expect(layers.effisBurnedAreas).toBe(false);

@@ -7,6 +7,11 @@ import { cleanup } from '@testing-library/react';
 
 expect.extend(matchers);
 
+// Road routing in tests goes to the (mocked) GraphHopper client only; suites
+// that exercise TomTom or the failover chain set their own environment.
+process.env.GRAPHHOPPER_URL ??= 'http://graphhopper.test';
+delete process.env.TOMTOM_API_KEY;
+
 afterEach(() => {
   cleanup();
 });
@@ -15,7 +20,7 @@ afterEach(() => {
 vi.mock('next/image', () => ({
   __esModule: true,
   default: vi.fn((props) => {
-    // eslint-disable-next-line jsx-a11y/alt-text
+     
     return React.createElement('img', props);
   }),
 }));

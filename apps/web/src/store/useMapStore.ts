@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { ViewState } from 'react-map-gl';
+import type { ViewState } from 'react-map-gl/maplibre';
 import type { Basemap } from '@/lib/map/styles';
 import type { GeoFeatureCollection, GeoIncidentProps, WeatherData } from '@/types';
 import type { FireSpreadStatus } from '@/hooks/useFireSpreadVectors';
@@ -37,7 +37,8 @@ type ActiveLayer =
   | 'populationDensity'
   | 'fireSpread'
   | 'retardant'
-  | 'owmWeather';
+  | 'owmWeather'
+  | 'riskModel';
 
 const EMPTY_INCIDENTS: GeoFeatureCollection<GeoIncidentProps> = { type: 'FeatureCollection', features: [] };
 
@@ -86,6 +87,7 @@ interface MapState {
     fireSpread: boolean;
     retardant: boolean;
     owmWeather: boolean;
+    riskModel: boolean;
   };
   toggleLayer: (layer: ActiveLayer) => void;
   setLayerEnabled: (layer: ActiveLayer, enabled: boolean) => void;
@@ -159,6 +161,9 @@ interface MapState {
   setSelectedIncidentId: (id: string | null) => void;
   basemap: Basemap;
   setBasemap: (basemap: Basemap) => void;
+  /** Metadata of the currently displayed model risk grid (for the legend). */
+  riskMeta: { modelVersion?: string; generatedAt?: string; dataTime?: string; cellCount?: number } | null;
+  setRiskMeta: (meta: MapState['riskMeta']) => void;
   isHeatmapEnabled: boolean;
   setIsHeatmapEnabled: (enabled: boolean) => void;
   dataErrors: {
@@ -183,10 +188,11 @@ interface MapState {
   setWindLastUpdate: (d: Date | null) => void;
 }
 
+/** Province-wide view (Ifrane, Azrou and the cedar forests between them). */
 const DEFAULT_VIEW: ViewState = {
-  longitude: -5.1056,
-  latitude: 33.5275,
-  zoom: 13,
+  longitude: -5.15,
+  latitude: 33.46,
+  zoom: 10.3,
   pitch: 0,
   bearing: 0,
   padding: { top: 0, bottom: 0, left: 0, right: 0 },
@@ -233,6 +239,7 @@ export const useMapStore = create<MapState>()((set) => ({
     fireSpread: false,
     retardant: false,
     owmWeather: false,
+    riskModel: true,
   },
   toggleLayer: (layer) =>
     set((state) => {
@@ -258,8 +265,11 @@ export const useMapStore = create<MapState>()((set) => ({
     }),
   selectedIncidentId: null,
   setSelectedIncidentId: (id) => set({ selectedIncidentId: id }),
-  basemap: 'streets' as Basemap,
+  // Follows the colour scheme the page was rendered with (ops = dark basemap).
+  basemap: (typeof document !== 'undefined' && document.documentElement.classList.contains('dark') ? 'dark' : 'streets') as Basemap,
   setBasemap: (basemap) => set({ basemap }),
+  riskMeta: null,
+  setRiskMeta: (riskMeta) => set({ riskMeta }),
   isHeatmapEnabled: false,
   setIsHeatmapEnabled: (isHeatmapEnabled) => set({ isHeatmapEnabled }),
   dataErrors: {

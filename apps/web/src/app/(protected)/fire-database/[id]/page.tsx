@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
+import Link from 'next/link';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useFireRecordStore } from '@/store/useFireRecordStore';
@@ -14,9 +15,10 @@ import { DamageTab } from '@/components/fire-records/detail/DamageTab';
 import { ResponseTab } from '@/components/fire-records/detail/ResponseTab';
 import { PostFireTab } from '@/components/fire-records/detail/PostFireTab';
 import { AuditTrailTab } from '@/components/fire-records/detail/AuditTrailTab';
-import { Breadcrumb } from '@/components/ui/Breadcrumb';
+import { PageContainer } from '@/components/ui/PageHeader';
 import { Button } from '@/components/ui/Button';
 import { Icon } from '@/components/ui/Icon';
+import { SkeletonBox } from '@/components/ui/Skeleton';
 import { RightDrawer } from '@/components/shell/RightDrawer';
 import { EquipmentAuditForm } from '@/components/forms/EquipmentAuditForm';
 import { DebriefingForm } from '@/components/forms/DebriefingForm';
@@ -75,13 +77,13 @@ export default function FireRecordDetailPage() {
 
   if (isLoading || !activeRecord) {
     return (
-      <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8">
+      <PageContainer className="pb-10">
         <div className="space-y-4">
-          <div className="h-6 w-48 animate-pulse rounded bg-muted" />
-          <div className="h-10 animate-pulse rounded bg-muted" />
-          <div className="h-64 animate-pulse rounded bg-muted" />
+          <SkeletonBox className="h-6 w-48" />
+          <SkeletonBox className="h-10 w-full" />
+          <SkeletonBox className="h-64 w-full rounded-2xl" />
         </div>
-      </div>
+      </PageContainer>
     );
   }
 
@@ -90,30 +92,38 @@ export default function FireRecordDetailPage() {
   const displayTitle = buildDisplayTitle(activeRecord, locData);
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8">
-      {/* Breadcrumb */}
-      <Breadcrumb
-        items={[
-          { label: t('fireDatabase'), href: '/fire-database' },
-          { label: displayTitle },
-        ]}
-      />
+    <PageContainer className="pb-10 page-enter">
+      {/* Back link */}
+      <Link
+        href="/fire-database"
+        className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground"
+      >
+        <Icon name="arrowLeft" size={16} aria-hidden className="rtl:rotate-180" />
+        {t('fireDatabase')}
+      </Link>
 
       {/* Header */}
-      <div className="mt-4 mb-6 flex flex-wrap items-center gap-3">
-        <RecordStatusBadge status={activeRecord.recordStatus} />
-        <span className="text-sm text-muted-foreground">
-          {activeRecord.lockedSections.length}/5 {t('fireRecordLockedSections')}
-        </span>
+      <div className="mb-6 flex flex-wrap items-center gap-3">
+        <div className="min-w-0">
+          <h1 className="truncate text-xl font-semibold tracking-tight sm:text-2xl">
+            <bdi>{displayTitle}</bdi>
+          </h1>
+          <div className="mt-1.5 flex flex-wrap items-center gap-2">
+            <RecordStatusBadge status={activeRecord.recordStatus} />
+            <span className="text-sm text-muted-foreground">
+              {activeRecord.lockedSections.length}/5 {t('fireRecordLockedSections')}
+            </span>
+          </div>
+        </div>
         {user?.role === 'OFFICIAL' && (
-          <div className="ml-auto flex flex-wrap gap-2">
+          <div className="ms-auto flex flex-wrap gap-2">
             <Button
               variant="secondary"
               size="sm"
               onClick={() => setAuditDrawerOpen(true)}
             >
               <Icon name="clipboard" size={16} aria-hidden />
-              Audit matériel
+              {t('fireRecordEquipmentAudit')}
             </Button>
             {debriefChecked && (activeRecord.containedAt || activeRecord.extinguishedAt || activeRecord.recordStatus !== 'DRAFT') && (
               debriefId ? (
@@ -123,7 +133,7 @@ export default function FireRecordDetailPage() {
                   onClick={() => { setDebriefReadOnly(true); setDebriefDrawerOpen(true); }}
                 >
                   <Icon name="eye" size={16} aria-hidden />
-                  Voir débriefing
+                  {t('fireRecordViewDebrief')}
                 </Button>
               ) : (
                 <Button
@@ -132,7 +142,7 @@ export default function FireRecordDetailPage() {
                   onClick={() => { setDebriefReadOnly(false); setDebriefDrawerOpen(true); }}
                 >
                   <Icon name="list" size={16} aria-hidden />
-                  Débriefing / REX
+                  {t('fireRecordDebriefAction')}
                 </Button>
               )
             )}
@@ -148,7 +158,7 @@ export default function FireRecordDetailPage() {
       />
 
       {/* Tab panels */}
-      <div className="mt-4 rounded-lg border border-border bg-surface shadow-sm">
+      <div className="mt-4 rounded-2xl border border-border bg-surface shadow-elev-1">
         {activeTab === 'location' && (
           <LocationTab
             recordId={activeRecord.id}
@@ -221,7 +231,7 @@ export default function FireRecordDetailPage() {
 
       {/* Equipment Audit Drawer */}
       <RightDrawer
-        title="Audit du matériel"
+        title={t('fireRecordEquipmentAudit')}
         open={auditDrawerOpen}
         onOpenChange={setAuditDrawerOpen}
         className="sm:w-[560px]"
@@ -238,7 +248,7 @@ export default function FireRecordDetailPage() {
 
       {/* Debriefing Drawer */}
       <RightDrawer
-        title={debriefId ? 'Débriefing / REX' : 'Nouveau débriefing'}
+        title={debriefId ? t('fireRecordDebriefAction') : t('fireRecordNewDebrief')}
         open={debriefDrawerOpen}
         onOpenChange={setDebriefDrawerOpen}
         className="sm:w-[560px]"
@@ -252,7 +262,7 @@ export default function FireRecordDetailPage() {
                   size="sm"
                   onClick={() => setDebriefReadOnly(false)}
                 >
-                  Modifier
+                  {t('edit')}
                 </Button>
               </div>
             )}
@@ -276,7 +286,7 @@ export default function FireRecordDetailPage() {
           </>
         )}
       </RightDrawer>
-    </div>
+    </PageContainer>
   );
 }
 

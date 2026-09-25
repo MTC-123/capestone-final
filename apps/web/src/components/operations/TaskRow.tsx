@@ -14,26 +14,28 @@ interface TaskRowProps {
 }
 
 export function TaskRow({ item, onToggle, onDelete }: TaskRowProps) {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const isDone = item.status === 'DONE';
+  const dateLocale = { ar: 'ar-MA', fr: 'fr-MA', en: 'en-GB' }[language];
 
   return (
     <div
       className={cn(
-        'group flex items-center gap-3 rounded-lg px-3 py-2 transition-colors',
-        'hover:bg-muted/40'
+        'group flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors',
+        'hover:bg-surface-2'
       )}
     >
       {/* Checkbox */}
       <button
         type="button"
+        role="checkbox"
+        aria-checked={isDone}
         onClick={() => onToggle(item.id)}
-        aria-label={isDone ? t('markPending') : t('markDone')}
+        aria-label={`${isDone ? t('markPending') : t('markDone')}: ${item.task}`}
         className={cn(
-          'flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 transition-all duration-150',
-          isDone
-            ? 'border-success bg-success text-white'
-            : 'border-border hover:border-primary'
+          'flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 transition-all duration-150',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+          isDone ? 'border-success bg-success text-on-success' : 'border-input hover:border-primary'
         )}
       >
         {isDone && (
@@ -46,11 +48,11 @@ export function TaskRow({ item, onToggle, onDelete }: TaskRowProps) {
       {/* Task text */}
       <span
         className={cn(
-          'flex-1 text-sm transition-all duration-150',
-          isDone && 'line-through text-muted-foreground opacity-60'
+          'min-w-0 flex-1 text-start text-sm leading-snug transition-colors duration-150',
+          isDone && 'text-muted-foreground line-through decoration-muted-foreground/60'
         )}
       >
-        {item.task}
+        <bdi>{item.task}</bdi>
       </span>
 
       {/* Responsible unit badge */}
@@ -63,16 +65,16 @@ export function TaskRow({ item, onToggle, onDelete }: TaskRowProps) {
       {/* Deadline */}
       {item.deadline && (
         <span className="hidden sm:inline text-[11px] text-muted-foreground">
-          {new Date(item.deadline).toLocaleDateString()}
+          {new Intl.DateTimeFormat(dateLocale, { day: 'numeric', month: 'short' }).format(new Date(item.deadline))}
         </span>
       )}
 
       {/* Delete */}
       <IconButton
-        label={t('close'as Parameters<typeof t>[0])}
+        label={`${t('delete' as Parameters<typeof t>[0])}: ${item.task}`}
         variant="ghost"
         onClick={() => onDelete(item.id)}
-        className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+        className="h-8 w-8 text-muted-foreground opacity-0 transition-opacity hover:text-danger focus-visible:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100"
       >
         <Icon name="trash" size={14} aria-hidden={true} />
       </IconButton>

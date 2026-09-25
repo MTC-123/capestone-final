@@ -1,6 +1,7 @@
 'use client';
 
 import { cn } from '@/lib/cn';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface OuiNonFieldProps {
   label: string;
@@ -21,10 +22,11 @@ export function OuiNonField({
   withExplanation,
   explanationValue,
   onExplanationChange,
-  explanationPlaceholder = 'Précisez...',
+  explanationPlaceholder,
   disabled,
   id,
 }: OuiNonFieldProps) {
+  const { t } = useTranslation();
   const fieldId = id ?? label.toLowerCase().replace(/\s+/g, '-');
 
   return (
@@ -43,7 +45,7 @@ export function OuiNonField({
               disabled && 'opacity-60'
             )}
           />
-          <span className="text-sm text-foreground">Oui</span>
+          <span className="text-sm text-foreground">{t('yesLabel')}</span>
         </label>
 
         <label className="flex items-center gap-2 cursor-pointer">
@@ -57,20 +59,20 @@ export function OuiNonField({
               disabled && 'opacity-60'
             )}
           />
-          <span className="text-sm text-foreground">Non</span>
+          <span className="text-sm text-foreground">{t('noLabel')}</span>
         </label>
       </div>
 
       {withExplanation && value != null && (
         <textarea
           className={cn(
-            'w-full rounded-md border border-input bg-surface px-3 py-2 text-sm text-foreground outline-none transition',
+            'w-full rounded-[10px] border border-input bg-surface px-3 py-2 text-sm text-foreground outline-none transition',
             'placeholder:text-muted-foreground',
             'focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background',
             disabled && 'opacity-60'
           )}
           rows={2}
-          placeholder={explanationPlaceholder}
+          placeholder={explanationPlaceholder ?? t('specifyPlaceholder')}
           value={explanationValue ?? ''}
           onChange={(e) => onExplanationChange?.(e.target.value)}
         />

@@ -485,7 +485,7 @@ export function DebriefingForm({
         disabled={readOnly}
       />
       {form.pistesForestieres === true && (
-        <div className="ml-6 border-l-2 border-primary/20 pl-4">
+        <div className="ms-6 border-s-2 border-primary/20 ps-4">
           <OuiNonField
             label="Aménagées"
             id="debrief-pistes-amenagees"
@@ -505,7 +505,7 @@ export function DebriefingForm({
         disabled={readOnly}
       />
       {form.trancheesPF === true && (
-        <div className="ml-6 border-l-2 border-primary/20 pl-4">
+        <div className="ms-6 border-s-2 border-primary/20 ps-4">
           <OuiNonField
             label="Aménagées"
             id="debrief-tranchees-amenagees"
@@ -525,7 +525,7 @@ export function DebriefingForm({
         disabled={readOnly}
       />
       {form.pointsEau === true && (
-        <div className="ml-6 space-y-3 border-l-2 border-primary/20 pl-4">
+        <div className="ms-6 space-y-3 border-s-2 border-primary/20 ps-4">
           <OuiNonField
             label="Accessible"
             id="debrief-points-eau-accessible"

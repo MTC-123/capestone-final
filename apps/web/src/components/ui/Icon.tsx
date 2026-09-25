@@ -1,258 +1,205 @@
 import * as React from 'react';
 import {
+  Activity,
   AlertTriangle,
+  ArrowLeft,
+  ArrowRight,
   BarChart3,
   Bell,
+  BookOpen,
+  Building2,
   Camera,
   CalendarDays,
   CheckCircle2,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   ChevronUp,
   ClipboardList,
+  Clock,
   Cloud,
+  CloudOff,
+  Command,
   Compass,
+  Cpu,
   Database,
   Download,
   Droplets,
   ExternalLink,
   Eye,
+  EyeOff,
+  FileText,
+  Filter,
   Flame,
+  Globe,
+  History,
+  Home,
   IdCard,
   Image,
   Info,
   KeyRound,
+  Layers,
   Leaf,
   Loader2,
+  Lock,
   LogOut,
   Map,
   MapPin,
   Megaphone,
   Menu,
+  MessageSquare,
   Moon,
   MoreHorizontal,
+  Mountain,
   Navigation,
+  PanelLeft,
   Pencil,
-  Pin,
   Phone,
+  Pin,
+  Plus,
+  Radio,
   RefreshCw,
   Route,
+  Satellite,
   Search,
   Send,
+  Settings,
   Share2,
   Shield,
+  ShieldCheck,
   Siren,
+  Sparkles,
   Sun,
   Thermometer,
   Timer,
   Trash2,
   TrendingUp,
   Truck,
+  User,
+  UserCheck,
   Users,
   Waves,
+  Wifi,
+  WifiOff,
   Wind,
-  Mountain,
   Wrench,
   X,
-  Layers,
-  Plus,
-  ChevronRight,
+  Zap,
+  type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/cn';
 
-export type IconName =
-  | 'search'
-  | 'map'
-  | 'analytics'
-  | 'campaign'
-  | 'list'
-  | 'truck'
-  | 'fire'
-  | 'notifications'
-  | 'logout'
-  | 'close'
-  | 'refresh'
-  | 'warning'
-  | 'thermostat'
-  | 'air'
-  | 'share'
-  | 'open'
-  | 'pin'
-  | 'clipboard'
-  | 'siren'
-  | 'compass'
-  | 'calendar'
-  | 'id'
-  | 'phone'
-  | 'key'
-  | 'moon'
-  | 'sun'
-  | 'loading'
-  | 'route'
-  | 'send'
-  | 'cached'
-  | 'check'
-  | 'info'
-  | 'database'
-  | 'download'
-  | 'more_horiz'
-  | 'camera'
-  | 'image'
-  | 'navigation'
-  | 'check-circle'
-  | 'trash'
-  | 'menu'
-  | 'chevronUp'
-  | 'chevronDown'
-  | 'droplet'
-  | 'eye'
-  | 'leaf'
-  | 'shield'
-  | 'timer'
-  | 'trending_up'
-  | 'users'
-  | 'waves'
-  | 'wrench'
-  | 'cloud'
-  | 'mountain'
-  | 'layers'
-  | 'plus'
-  | 'pencil'
-  | 'mapPin'
-  | 'chevronRight';
+/** Single icon vocabulary for the app (lucide-react underneath). */
+const ICONS = {
+  activity: Activity,
+  air: Wind,
+  analytics: BarChart3,
+  arrowLeft: ArrowLeft,
+  arrowRight: ArrowRight,
+  audit: History,
+  book: BookOpen,
+  building: Building2,
+  cached: Database,
+  calendar: CalendarDays,
+  camera: Camera,
+  campaign: Megaphone,
+  check: CheckCircle2,
+  'check-circle': CheckCircle2,
+  chevronDown: ChevronDown,
+  chevronLeft: ChevronLeft,
+  chevronRight: ChevronRight,
+  chevronUp: ChevronUp,
+  clipboard: ClipboardList,
+  clock: Clock,
+  close: X,
+  cloud: Cloud,
+  cloudOff: CloudOff,
+  command: Command,
+  compass: Compass,
+  cpu: Cpu,
+  database: Database,
+  document: FileText,
+  download: Download,
+  droplet: Droplets,
+  eye: Eye,
+  eyeOff: EyeOff,
+  filter: Filter,
+  fire: Flame,
+  globe: Globe,
+  home: Home,
+  id: IdCard,
+  image: Image,
+  info: Info,
+  key: KeyRound,
+  layers: Layers,
+  leaf: Leaf,
+  list: ClipboardList,
+  loading: Loader2,
+  lock: Lock,
+  logout: LogOut,
+  map: Map,
+  mapPin: MapPin,
+  menu: Menu,
+  message: MessageSquare,
+  moon: Moon,
+  more_horiz: MoreHorizontal,
+  mountain: Mountain,
+  navigation: Navigation,
+  notifications: Bell,
+  open: ExternalLink,
+  panel: PanelLeft,
+  pencil: Pencil,
+  phone: Phone,
+  pin: Pin,
+  plus: Plus,
+  radio: Radio,
+  refresh: RefreshCw,
+  route: Route,
+  satellite: Satellite,
+  search: Search,
+  send: Send,
+  settings: Settings,
+  share: Share2,
+  shield: Shield,
+  shieldCheck: ShieldCheck,
+  siren: Siren,
+  sparkles: Sparkles,
+  sun: Sun,
+  thermostat: Thermometer,
+  timer: Timer,
+  trash: Trash2,
+  trending_up: TrendingUp,
+  truck: Truck,
+  user: User,
+  userCheck: UserCheck,
+  users: Users,
+  waves: Waves,
+  warning: AlertTriangle,
+  wifi: Wifi,
+  wifiOff: WifiOff,
+  wrench: Wrench,
+  zap: Zap,
+} satisfies Record<string, LucideIcon>;
+
+export type IconName = keyof typeof ICONS;
 
 export type IconProps = {
   name: IconName;
   className?: string;
   size?: number;
+  strokeWidth?: number;
   'aria-hidden'?: boolean;
   title?: string;
 };
 
-export function Icon({ name, className, size = 20, title, ...props }: IconProps) {
-  const IconComponent =
-    name === 'search'
-      ? Search
-      : name === 'map'
-        ? Map
-        : name === 'analytics'
-          ? BarChart3
-          : name === 'campaign'
-            ? Megaphone
-            : name === 'list'
-              ? ClipboardList
-              : name === 'truck'
-                ? Truck
-                : name === 'fire'
-                  ? Flame
-                  : name === 'notifications'
-                    ? Bell
-                    : name === 'logout'
-                      ? LogOut
-                      : name === 'close'
-                        ? X
-                        : name === 'refresh'
-                          ? RefreshCw
-                          : name === 'warning'
-                            ? AlertTriangle
-                            : name === 'thermostat'
-                              ? Thermometer
-                              : name === 'air'
-                                ? Wind
-                                : name === 'share'
-                                  ? Share2
-                                  : name === 'open'
-                                    ? ExternalLink
-                                    : name === 'pin'
-                                      ? Pin
-                                      : name === 'clipboard'
-                                        ? ClipboardList
-                                        : name === 'siren'
-                                          ? Siren
-                                          : name === 'calendar'
-                                            ? CalendarDays
-                                            : name === 'id'
-                                              ? IdCard
-                                              : name === 'phone'
-                                                ? Phone
-                                                : name === 'key'
-                                                  ? KeyRound
-                                                  : name === 'moon'
-                                                    ? Moon
-                                                    : name === 'sun'
-                                                      ? Sun
-                                                      : name === 'loading'
-                                                        ? Loader2
-                                                        : name === 'route'
-                                                          ? Route
-                                                          : name === 'send'
-                                                            ? Send
-                                                            : name === 'cached'
-                                                              ? Database
-                                                              : name === 'check'
-                                                                ? CheckCircle2
-                                                                : name === 'info'
-                                                                  ? Info
-                                                                  : name === 'database'
-                                                                    ? Database
-                                                                    : name === 'download'
-                                                                      ? Download
-                                                                      : name === 'more_horiz'
-                                                                        ? MoreHorizontal
-                                                                      : name === 'camera'
-                                                                        ? Camera
-                                                                        : name === 'image'
-                                                                          ? Image
-                                                                          : name === 'navigation'
-                                                                            ? Navigation
-                                                                            : name === 'check-circle'
-                                                                              ? CheckCircle2
-                                                                              : name === 'trash'
-                                                                                ? Trash2
-                                                                                : name === 'menu'
-                                                                                  ? Menu
-                                                                                  : name === 'chevronUp'
-                                                                                    ? ChevronUp
-                                                                                    : name === 'chevronDown'
-                                                                                      ? ChevronDown
-                                                                                      : name === 'droplet'
-                                                                                        ? Droplets
-                                                                                        : name === 'eye'
-                                                                                          ? Eye
-                                                                                          : name === 'leaf'
-                                                                                            ? Leaf
-                                                                                            : name === 'shield'
-                                                                                              ? Shield
-                                                                                              : name === 'timer'
-                                                                                                ? Timer
-                                                                                                : name === 'trending_up'
-                                                                                                  ? TrendingUp
-                                                                                                  : name === 'users'
-                                                                                                    ? Users
-                                                                                                    : name === 'waves'
-                                                                                                      ? Waves
-                                                                                                      : name === 'wrench'
-                                                                                                        ? Wrench
-                                                                                                        : name === 'cloud'
-                                                                                                          ? Cloud
-                                                                                                          : name === 'mountain'
-                                                                                                            ? Mountain
-                                                                                                            : name === 'layers'
-                                                                                                              ? Layers
-                                                                                                              : name === 'plus'
-                                                                                                                ? Plus
-                                                                                                                : name === 'pencil'
-                                                                                                                  ? Pencil
-                                                                                                                  : name === 'mapPin'
-                                                                                                                    ? MapPin
-                                                                                                                    : name === 'chevronRight'
-                                                                                                                      ? ChevronRight
-                                                                                                                      : Compass;
-
+export function Icon({ name, className, size = 20, strokeWidth = 1.9, title, ...props }: IconProps) {
+  const IconComponent = ICONS[name] ?? Compass;
   return (
     <IconComponent
       size={size}
+      strokeWidth={strokeWidth}
       className={cn('shrink-0', className)}
-      aria-hidden={props['aria-hidden']}
+      aria-hidden={props['aria-hidden'] ?? (title ? undefined : true)}
     >
       {title ? <title>{title}</title> : null}
     </IconComponent>

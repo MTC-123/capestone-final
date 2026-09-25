@@ -47,8 +47,8 @@ describe('SlidingWindowRateLimiter', () => {
     mockCacheClient.get.mockClear();
     mockCacheClient.set.mockClear();
     mockCacheClient.del.mockClear();
-    // Default: no REDIS_URL => uses in-memory path
-    delete process.env.REDIS_URL;
+    // Default: no Upstash credentials => uses in-memory path
+    delete process.env.UPSTASH_REDIS_REST_URL; delete process.env.UPSTASH_REDIS_REST_TOKEN;
   });
 
   afterEach(() => {
@@ -146,8 +146,8 @@ describe('SlidingWindowRateLimiter', () => {
 
   describe('Redis fallback', () => {
     it('falls back to in-memory when Redis throws', async () => {
-      // Enable REDIS_URL so the code tries Redis first
-      process.env.REDIS_URL = 'redis://localhost:6379';
+      // Configure Upstash so the code tries the shared store first
+      process.env.UPSTASH_REDIS_REST_URL = 'https://example.upstash.io'; process.env.UPSTASH_REDIS_REST_TOKEN = 'test';
 
       // Make getCacheClient throw to simulate Redis unavailable
       const { getCacheClient } = await import('@/lib/cache/redis');
@@ -164,8 +164,8 @@ describe('SlidingWindowRateLimiter', () => {
       expect(result.remaining).toBe(1);
     });
 
-    it('uses Redis when REDIS_URL is set and Redis is available', async () => {
-      process.env.REDIS_URL = 'redis://localhost:6379';
+    it('uses the shared store when Upstash is configured', async () => {
+      process.env.UPSTASH_REDIS_REST_URL = 'https://example.upstash.io'; process.env.UPSTASH_REDIS_REST_TOKEN = 'test';
 
       const limiter = new SlidingWindowRateLimiter({
         windowMs: 60_000,
@@ -178,7 +178,7 @@ describe('SlidingWindowRateLimiter', () => {
     });
 
     it('stores timestamps in Redis with correct TTL', async () => {
-      process.env.REDIS_URL = 'redis://localhost:6379';
+      process.env.UPSTASH_REDIS_REST_URL = 'https://example.upstash.io'; process.env.UPSTASH_REDIS_REST_TOKEN = 'test';
 
       const windowMs = 120_000; // 2 minutes
       const limiter = new SlidingWindowRateLimiter({
@@ -216,7 +216,7 @@ describe('SlidingWindowRateLimiter', () => {
     });
 
     it('clears Redis key on reset', async () => {
-      process.env.REDIS_URL = 'redis://localhost:6379';
+      process.env.UPSTASH_REDIS_REST_URL = 'https://example.upstash.io'; process.env.UPSTASH_REDIS_REST_TOKEN = 'test';
 
       const limiter = new SlidingWindowRateLimiter({
         windowMs: 60_000,
@@ -230,7 +230,7 @@ describe('SlidingWindowRateLimiter', () => {
     });
 
     it('handles reset gracefully when Redis is unavailable', async () => {
-      process.env.REDIS_URL = 'redis://localhost:6379';
+      process.env.UPSTASH_REDIS_REST_URL = 'https://example.upstash.io'; process.env.UPSTASH_REDIS_REST_TOKEN = 'test';
 
       const { getCacheClient } = await import('@/lib/cache/redis');
 
@@ -296,7 +296,7 @@ describe('SlidingWindowRateLimiter', () => {
 
   describe('Redis-backed limiting', () => {
     beforeEach(() => {
-      process.env.REDIS_URL = 'redis://localhost:6379';
+      process.env.UPSTASH_REDIS_REST_URL = 'https://example.upstash.io'; process.env.UPSTASH_REDIS_REST_TOKEN = 'test';
       mockRedisStore.clear();
     });
 

@@ -4,7 +4,7 @@
 
 import { IconLayer, PathLayer, ScatterplotLayer } from '@deck.gl/layers';
 import { RESOURCE_TYPE_COLORS, INCIDENT_STATUS_COLORS, INFRASTRUCTURE_TYPE_COLORS, RETARDANT_COLOR } from './colors';
-import { shapeIcon, hexToRgba, RESOURCE_SHAPE, INFRA_SHAPE } from './helpers';
+import { shapeIcon, hexToRgba, ringOffsets, RESOURCE_SHAPE, INFRA_SHAPE } from './helpers';
 import type { GeoFeatureCollection, GeoResourceProps, GeoInfrastructureProps, GeoIncidentProps } from '@/types';
 
 /**
@@ -13,7 +13,8 @@ import type { GeoFeatureCollection, GeoResourceProps, GeoInfrastructureProps, Ge
 export function createResourceLayer(
   resources: GeoFeatureCollection<GeoResourceProps>,
   isActive: boolean,
-  activeTypes?: Record<string, boolean>
+  activeTypes?: Record<string, boolean>,
+  occupied?: ReadonlySet<string>
 ): IconLayer | null {
   if (!isActive || resources.features.length === 0) return null;
 
@@ -22,8 +23,10 @@ export function createResourceLayer(
     : resources.features;
   if (filtered.length === 0) return null;
 
-  const data = filtered.map((f) => ({
+  const offsets = ringOffsets(filtered.map((f) => f.geometry.coordinates as [number, number]), 54, -45, occupied);
+  const data = filtered.map((f, i) => ({
     coordinates: f.geometry.coordinates as [number, number],
+    offset: offsets[i],
     color: RESOURCE_TYPE_COLORS[f.properties.type] ?? '#6b7280',
     type: f.properties.type,
   }));
@@ -37,7 +40,8 @@ export function createResourceLayer(
       width: 24,
       height: 24,
     }),
-    getSize: () => 32,
+    getSize: () => 28,
+    getPixelOffset: (d: (typeof data)[0]) => d.offset,
     updateTriggers: {
       getPosition: [data.length],
       getIcon: [data.length],
@@ -95,17 +99,20 @@ export function createIncidentPulseLayer(
  */
 export function createInfrastructureLayers(
   infrastructure: GeoFeatureCollection<GeoInfrastructureProps>,
-  isActive: boolean
+  isActive: boolean,
+  activeTypes?: Record<string, boolean>
 ): (IconLayer | PathLayer)[] {
   if (!isActive || infrastructure.features.length === 0) return [];
 
   const layers: (IconLayer | PathLayer)[] = [];
+  const shown = activeTypes
+    ? infrastructure.features.filter((f) => activeTypes[f.properties.type] !== false)
+    : infrastructure.features;
 
   // Point infrastructure (watchtowers, water points, stations, helipads)
-  const pointTypes = new Set(['WATCHTOWER', 'WATER_POINT', 'STATION', 'HELIPAD']);
-  const pointFeatures = infrastructure.features.filter(
-    (f) => pointTypes.has(f.properties.type),
-  );
+  // Firebreaks recorded as a single point (e.g. a surveyed gate) are drawn as markers too.
+  const pointTypes = new Set(['WATCHTOWER', 'WATER_POINT', 'STATION', 'HELIPAD', 'FIREBREAK']);
+  const pointFeatures = shown.filter((f) => f.geometry.type === 'Point' && pointTypes.has(f.properties.type));
 
   if (pointFeatures.length > 0) {
     const data = pointFeatures.map((f) => ({
@@ -134,9 +141,7 @@ export function createInfrastructureLayers(
   }
 
   // Firebreak paths
-  const firebreaks = infrastructure.features.filter(
-    (f) => f.properties.type === 'FIREBREAK',
-  );
+  const firebreaks = shown.filter((f) => f.properties.type === 'FIREBREAK' && f.geometry.type === 'LineString');
 
   if (firebreaks.length > 0) {
     const paths = firebreaks.map((f) => ({
@@ -169,15 +174,20 @@ interface RetardantDataItem {
  * Creates icon layer for retardant storage locations
  */
 export function createRetardantLayer(
-  data: RetardantDataItem[],
-  isActive: boolean
+  items: RetardantDataItem[],
+  isActive: boolean,
+  occupied?: ReadonlySet<string>
 ): IconLayer | null {
-  if (!isActive || data.length === 0) return null;
+  if (!isActive || items.length === 0) return null;
+
+  const offsets = ringOffsets(items.map((d) => d.coordinates), 54, 135, occupied);
+  const data = items.map((d, i) => ({ ...d, offset: offsets[i] }));
 
   return new IconLayer({
     id: 'retardant-icons',
     data,
-    getPosition: (d: RetardantDataItem) => d.coordinates,
+    getPosition: (d: (typeof data)[0]) => d.coordinates,
+    getPixelOffset: (d: (typeof data)[0]) => d.offset,
     getIcon: () => ({
       url: shapeIcon('hexagon', RETARDANT_COLOR),
       width: 24,

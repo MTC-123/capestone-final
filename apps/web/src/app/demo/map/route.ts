@@ -2,11 +2,13 @@ export const dynamic = 'force-dynamic';
 
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { deriveScopes, hashRefreshToken, signAccessToken, signRefreshToken } from '@/lib/auth';
+import { buildAuthResponse, issueSession } from '@/lib/auth';
 import { withApiHandler } from '@/lib/errors/withApiHandler';
 import { AppError } from '@/lib/errors/AppError';
+import { enforceRateLimit } from '@/lib/security/rateLimit';
+import { audit } from '@/lib/audit/log';
+import { DEMO_PERSONAS, isDemoMode, type DemoPersona } from '@/lib/demo';
 
-const DEFAULT_DEMO_ADMIN_CIN = 'CD789012';
 const DEMO_SESSION_SECONDS = 60 * 60 * 6;
 
 function getPublicOrigin(request: Request): string {
@@ -14,70 +16,42 @@ function getPublicOrigin(request: Request): string {
   const host = forwardedHost || request.headers.get('host')?.split(',')[0]?.trim();
   const forwardedProto = request.headers.get('x-forwarded-proto')?.split(',')[0]?.trim();
   const requestUrl = new URL(request.url);
-
-  if (host) {
-    return `${forwardedProto || requestUrl.protocol.replace(':', '')}://${host}`;
-  }
-
+  if (host) return `${forwardedProto || requestUrl.protocol.replace(':', '')}://${host}`;
   return requestUrl.origin;
 }
 
-function setDemoAuthCookies(response: NextResponse, accessToken: string, refreshToken: string) {
-  const base = {
+/** One-click sign-in as a seeded demo persona. Only exists when DEMO_MODE=true. */
+export const GET = withApiHandler(async (request: Request) => {
+  if (!isDemoMode()) throw new AppError(1003);
+  await enforceRateLimit('signin', request);
+
+  const url = new URL(request.url);
+  const persona: DemoPersona = url.searchParams.get('as') === 'civilian' ? 'civilian' : 'official';
+  const { cin, landing } = DEMO_PERSONAS[persona];
+
+  const user = await prisma.user.findUnique({ where: { cin } });
+  if (!user) throw new AppError(1003, { message: 'Demo persona not seeded', meta: { persona } });
+
+  const { accessToken, refreshToken } = await issueSession(user, request, { refreshSeconds: DEMO_SESSION_SECONDS });
+  await audit({
+    action: 'auth.signin',
+    actor: { userId: user.id, cin: user.cin, role: user.role },
+    targetType: 'user',
+    targetId: user.id,
+    meta: { demoPersona: persona },
+    request,
+  });
+
+  const redirect = NextResponse.redirect(new URL(landing, getPublicOrigin(request)), 302);
+  const withCookies = buildAuthResponse({}, accessToken, refreshToken);
+  withCookies.cookies.getAll().forEach((cookie) => redirect.cookies.set(cookie));
+  redirect.cookies.set('refresh-token', refreshToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax' as const,
+    sameSite: 'lax',
     path: '/',
-  };
-
-  response.cookies.set('auth-token', accessToken, { ...base, maxAge: 60 * 15 });
-  response.cookies.set('refresh-token', refreshToken, { ...base, maxAge: DEMO_SESSION_SECONDS });
-}
-
-export const GET = withApiHandler(async (request: Request) => {
-  if (process.env.DEMO_AUTO_LOGIN_ENABLED === 'false') {
-    throw new AppError(2001, { message: 'Demo auto-login is disabled' });
-  }
-
-  const missingEnv = ['DATABASE_URL', 'JWT_SECRET'].filter((key) => !process.env[key]);
-  if (missingEnv.length) throw new AppError(5001, { meta: { missingEnv } });
-
-  const cin = process.env.DEMO_ADMIN_CIN?.trim() || DEFAULT_DEMO_ADMIN_CIN;
-  const user = await prisma.user.findUnique({ where: { cin } });
-  if (!user) {
-    throw new AppError(1003, { message: 'Demo admin user not found', meta: { cin } });
-  }
-  if (user.role !== 'OFFICIAL') {
-    throw new AppError(2001, { message: 'Demo user must be an official account', meta: { cin } });
-  }
-
-  const scopes = deriveScopes(user.role);
-  const accessToken = signAccessToken({
-    userId: user.id,
-    cin: user.cin,
-    role: user.role,
-    department: user.department ?? undefined,
-    scopes,
+    maxAge: DEMO_SESSION_SECONDS,
   });
-
-  const jti = typeof crypto !== 'undefined' ? crypto.randomUUID() : `${Date.now()}:${Math.random()}`;
-  const refreshToken = signRefreshToken({ userId: user.id, jti, scopes });
-  const expiresAt = new Date(Date.now() + DEMO_SESSION_SECONDS * 1000);
-
-  await prisma.refreshToken.create({
-    data: {
-      userId: user.id,
-      jti,
-      tokenHash: hashRefreshToken(refreshToken),
-      scopes,
-      expiresAt,
-      ip: request.headers.get('x-forwarded-for') ?? undefined,
-      userAgent: request.headers.get('user-agent') ?? undefined,
-    },
-  });
-
-  const response = NextResponse.redirect(new URL('/map', getPublicOrigin(request)), 302);
-  response.headers.set('Cache-Control', 'no-store');
-  setDemoAuthCookies(response, accessToken, refreshToken);
-  return response;
+  redirect.headers.set('Cache-Control', 'no-store');
+  return redirect;
 });

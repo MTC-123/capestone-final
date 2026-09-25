@@ -54,9 +54,13 @@ function translate(locale: SupportedLocale, key: string): string {
   return bucket[key] ?? (translations.en as Record<string, string>)[key] ?? key;
 }
 
-function isDebugEnabled(request: Request): boolean {
-  if (process.env.NODE_ENV !== 'production') return true;
-  return request.headers.get('x-debug') === '1';
+/**
+ * Stack traces and causes are returned only in local development. In
+ * production they go to the log and Sentry, never to the client: a request
+ * header must not be able to switch this on (OWASP ASVS V7.4).
+ */
+function isDebugEnabled(): boolean {
+  return process.env.NODE_ENV === 'development';
 }
 
 function toProblemDetails(request: Request, entry: ReturnType<typeof getCatalogEntry>, envelope: ApiErrorEnvelope): ProblemDetails {
@@ -78,10 +82,28 @@ export type ApiHandler<TCtx extends ApiHandlerContext = ApiHandlerContext> = (
   context?: TCtx
 ) => Promise<Response>;
 
-export function withApiHandler<TCtx extends ApiHandlerContext>(
-  handler: ApiHandler<TCtx>
-): ApiHandler<TCtx> {
-  return async (request: Request, context?: TCtx) => {
+/**
+ * Next.js 15 passes dynamic route params as a Promise. The wrapper resolves
+ * them once so handlers keep reading `context.params.id` synchronously (plain
+ * objects, as used in tests, are accepted too).
+ */
+export type RouteContext = { params?: Promise<Record<string, string>> | Record<string, string> };
+
+/**
+ * Route handler as exported from route.ts files. Next.js infers the route
+ * context from the last signature (context required); the single-argument
+ * form lets tests and internal callers invoke handlers directly.
+ */
+export interface WrappedRouteHandler {
+  (request: Request): Promise<Response>;
+  (request: Request, context: { params?: Record<string, string> }): Promise<Response>;
+  (request: Request, context: { params: Promise<Record<string, string>> }): Promise<Response>;
+}
+
+export function withApiHandler<TCtx extends ApiHandlerContext>(handler: ApiHandler<TCtx>): WrappedRouteHandler {
+  return async (request: Request, routeContext?: RouteContext) => {
+    const params = routeContext?.params ? await routeContext.params : undefined;
+    const context = (routeContext ? { ...routeContext, params } : undefined) as TCtx | undefined;
     const requestId =
       request.headers.get('x-request-id') ?? (typeof crypto !== 'undefined' ? crypto.randomUUID() : `${Date.now()}`);
     const startedAt = performance.now();
@@ -128,7 +150,7 @@ export function withApiHandler<TCtx extends ApiHandlerContext>(
         meta: isRateLimited ? { originalCode: originalEntry.code } : appError.meta,
       };
 
-      if (isDebugEnabled(request)) {
+      if (isDebugEnabled()) {
         envelope.debug = {
           stack: (err as { stack?: unknown })?.stack ? String((err as { stack?: unknown }).stack) : undefined,
           cause: err instanceof AppError ? err.cause : undefined,

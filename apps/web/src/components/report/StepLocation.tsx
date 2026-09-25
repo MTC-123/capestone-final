@@ -25,9 +25,7 @@ interface StepLocationProps {
 }
 
 export function StepLocation({ location, onLocationSelect, onNext }: StepLocationProps) {
-  const { t, language } = useTranslation();
-  const isRTL = language === 'ar';
-  const textAlign = isRTL ? 'text-right' : 'text-left';
+  const { t } = useTranslation();
 
   return (
     <div className="space-y-4">
@@ -38,7 +36,7 @@ export function StepLocation({ location, onLocationSelect, onNext }: StepLocatio
       />
 
       {location && (
-        <div className={`text-sm text-muted-foreground ${textAlign}`}>
+        <div className="text-sm text-muted-foreground text-start">
           {t('locationSelected')}: {location.lat.toFixed(6)}, {location.lng.toFixed(6)}
         </div>
       )}

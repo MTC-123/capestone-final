@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 import { describe, it, expect, vi } from 'vitest';
 import { createIncidentPulseLayer, createResourceLayer, createInfrastructureLayers, createRetardantLayer } from '@/lib/map/layers';
 import type { GeoFeatureCollection, GeoIncidentProps, GeoResourceProps, GeoInfrastructureProps } from '@/types';
@@ -19,7 +19,8 @@ vi.mock('@deck.gl/layers', () => ({
   },
 }));
 
-vi.mock('@/lib/map/helpers', () => ({
+vi.mock('@/lib/map/helpers', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/map/helpers')>()),
   circleIcon: (color: string) => `data:svg,${color}`,
   shapeIcon: (_shape: string, color: string) => `data:svg,${color}`,
   hexToRgba: (hex: string, alpha = 255) => [255, 100, 0, alpha],
@@ -236,6 +237,15 @@ describe('createInfrastructureLayers', () => {
     const ids = layers.map((l: any) => l.props.id);
     expect(ids).toContain('infra-icons');
     expect(ids).toContain('firebreak-paths');
+  });
+
+  it('hides the infrastructure types switched off in the panel', () => {
+    const noFirebreaks = createInfrastructureLayers(mixedInfra, true, { FIREBREAK: false });
+    expect(noFirebreaks.map((l: any) => l.props.id)).toEqual(['infra-icons']);
+    const noPoints = createInfrastructureLayers(mixedInfra, true, {
+      WATCHTOWER: false, WATER_POINT: false, STATION: false, HELIPAD: false,
+    });
+    expect(noPoints.map((l: any) => l.props.id)).toEqual(['firebreak-paths']);
   });
 
   it('PathLayer getColor returns [139, 92, 246] (purple)', () => {

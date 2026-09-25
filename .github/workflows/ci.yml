@@ -12,16 +12,17 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+defaults:
+  run:
+    working-directory: apps/web
+
 jobs:
   verify:
     name: Lint, typecheck, unit tests
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: apps/web
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -31,3 +32,38 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run test:unit
+
+  database:
+    name: Database integration (MongoDB replica set)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - name: Start single-node replica set
+        run: |
+          docker run -d --name rs -p 27018:27017 mongo:7 --replSet rs0 --bind_ip_all
+          for i in $(seq 1 30); do docker exec rs mongosh --quiet --eval 'try{rs.status().ok}catch(e){rs.initiate({_id:"rs0",members:[{_id:0,host:"localhost:27017"}]}).ok}' && break; sleep 2; done
+      - run: npm ci
+      - run: npx prisma generate
+      - run: npm run test:db
+        env:
+          TEST_DATABASE_URL: mongodb://localhost:27018/ricer_test?replicaSet=rs0&directConnection=true
+
+  build:
+    name: Production build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - run: npm ci
+      - run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: '1'

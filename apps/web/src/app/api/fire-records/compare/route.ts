@@ -9,6 +9,7 @@ import { AppError } from '@/lib/errors/AppError';
 export const POST = withApiHandler(async (request: Request) => {
   const currentUser = await getCurrentUser(request);
   if (!currentUser) throw new AppError(2000);
+  if (currentUser.role !== 'OFFICIAL') throw new AppError(2001);
 
   const body = await request.json();
   const { ids } = body;

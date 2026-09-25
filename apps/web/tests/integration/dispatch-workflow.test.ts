@@ -16,9 +16,34 @@ const mockVehicles: any[] = [];
 const mockIncidents: any[] = [];
 const mockDispatches: any[] = [];
 
+/** Fake of Prisma's conditional updateMany: applies `data` to every row matching all `where` fields. */
+function fakeUpdateMany(rows: any[], args: any) {
+  let count = 0;
+  for (const row of rows) {
+    if (Object.entries(args.where).every(([k, v]) => (row[k] ?? null) === v)) {
+      Object.assign(row, args.data, { updatedAt: new Date() });
+      count++;
+    }
+  }
+  return Promise.resolve({ count });
+}
+
+function fakeDeleteMany(rows: any[], args: any) {
+  const ids: string[] = args.where?.id?.in ?? [];
+  let count = 0;
+  for (let i = rows.length - 1; i >= 0; i--) {
+    if (ids.includes(rows[i].id)) {
+      rows.splice(i, 1);
+      count++;
+    }
+  }
+  return Promise.resolve({ count });
+}
+
 vi.mock('@/lib/prisma', () => ({
   prisma: {
     team: {
+      updateMany: vi.fn((args: any) => fakeUpdateMany(mockTeams, args)),
       findMany: vi.fn(() => Promise.resolve(mockTeams)),
       findUnique: vi.fn((args: any) =>
         Promise.resolve(mockTeams.find((t) => t.id === args.where.id))
@@ -42,6 +67,7 @@ vi.mock('@/lib/prisma', () => ({
       }),
     },
     vehicle: {
+      updateMany: vi.fn((args: any) => fakeUpdateMany(mockVehicles, args)),
       findMany: vi.fn(() => Promise.resolve(mockVehicles)),
       findUnique: vi.fn((args: any) =>
         Promise.resolve(mockVehicles.find((v) => v.id === args.where.id))
@@ -60,6 +86,7 @@ vi.mock('@/lib/prisma', () => ({
       ),
     },
     dispatch: {
+      deleteMany: vi.fn((args: any) => fakeDeleteMany(mockDispatches, args)),
       findFirst: vi.fn((args: any) =>
         Promise.resolve(
           mockDispatches.find(

@@ -58,149 +58,52 @@ describe('useKeyboardShortcuts', () => {
     mockPush.mockClear();
   });
 
-  it('toggles showOverlay when "?" is pressed', () => {
+  it('toggles the command palette with Ctrl+K and Cmd+K', () => {
     const { result } = renderHook(() => useKeyboardShortcuts());
-
-    // Initially false
-    expect(result.current.showOverlay).toBe(false);
-
-    // Press "?" -> true
-    act(() => {
-      fireKey('?');
-    });
-    expect(result.current.showOverlay).toBe(true);
-
-    // Press "?" again -> false
-    act(() => {
-      fireKey('?');
-    });
-    expect(result.current.showOverlay).toBe(false);
+    expect(result.current.paletteOpen).toBe(false);
+    act(() => fireKey('k', undefined, { ctrlKey: true }));
+    expect(result.current.paletteOpen).toBe(true);
+    act(() => fireKey('k', undefined, { metaKey: true }));
+    expect(result.current.paletteOpen).toBe(false);
   });
 
-  it('sets showOverlay to false when Escape is pressed', () => {
+  it('opens the palette even while typing in a field', () => {
     const { result } = renderHook(() => useKeyboardShortcuts());
-
-    // Open overlay first
-    act(() => {
-      fireKey('?');
+    withDomElement(document.createElement('input'), (input) => {
+      act(() => fireKey('k', input, { ctrlKey: true }));
     });
-    expect(result.current.showOverlay).toBe(true);
-
-    // Press Escape
-    act(() => {
-      fireKey('Escape');
-    });
-    expect(result.current.showOverlay).toBe(false);
+    expect(result.current.paletteOpen).toBe(true);
   });
 
-  it('dispatches ricer:close-panels custom event on Escape', () => {
-    const handler = vi.fn();
-    document.addEventListener('ricer:close-panels', handler);
-
+  it('navigates to /report on Alt+N', () => {
     renderHook(() => useKeyboardShortcuts());
-
-    act(() => {
-      fireKey('Escape');
-    });
-
-    expect(handler).toHaveBeenCalledTimes(1);
-
-    document.removeEventListener('ricer:close-panels', handler);
-  });
-
-  it('navigates to /report when "n" is pressed', () => {
-    renderHook(() => useKeyboardShortcuts());
-
-    act(() => {
-      fireKey('n');
-    });
-
+    act(() => fireKey('n', undefined, { altKey: true, code: 'KeyN' }));
     expect(mockPush).toHaveBeenCalledWith('/report');
   });
 
-  it('suppresses shortcuts when target is an INPUT element', () => {
-    const { result } = renderHook(() => useKeyboardShortcuts());
-
-    const input = document.createElement('input');
-    withDomElement(input, (el) => {
-      act(() => {
-        fireKey('?', el);
-      });
-    });
-
-    // showOverlay should remain false because the event target is an INPUT
-    expect(result.current.showOverlay).toBe(false);
-  });
-
-  it('suppresses shortcuts when target is a TEXTAREA element', () => {
-    const { result } = renderHook(() => useKeyboardShortcuts());
-
-    const textarea = document.createElement('textarea');
-    withDomElement(textarea, (el) => {
-      act(() => {
-        fireKey('?', el);
-      });
-    });
-
-    expect(result.current.showOverlay).toBe(false);
-  });
-
-  it('suppresses shortcuts when target is a SELECT element', () => {
+  it('ignores single printable keys (WCAG 2.1.4)', () => {
     renderHook(() => useKeyboardShortcuts());
-
-    const select = document.createElement('select');
-    withDomElement(select, (el) => {
-      act(() => {
-        fireKey('n', el);
-      });
-    });
-
-    expect(mockPush).not.toHaveBeenCalled();
-  });
-
-  it('suppresses shortcuts when target is contentEditable', () => {
-    renderHook(() => useKeyboardShortcuts());
-
-    const div = document.createElement('div');
-    div.contentEditable = 'true';
-    // jsdom does not implement isContentEditable, so we polyfill it
-    Object.defineProperty(div, 'isContentEditable', { value: true, configurable: true });
-    withDomElement(div, (el) => {
-      act(() => {
-        fireKey('n', el);
-      });
-    });
-
-    expect(mockPush).not.toHaveBeenCalled();
-  });
-
-  it('allows setShowOverlay to be called programmatically', () => {
-    const { result } = renderHook(() => useKeyboardShortcuts());
-
     act(() => {
-      result.current.setShowOverlay(true);
+      fireKey('n');
+      fireKey('r');
+      fireKey('f');
     });
+    expect(mockPush).not.toHaveBeenCalled();
+  });
+
+  it('does not trigger Alt shortcuts while typing', () => {
+    renderHook(() => useKeyboardShortcuts());
+    withDomElement(document.createElement('textarea'), (el) => {
+      act(() => fireKey('n', el, { altKey: true, code: 'KeyN' }));
+    });
+    expect(mockPush).not.toHaveBeenCalled();
+  });
+
+  it('toggles the help overlay with ? and closes it with Escape', () => {
+    const { result } = renderHook(() => useKeyboardShortcuts());
+    act(() => fireKey('?'));
     expect(result.current.showOverlay).toBe(true);
-
-    act(() => {
-      result.current.setShowOverlay(false);
-    });
+    act(() => fireKey('Escape'));
     expect(result.current.showOverlay).toBe(false);
-  });
-
-  it('removes the keydown listener on unmount', () => {
-    const addSpy = vi.spyOn(document, 'addEventListener');
-    const removeSpy = vi.spyOn(document, 'removeEventListener');
-
-    const { unmount } = renderHook(() => useKeyboardShortcuts());
-
-    expect(addSpy).toHaveBeenCalledWith('keydown', expect.any(Function));
-
-    unmount();
-
-    expect(removeSpy).toHaveBeenCalledWith('keydown', expect.any(Function));
-
-    addSpy.mockRestore();
-    removeSpy.mockRestore();
   });
 });

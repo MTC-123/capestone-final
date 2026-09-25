@@ -6,20 +6,14 @@ import { prisma } from '@/lib/prisma';
 import type { Prisma } from '@prisma/client';
 import { withApiHandler } from '@/lib/errors/withApiHandler';
 import { AppError } from '@/lib/errors/AppError';
-import { enqueueNotification } from '@/lib/notifications/queue';
-import { isTwilioConfigured } from '@/lib/notifications/twilio';
+import { notifyEvent } from '@/lib/notifications/events';
+import { enforceRateLimit } from '@/lib/security/rateLimit';
+import { parseJsonBody } from '@/lib/validation/parse';
+import { createReportSchema } from '@/lib/validation/report';
+import { audit } from '@/lib/audit/log';
 import { DEFAULT_LIMITS } from '@/types/pagination';
 import type { CursorPaginationResponse } from '@/types/pagination';
-import { formatValueForError } from '@/lib/errors/context';
 import { logger } from '@/lib/observability/logger';
-
-// In-memory cache for officials list (5-minute TTL)
-interface OfficialsCache {
-  data: Array<{ phone: string }>;
-  timestamp: number;
-}
-let officialsCache: OfficialsCache | null = null;
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 export const GET = withApiHandler(async (request: Request) => {
   const currentUser = await getCurrentUser(request);
@@ -96,130 +90,100 @@ export const GET = withApiHandler(async (request: Request) => {
 export const POST = withApiHandler(async (request: Request) => {
   const currentUser = await getCurrentUser(request);
   if (!currentUser) throw new AppError(2000);
+  await enforceRateLimit('reportCreate', request, currentUser.userId);
 
-  let body: unknown;
+  const input = await parseJsonBody(request, createReportSchema);
+  const clientSubmissionId = input.clientSubmissionId ?? crypto.randomUUID();
+
+  // Idempotency: a retried submission (offline queue, flaky network, double
+  // tap) returns the report created the first time.
+  const existing = await findSubmission(clientSubmissionId);
+  if (existing) {
+    if (existing.userId !== currentUser.userId) throw new AppError(3001);
+    return NextResponse.json({ report: existing, referenceNumber: existing.referenceNumber, duplicate: true });
+  }
+
+  await assertPhotosOwned(input.images, currentUser.userId);
+
+  let report: ReportWithUser;
   try {
-    body = await request.json();
+    report = await prisma.report.create({
+      data: {
+        userId: currentUser.userId,
+        clientSubmissionId,
+        referenceNumber: generateReferenceNumber(),
+        latitude: input.latitude,
+        longitude: input.longitude,
+        description: input.description,
+        cause: input.cause,
+        images: input.images,
+        status: 'PENDING',
+        anonymous: input.anonymous,
+        contactPhone: input.contactPhone,
+        characteristics: {
+          ...(input.characteristics ?? {}),
+          ...(input.capturedAt ? { capturedAt: input.capturedAt.toISOString() } : {}),
+        } as object,
+      },
+      include: REPORT_USER_INCLUDE,
+    });
   } catch (error) {
-    throw new AppError(1000, { cause: error });
-  }
-
-  const latitudeRaw = (body as { latitude?: unknown })?.latitude;
-  const longitudeRaw = (body as { longitude?: unknown })?.longitude;
-  const description = typeof (body as { description?: unknown })?.description === 'string' ? (body as { description: string }).description.trim() : '';
-  const cause = typeof (body as { cause?: unknown })?.cause === 'string' ? (body as { cause: string }).cause : undefined;
-  const anonymous = (body as { anonymous?: unknown })?.anonymous === true;
-  const contactPhone = typeof (body as { contactPhone?: unknown })?.contactPhone === 'string' ? (body as { contactPhone: string }).contactPhone.trim() || undefined : undefined;
-  const characteristics = (body as { characteristics?: unknown })?.characteristics ?? undefined;
-  const rawImages = Array.isArray((body as { images?: unknown })?.images) ? (body as { images: unknown[] }).images : [];
-
-  // Validate images: max 3, each max 3MB base64
-  const MAX_IMAGES = 3;
-  const MAX_IMAGE_BYTES = 3 * 1024 * 1024; // 3MB
-  const validImages: string[] = [];
-  for (const img of rawImages.slice(0, MAX_IMAGES)) {
-    if (typeof img !== 'string' || !img.startsWith('data:image/')) continue;
-    const base64Part = img.split(',')[1] ?? '';
-    const sizeBytes = Math.ceil(base64Part.length * 0.75);
-    if (sizeBytes <= MAX_IMAGE_BYTES) {
-      validImages.push(img);
+    if ((error as { code?: string })?.code === 'P2002') {
+      const winner = await findSubmission(clientSubmissionId);
+      if (winner && winner.userId === currentUser.userId) {
+        return NextResponse.json({ report: winner, referenceNumber: winner.referenceNumber, duplicate: true });
+      }
     }
+    throw error;
   }
 
-  const fields = [];
-  const latitude = typeof latitudeRaw === 'number' ? latitudeRaw : Number(latitudeRaw);
-  const longitude = typeof longitudeRaw === 'number' ? longitudeRaw : Number(longitudeRaw);
-
-  if (!Number.isFinite(latitude)) {
-    fields.push({
-      field: 'latitude',
-      code: typeof latitudeRaw === 'undefined' ? 'required' : 'invalid_number',
-      message: typeof latitudeRaw !== 'undefined'
-        ? `Expected number, got: ${formatValueForError(latitudeRaw)}`
-        : undefined,
-    });
-  }
-
-  if (!Number.isFinite(longitude)) {
-    fields.push({
-      field: 'longitude',
-      code: typeof longitudeRaw === 'undefined' ? 'required' : 'invalid_number',
-      message: typeof longitudeRaw !== 'undefined'
-        ? `Expected number, got: ${formatValueForError(longitudeRaw)}`
-        : undefined,
-    });
-  }
-
-  if (!description) {
-    fields.push({ field: 'description', code: 'required' });
-  }
-
-  if (fields.length) {
-    throw new AppError(1001, {
-      fields,
-      meta: {
-        invalidValues: {
-          latitude: latitudeRaw,
-          longitude: longitudeRaw,
-          description,
-        },
-      },
-    });
-  }
-
-  // Generate reference number: RPT-YYYYMMDD-XXXX
-  const now = new Date();
-  const datePart = now.toISOString().slice(0, 10).replace(/-/g, '');
-  const hexPart = Math.random().toString(16).slice(2, 6).toUpperCase();
-  const referenceNumber = `RPT-${datePart}-${hexPart}`;
-
-  const report: ReportWithUser = await prisma.report.create({
-    data: {
-      userId: currentUser.userId,
-      latitude,
-      longitude,
-      description,
-      cause,
-      images: validImages,
-      status: 'PENDING',
-      anonymous,
-      contactPhone,
-      characteristics: characteristics as object | undefined,
-      referenceNumber,
-    },
-    include: {
-      user: {
-        select: {
-          cin: true,
-          phone: true,
-          role: true,
-        },
-      },
-    },
+  await audit({
+    action: 'report.create',
+    actor: currentUser,
+    targetType: 'report',
+    targetId: report.id,
+    meta: { referenceNumber: report.referenceNumber, photos: input.images.length, offline: Boolean(input.capturedAt) },
+    request,
   });
 
-  // Enqueue notification for background processing (non-blocking)
-  if (isTwilioConfigured()) {
-    try {
-      await enqueueWhatsAppNotification(report);
-    } catch (error) {
-      logger.error({
-        event: 'notification_enqueue_failed',
-        meta: {
-          reportId: report.id,
-          nonBlocking: true,
-        },
-        error: {
-          name: (error as Error)?.name,
-          message: (error as Error)?.message,
-          stack: (error as Error)?.stack,
-        },
-      });
-    }
+  try {
+    await notifyEvent({ type: 'report.submitted', report });
+  } catch (error) {
+    logger.error({
+      event: 'notification_dispatch_failed',
+      meta: { reportId: report.id, nonBlocking: true },
+      error: { name: (error as Error)?.name, message: (error as Error)?.message },
+    });
   }
 
-  return NextResponse.json({ report, referenceNumber });
+  return NextResponse.json({ report, referenceNumber: report.referenceNumber, duplicate: false }, { status: 201 });
 });
+
+const REPORT_USER_INCLUDE = {
+  user: { select: { cin: true, phone: true, role: true } },
+} as const;
+
+function findSubmission(clientSubmissionId: string) {
+  return prisma.report.findUnique({ where: { clientSubmissionId }, include: REPORT_USER_INCLUDE });
+}
+
+/** RPT-YYYYMMDD-XXXXXX with 24 bits of randomness; collisions surface as P2002. */
+function generateReferenceNumber(now = new Date()): string {
+  const datePart = now.toISOString().slice(0, 10).replace(/-/g, '');
+  const random = crypto.getRandomValues(new Uint8Array(3));
+  const hexPart = Array.from(random, (b) => b.toString(16).padStart(2, '0')).join('').toUpperCase();
+  return `RPT-${datePart}-${hexPart}`;
+}
+
+/** Photos must be uploads owned by the reporter, so a report cannot reference someone else's image. */
+async function assertPhotosOwned(urls: string[], userId: string) {
+  if (!urls.length) return;
+  const ids = urls.map((u) => u.split('/').pop() as string);
+  const owned = await prisma.upload.count({ where: { id: { in: ids }, ownerId: userId } });
+  if (owned !== ids.length) {
+    throw new AppError(1001, { fields: [{ field: 'images', code: 'invalid_photo' }] });
+  }
+}
 
 type ReportWithUser = Prisma.ReportGetPayload<{
   include: {
@@ -232,84 +196,3 @@ type ReportWithUser = Prisma.ReportGetPayload<{
     };
   };
 }>;
-
-async function getOfficials(): Promise<Array<{ phone: string }>> {
-  const now = Date.now();
-
-  // Return cached data if still valid
-  if (officialsCache && (now - officialsCache.timestamp) < CACHE_TTL_MS) {
-    return officialsCache.data;
-  }
-
-  // Fetch fresh data
-  const officials = await prisma.user.findMany({
-    where: { role: 'OFFICIAL' },
-    select: { phone: true },
-  });
-
-  // Update cache
-  officialsCache = {
-    data: officials,
-    timestamp: now,
-  };
-
-  return officials;
-}
-
-const E164_REGEX = /^\+[1-9]\d{6,14}$/;
-
-async function enqueueWhatsAppNotification(report: ReportWithUser): Promise<void> {
-  const testPhone = process.env.TEST_PHONE_NUMBER;
-
-  // Get officials from cache
-  const officials = await getOfficials();
-
-  let recipients = officials
-    .filter((o) => E164_REGEX.test(o.phone))
-    .map((o) => `whatsapp:${o.phone}`);
-
-  // If no officials, use test phone
-  if (recipients.length === 0 && testPhone && testPhone !== '+212XXXXXXXXX') {
-    recipients = [`whatsapp:${testPhone}`];
-    logger.info({
-      event: 'notification_using_test_number',
-      meta: { testPhone },
-    });
-  }
-
-  if (recipients.length === 0) {
-    logger.warn({
-      event: 'notification_no_recipients',
-      meta: { reportId: report.id },
-    });
-    return;
-  }
-
-  const googleMapsLink = `https://www.google.com/maps?q=${report.latitude},${report.longitude}`;
-
-  const message = `*ALERTE INCENDIE - RICER Ifrane*
-
-*Localisation:*
-${report.latitude.toFixed(6)}, ${report.longitude.toFixed(6)}
-Voir sur Google Maps: ${googleMapsLink}
-
-*Description:*
-${report.description}
-
-*Signalé par:* ${report.user.cin}
-*Date:* ${new Date(report.createdAt).toLocaleString('fr-FR')}
-
-ID: ${report.id}
-
-*Action requise immédiatement*`;
-
-  // Enqueue the notification job
-  await enqueueNotification(report.id, recipients, message);
-  logger.info({
-    event: 'notification_enqueued',
-    meta: {
-      reportId: report.id,
-      recipientCount: recipients.length,
-    },
-  });
-}

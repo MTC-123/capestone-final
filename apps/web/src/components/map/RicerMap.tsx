@@ -1,5 +1,6 @@
 'use client';
 
+import '@/lib/map/maplibreSetup';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import ReactMapGL, {
@@ -12,10 +13,11 @@ import ReactMapGL, {
   useControl,
   type MapRef,
   type MapLayerMouseEvent,
-} from 'react-map-gl';
+} from 'react-map-gl/maplibre';
 import { MapboxOverlay } from '@deck.gl/mapbox';
 import type { MapboxOverlayProps } from '@deck.gl/mapbox/typed';
 import 'maplibre-gl/dist/maplibre-gl.css';
+import { useAuthStore } from '@/store/useAuthStore';
 import { useMapStore } from '@/store/useMapStore';
 import { useDispatchStore } from '@/store/useDispatchStore';
 import { useToastStore } from '@/store/useToastStore';
@@ -26,12 +28,12 @@ import { useTranslation } from '@/hooks/useTranslation';
 import { Icon, type IconName } from '@/components/ui/Icon';
 import type { TranslationKey } from '@/i18n/translations';
 import { getMapStyle, HAS_PREMIUM_TILES } from '@/lib/map/styles';
-import { INCIDENT_STATUS_COLORS, FIRMS_CONFIDENCE_COLORS, SOIL_MOISTURE_COLORS, RESERVOIR_COLORS, PAMF_COLORS, RMA_COLORS } from '@/lib/map/colors';
+import { INCIDENT_STATUS_COLORS, FIRMS_CONFIDENCE_COLORS, SOIL_MOISTURE_COLORS, RESERVOIR_COLORS, PAMF_COLORS, RMA_COLORS, RISK_LEVEL_COLORS, FOREST_ROAD_COLOR, rgbaCss } from '@/lib/map/colors';
 import { usePopulationAtRisk } from '@/hooks/usePopulationAtRisk';
 import { useFireSpreadVectors } from '@/hooks/useFireSpreadVectors';
 import { registerSlopeProtocol, unregisterSlopeProtocol, configureSlopeProtocol } from '@/lib/map/slopeProtocol';
 import { fetchWithAuth } from '@/lib/api/fetchWithAuth';
-import { asGeoJSON } from '@/lib/map/helpers';
+import { asGeoJSON, coordKey } from '@/lib/map/helpers';
 import { logger } from '@/lib/observability/logger';
 import { createResourceLayer, createInfrastructureLayers, createIncidentPulseLayer, createRetardantLayer } from '@/lib/map/layers';
 import {
@@ -123,7 +125,9 @@ interface RicerMapProps {
 }
 
 export default function RicerMap({ weather = null, weatherLoading = false }: RicerMapProps) {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
+  // Map chrome mirrors in Arabic: controls go to the inline-start edge, clear of the layer panel.
+  const controlCorner = language === 'ar' ? 'top-left' : 'top-right';
   const mapRef = useRef<MapRef>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -179,6 +183,8 @@ export default function RicerMap({ weather = null, weatherLoading = false }: Ric
 
   /* Reservoir state */
   const [reservoirData, setReservoirData] = useState<any | null>(null);
+  const [forestRoadData, setForestRoadData] = useState<GeoJSON.FeatureCollection | null>(null);
+  const [riskGrid, setRiskGrid] = useState<GeoJSON.FeatureCollection | null>(null);
 
   /* Population grid state */
   const [populationGridData, setPopulationGridData] = useState<any | null>(null);
@@ -336,7 +342,9 @@ export default function RicerMap({ weather = null, weatherLoading = false }: Ric
 
   useEffect(() => {
     let cancelled = false;
-    let resourcesDisabled = false;
+    // Resource, vehicle and retardant feeds are official-only; residents never request them.
+    const isOfficialViewer = useAuthStore.getState().user?.role === 'OFFICIAL';
+    let resourcesDisabled = !isOfficialViewer;
     const abortController = new AbortController();
 
     async function fetchIncidents() {
@@ -413,7 +421,8 @@ export default function RicerMap({ weather = null, weatherLoading = false }: Ric
         setFirmsDetections(data);
         setFirmsLastUpdate(new Date());
         setLastSuccessfulSync(new Date());
-        setDataError('firmsDetections', null);
+        // Satellite sources can be down (or FIRMS unconfigured) without it being an app error.
+        setDataError('firmsDetections', res.headers.get('X-Detection-Status') === 'unavailable' ? 'unavailable' : null);
         logger.info({ event: 'firms_fetch_success_frontend', meta: { detections: data.features?.length || 0 } });
       } catch (error) {
         if (error instanceof Error && error.name === 'AbortError') return;
@@ -423,7 +432,7 @@ export default function RicerMap({ weather = null, weatherLoading = false }: Ric
       }
     }
 
-    let vehiclesDisabled = false;
+    let vehiclesDisabled = !isOfficialViewer;
     async function fetchVehicles() {
       if (cancelled || vehiclesDisabled) return;
       try {
@@ -440,7 +449,7 @@ export default function RicerMap({ weather = null, weatherLoading = false }: Ric
       }
     }
 
-    let retardantDisabled = false;
+    let retardantDisabled = !isOfficialViewer;
     async function fetchRetardant() {
       if (cancelled || retardantDisabled) return;
       try {
@@ -565,7 +574,7 @@ export default function RicerMap({ weather = null, weatherLoading = false }: Ric
       controller.abort();
       clearInterval(interval);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [layers.soilMoisture, layers.fireSpread]);
 
   /* ═══════════ EFFIS Burned Areas vector fetch ═══════════ */
@@ -601,7 +610,7 @@ export default function RicerMap({ weather = null, weatherLoading = false }: Ric
       controller.abort();
       clearInterval(interval);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [layers.effisBurnedAreas]);
 
   /* ═══════════ NDVI date probe (fetch latest available date) ═══════════ */
@@ -636,8 +645,39 @@ export default function RicerMap({ weather = null, weatherLoading = false }: Ric
       });
 
     return () => { cancelled = true; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [layers.ndvi]);
+
+  /* ═══════════ Model risk grid (partner team XGBoost) ═══════════ */
+
+  useEffect(() => {
+    if (!layers.riskModel) return;
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const res = await fetch('/api/risk/grid');
+        if (!res.ok) throw new Error(`Risk grid: ${res.status}`);
+        const data = (await res.json()) as GeoJSON.FeatureCollection & { properties?: Record<string, unknown> };
+        if (cancelled) return;
+        // One point per 0.1° model cell, carrying its score and level.
+        setRiskGrid(data);
+        useMapStore.getState().setRiskMeta({
+          modelVersion: data.properties?.modelVersion as string | undefined,
+          generatedAt: data.properties?.generatedAt as string | undefined,
+          dataTime: (data.features[0]?.properties as { dataTime?: string } | undefined)?.dataTime,
+          cellCount: data.features.length,
+        });
+      } catch (err) {
+        if (!cancelled) logger.warn({ event: 'risk_grid_fetch_failed', meta: { error: String(err) } });
+      }
+    };
+    void load();
+    const id = window.setInterval(load, 30 * 60 * 1000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, [layers.riskModel]);
 
   /* ═══════════ Reservoir data fetch ═══════════ */
 
@@ -667,6 +707,29 @@ export default function RicerMap({ weather = null, weatherLoading = false }: Ric
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [layers.reservoirs]);
 
+  /* ═══════════ Forest tracks (OpenStreetMap highway=track, loaded once on first use) ═══════════ */
+
+  useEffect(() => {
+    if (!layers.forestRoads || forestRoadData) return;
+    let cancelled = false;
+    fetch('/data/forest-roads-ifrane.geojson')
+      .then((res) => {
+        if (!res.ok) throw new Error(`Forest roads GeoJSON: ${res.status}`);
+        return res.json();
+      })
+      .then((data) => {
+        if (!cancelled) setForestRoadData(data);
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          console.error('[ForestRoads] Failed to load forest tracks', err);
+          addToast(t('forestRoadsUnavailable' as TranslationKey), 'warning');
+        }
+      });
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [layers.forestRoads]);
+
   /* ═══════════ Population grid data fetch (for usePopulationAtRisk hook) ═══════════ */
 
   useEffect(() => {
@@ -691,7 +754,7 @@ export default function RicerMap({ weather = null, weatherLoading = false }: Ric
       });
 
     return () => { cancelled = true; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [layers.populationDensity]);
 
   /* ═══════════ PAMF/RMA data fetch ═══════════ */
@@ -747,7 +810,7 @@ export default function RicerMap({ weather = null, weatherLoading = false }: Ric
             const statsMap = new Map(stats.communes.map((c: any) => [c.name, c]));
             const geojsonNames = new Set<string>();
 
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+             
             (geojson.features as any[]).forEach((f: any) => {
               const name = f.properties?.name;
               geojsonNames.add(name);
@@ -973,6 +1036,31 @@ export default function RicerMap({ weather = null, weatherLoading = false }: Ric
   );
 
   // Static layers: resources + infrastructure — only recomputes when data or tier changes
+  // Decluttering: stations stay at the true point, vehicles ring around them and
+  // resources/retardant take an outer ring. Resources that are also tracked
+  // vehicles (same call sign) are drawn once, as the vehicle.
+  const stationKeys = useMemo(() => {
+    const keys = new Set<string>();
+    if (!layers.infrastructure) return keys;
+    for (const f of infrastructure.features) {
+      if (f.geometry.type === 'Point') keys.add(coordKey(f.geometry.coordinates as [number, number]));
+    }
+    return keys;
+  }, [infrastructure, layers.infrastructure]);
+
+  const trackedVehicles = useMemo(() => {
+    const keys = new Set<string>(stationKeys);
+    const callSigns = new Set<string>();
+    if (layers.vehicles) {
+      for (const f of vehiclesData.features) {
+        if (!f.geometry?.coordinates) continue;
+        keys.add(coordKey(f.geometry.coordinates as [number, number]));
+        callSigns.add(f.properties.callSign);
+      }
+    }
+    return { keys, callSigns };
+  }, [stationKeys, vehiclesData, layers.vehicles]);
+
   const staticDeckLayers = useMemo(() => {
     // Tier C: use MapLibre native layers only; skip deck.gl
     if (!tierConfig.useDeckGL) return [];
@@ -984,14 +1072,23 @@ export default function RicerMap({ weather = null, weatherLoading = false }: Ric
       PERSONNEL: layers.rscPersonnel,
       EQUIPMENT: layers.rscEquipment,
     };
-    const resourceLayer = createResourceLayer(resources, layers.resources, resourceActiveTypes);
+    const untrackedResources = {
+      ...resources,
+      features: resources.features.filter((f) => !trackedVehicles.callSigns.has(f.properties.name)),
+    };
+    const resourceLayer = createResourceLayer(untrackedResources, layers.resources, resourceActiveTypes, trackedVehicles.keys);
     if (resourceLayer) list.push(resourceLayer);
-    const infraLayers = createInfrastructureLayers(infrastructure, layers.infrastructure);
+    const infraLayers = createInfrastructureLayers(infrastructure, layers.infrastructure, {
+      WATCHTOWER: layers.infraWatchtowers,
+      WATER_POINT: layers.infraWaterPoints,
+      STATION: layers.infraFireStations,
+      FIREBREAK: layers.infraFirebreaks,
+    });
     list.push(...infraLayers);
-    const retardantLayer = createRetardantLayer(retardantData, layers.retardant);
+    const retardantLayer = createRetardantLayer(retardantData, layers.retardant, trackedVehicles.keys);
     if (retardantLayer) list.push(retardantLayer);
     return list;
-  }, [tierConfig.useDeckGL, resources, infrastructure, retardantData, layers.resources, layers.infrastructure, layers.retardant, layers.rscTrucks, layers.rscAircraft, layers.rscPersonnel, layers.rscEquipment]);
+  }, [tierConfig.useDeckGL, resources, infrastructure, retardantData, layers.resources, layers.infrastructure, layers.retardant, layers.rscTrucks, layers.rscAircraft, layers.rscPersonnel, layers.rscEquipment, layers.infraWatchtowers, layers.infraWaterPoints, layers.infraFireStations, layers.infraFirebreaks, trackedVehicles]);
 
   // Dispatch layers: routes + teams — recomputes only when dispatch state changes
   const dispatchDeckLayers = useMemo(() => {
@@ -1016,12 +1113,12 @@ export default function RicerMap({ weather = null, weatherLoading = false }: Ric
         status: f.properties.status,
         location: f.geometry as { type: 'Point'; coordinates: [number, number] },
       }));
-    const vehicleLayer = createVehicleLayer(vehicleLayerData, layers.vehicles);
+    const vehicleLayer = createVehicleLayer(vehicleLayerData, layers.vehicles, stationKeys);
     if (vehicleLayer) list.push(vehicleLayer);
 
     return list;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [layers.routes, layers.activeTeams, layers.vehicles, routeLayerData, selectedTeams, vehiclesData, pulsePhase]);
+   
+  }, [layers.routes, layers.activeTeams, layers.vehicles, routeLayerData, selectedTeams, vehiclesData, pulsePhase, stationKeys]);
 
   // Animated layers: pulse + arcs — only on Tier A/B
   const animatedDeckLayers = useMemo(() => {
@@ -1080,7 +1177,7 @@ export default function RicerMap({ weather = null, weatherLoading = false }: Ric
         setHoveredIncident(null);
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
     [viewState, setSelectedIncidentId, layers.fireSpread, setFireSpreadSimPoint],
   );
 
@@ -1326,6 +1423,20 @@ export default function RicerMap({ weather = null, weatherLoading = false }: Ric
 
   const mapStyle = useMemo(() => getMapStyle(basemap), [basemap]);
 
+  // Keep the default basemaps in step with the light/dark theme toggle;
+  // an explicit satellite or light choice is left alone.
+  useEffect(() => {
+    const root = document.documentElement;
+    const observer = new MutationObserver(() => {
+      const { basemap: current, setBasemap: apply } = useMapStore.getState();
+      const dark = root.classList.contains('dark');
+      if (dark && current === 'streets') apply('dark');
+      if (!dark && current === 'dark') apply('streets');
+    });
+    observer.observe(root, { attributes: true, attributeFilter: ['class'] });
+    return () => observer.disconnect();
+  }, []);
+
   /* ═══════════ Render ═══════════ */
 
   return (
@@ -1346,7 +1457,7 @@ export default function RicerMap({ weather = null, weatherLoading = false }: Ric
         onMouseLeave={handleMouseLeave}
         style={MAP_CONTAINER_STYLE}
         maxPitch={85}
-        attributionControl={true}
+        attributionControl={{ compact: true }}
       >
         {/* ═══ Terrain DEM source ═══ */}
         <Source
@@ -1481,6 +1592,36 @@ export default function RicerMap({ weather = null, weatherLoading = false }: Ric
               type="raster"
               layout={{ visibility: layers.populationDensity ? 'visible' : 'none' }}
               paint={{ 'raster-opacity': populationDensityOpacity * 0.5 }}
+            />
+          </Source>
+        )}
+
+        {/* ═══ Model risk surface ═══
+            One point per 0.1° model cell, blended into a continuous surface whose
+            kernel spans roughly one cell at every zoom. Cells under the model's
+            "moderate" threshold carry no weight, so quiet areas stay clear. */}
+        {riskGrid && riskGrid.features.length > 0 && (
+          <Source id="risk-model" type="geojson" data={riskGrid}>
+            <Layer
+              id="risk-model-heat"
+              type="heatmap"
+              maxzoom={14}
+              layout={{ visibility: layers.riskModel ? 'visible' : 'none' }}
+              paint={{
+                'heatmap-weight': ['interpolate', ['linear'], ['get', 'score'], 0.0952, 0, 0.12, 0.3, 0.25, 0.55, 0.5, 0.8, 0.75, 1],
+                'heatmap-intensity': 1,
+                'heatmap-radius': ['interpolate', ['exponential', 2], ['zoom'], 7, 18, 8, 36, 12, 576],
+                'heatmap-color': [
+                  'interpolate', ['linear'], ['heatmap-density'],
+                  0, 'rgba(0,0,0,0)',
+                  0.15, rgbaCss(RISK_LEVEL_COLORS.moderate, 0.1),
+                  0.4, rgbaCss(RISK_LEVEL_COLORS.moderate, 0.2),
+                  0.65, rgbaCss(RISK_LEVEL_COLORS.high, 0.32),
+                  0.85, rgbaCss(RISK_LEVEL_COLORS.very_high, 0.42),
+                  1, rgbaCss(RISK_LEVEL_COLORS.very_high, 0.5),
+                ],
+                'heatmap-opacity': ['interpolate', ['linear'], ['zoom'], 8, 0.85, 13, 0.5],
+              }}
             />
           </Source>
         )}
@@ -1782,6 +1923,23 @@ export default function RicerMap({ weather = null, weatherLoading = false }: Ric
                 'circle-opacity': fireSpreadOpacity,
                 'circle-stroke-width': 1,
                 'circle-stroke-color': 'rgba(0,0,0,0.3)',
+              }}
+            />
+          </Source>
+        )}
+
+        {forestRoadData && (
+          <Source id="forest-roads" type="geojson" data={forestRoadData}>
+            <Layer
+              id="forest-roads-line"
+              type="line"
+              minzoom={8}
+              layout={{ visibility: layers.forestRoads ? 'visible' : 'none', 'line-cap': 'round', 'line-join': 'round' }}
+              paint={{
+                'line-color': FOREST_ROAD_COLOR,
+                'line-width': ['interpolate', ['linear'], ['zoom'], 8, 0.6, 11, 1.4, 14, 2.6],
+                'line-dasharray': [2, 1.5],
+                'line-opacity': ['interpolate', ['linear'], ['zoom'], 8, 0.55, 12, 0.9],
               }}
             />
           </Source>
@@ -2223,13 +2381,13 @@ export default function RicerMap({ weather = null, weatherLoading = false }: Ric
 
         {/* ═══ Map controls ═══ */}
         <NavigationControl
-          position="top-right"
+          position={controlCorner}
           showCompass={true}
           visualizePitch={true}
         />
         <ScaleControl position="bottom-left" maxWidth={100} unit="metric" />
         <GeolocateControl
-          position="top-right"
+          position={controlCorner}
           trackUserLocation
           showAccuracyCircle={false}
         />

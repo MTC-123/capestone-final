@@ -58,6 +58,7 @@ const LAYER_KEY_MAP: Record<string, string> = {
   hillshade: 'layerHillshade',
   slope: 'layerSlope',
   owmWeather: 'owmWeather',
+  riskModel: 'mapRiskLayer',
 };
 
 const LAYER_ICONS: Record<string, string> = {
@@ -89,11 +90,8 @@ const LAYER_ICONS: Record<string, string> = {
   hillshade: 'mountain',
   slope: 'mountain',
   owmWeather: 'cloud',
+  riskModel: 'cpu',
 };
-
-const UNAVAILABLE_LAYERS = new Set([
-  'forestRoads',
-]);
 
 /** Maps layer toggle keys to tile availability store keys */
 const LAYER_TILE_KEY: Partial<Record<string, keyof ReturnType<typeof useMapStore.getState>['tileAvailability']>> = {
@@ -153,7 +151,7 @@ function WindLayerRow() {
           {t('windVectors')}
         </span>
         {layers.windVectors && windLastUpdate && (
-          <span className="text-[9px] text-muted-foreground pl-5">
+          <span className="text-[9px] text-muted-foreground ps-5">
             {t('updated')}: {formatTimeAgo(windLastUpdate)}
           </span>
         )}
@@ -176,18 +174,14 @@ function LayerRow({ layerKey, indent }: { layerKey: LayerKey; indent?: boolean }
   const tileAvailability = useMapStore((s) => s.tileAvailability);
   const lk = LAYER_KEY_MAP[layerKey];
   const icon = LAYER_ICONS[layerKey];
-  const isUnavailable = UNAVAILABLE_LAYERS.has(layerKey);
   const tileKey = LAYER_TILE_KEY[layerKey];
   const tilesDown = tileKey ? !tileAvailability[tileKey] : false;
 
   return (
-    <div className={`flex items-center justify-between min-h-[36px] ${indent ? 'pl-4' : ''} ${isUnavailable ? 'opacity-50' : ''}`}>
+    <div className={`flex items-center justify-between min-h-[36px] ${indent ? 'ps-4' : ''}`}>
       <span className="flex items-center gap-1.5 text-xs text-foreground">
         {icon && <Icon name={icon as Parameters<typeof Icon>[0]['name']} size={14} className="text-muted-foreground" aria-hidden />}
         {t(lk as TranslationKey)}
-        {isUnavailable && (
-          <span className="text-[9px] text-muted-foreground">({t('comingSoon')})</span>
-        )}
         {tilesDown && (
           <span className="text-accent-fire" title={t('serviceDown' as TranslationKey)}>
             <Icon name="warning" size={12} aria-hidden />
@@ -198,7 +192,6 @@ function LayerRow({ layerKey, indent }: { layerKey: LayerKey; indent?: boolean }
         checked={layers[layerKey as keyof typeof layers] ?? false}
         onCheckedChange={() => toggleLayer(layerKey as Parameters<typeof toggleLayer>[0])}
         label={t(lk as TranslationKey)}
-        disabled={isUnavailable}
       />
     </div>
   );
@@ -216,7 +209,7 @@ function EffisFwiControls() {
   const setEffisFwiMode = useMapStore((s) => s.setEffisFwiMode);
 
   return (
-    <div className="pl-5 space-y-2 mt-1">
+    <div className="ps-5 space-y-2 mt-1">
       {/* Mode selector (FWI / Percentile) */}
       <div>
         <div className="text-[9px] text-muted-foreground mb-1">{t('fwiModeLabel' as TranslationKey)}</div>
@@ -228,7 +221,7 @@ function EffisFwiControls() {
               onClick={() => setEffisFwiMode(m.value)}
               className={`rounded-full px-2 py-0.5 text-[10px] font-medium border transition-all
                 ${effisFwiMode === m.value
-                  ? 'border-primary bg-primary text-white'
+                  ? 'border-primary bg-primary text-primary-foreground'
                   : 'border-border bg-surface-2/50 text-foreground hover:border-primary/50'
                 }`}
             >
@@ -248,7 +241,7 @@ function EffisFwiControls() {
               onClick={() => setEffisFwiDay(d.value)}
               className={`rounded-full px-2 py-0.5 text-[10px] font-medium border transition-all
                 ${effisFwiDay === d.value
-                  ? 'border-primary bg-primary text-white'
+                  ? 'border-primary bg-primary text-primary-foreground'
                   : 'border-border bg-surface-2/50 text-foreground hover:border-primary/50'
                 }`}
             >
@@ -283,7 +276,7 @@ function EffisBurnedAreasControls() {
   const setMode = useMapStore((s) => s.setEffisBurnedAreaMode);
 
   return (
-    <div className="pl-5 mt-1">
+    <div className="ps-5 mt-1">
       <div className="flex gap-1">
         {BURNED_AREA_MODES.map((m) => (
           <button
@@ -292,7 +285,7 @@ function EffisBurnedAreasControls() {
             onClick={() => setMode(m.value)}
             className={`rounded-full px-2 py-0.5 text-[10px] font-medium border transition-all
               ${mode === m.value
-                ? 'border-primary bg-primary text-white'
+                ? 'border-primary bg-primary text-primary-foreground'
                 : 'border-border bg-surface-2/50 text-foreground hover:border-primary/50'
               }`}
           >
@@ -312,7 +305,7 @@ function SoilMoistureControls() {
   const setDepth = useMapStore((s) => s.setSoilMoistureDepth);
 
   return (
-    <div className="pl-5 mt-1">
+    <div className="ps-5 mt-1">
       <div className="text-[9px] text-muted-foreground mb-1">{t('soilMoistureDepthLabel' as TranslationKey)}</div>
       <div className="flex flex-wrap gap-1">
         {SOIL_DEPTHS.map((d) => (
@@ -322,7 +315,7 @@ function SoilMoistureControls() {
             onClick={() => setDepth(d.value)}
             className={`rounded-full px-2 py-0.5 text-[10px] font-medium border transition-all
               ${depth === d.value
-                ? 'border-primary bg-primary text-white'
+                ? 'border-primary bg-primary text-primary-foreground'
                 : 'border-border bg-surface-2/50 text-foreground hover:border-primary/50'
               }`}
           >
@@ -342,7 +335,7 @@ function NdviControls() {
   const setNdviOpacity = useMapStore((s) => s.setNdviOpacity);
 
   return (
-    <div className="pl-5 mt-1">
+    <div className="ps-5 mt-1">
       <div className="flex items-center justify-between text-[9px] text-muted-foreground mb-1">
         <span>{t('ndviOpacityLabel' as TranslationKey)}</span>
         <span>{Math.round(ndviOpacity * 100)}%</span>
@@ -366,7 +359,7 @@ function HillshadeControls() {
   const setHillshadeExaggeration = useMapStore((s) => s.setHillshadeExaggeration);
 
   return (
-    <div className="pl-5 mt-1">
+    <div className="ps-5 mt-1">
       <div className="flex items-center justify-between text-[9px] text-muted-foreground mb-1">
         <span>{t('hillshadeIntensity' as TranslationKey)}</span>
         <span>{Math.round(hillshadeExaggeration * 100)}%</span>
@@ -390,7 +383,7 @@ function SlopeControls() {
   const setSlopeOpacity = useMapStore((s) => s.setSlopeOpacity);
 
   return (
-    <div className="pl-5 mt-1">
+    <div className="ps-5 mt-1">
       <div className="flex items-center justify-between text-[9px] text-muted-foreground mb-1">
         <span>{t('slopeOpacityLabel' as TranslationKey)}</span>
         <span>{Math.round(slopeOpacity * 100)}%</span>
@@ -417,7 +410,7 @@ function FireSpreadControls() {
   const setSimPoint = useMapStore((s) => s.setFireSpreadSimPoint);
 
   return (
-    <div className="pl-5 mt-1 space-y-2">
+    <div className="ps-5 mt-1 space-y-2">
       {/* Status indicator */}
       {status === 'loading' && (
         <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
@@ -494,7 +487,7 @@ function CamsAerosolControls() {
   const setOpacity = useMapStore((s) => s.setCamsAerosolOpacity);
 
   return (
-    <div className="pl-5 space-y-2 mt-1">
+    <div className="ps-5 space-y-2 mt-1">
       {/* Mode selector */}
       <div>
         <div className="text-[9px] text-muted-foreground mb-1">{t('camsAerosolModeLabel' as TranslationKey)}</div>
@@ -506,7 +499,7 @@ function CamsAerosolControls() {
               onClick={() => setMode(m.value)}
               className={`rounded-full px-2 py-0.5 text-[10px] font-medium border transition-all
                 ${mode === m.value
-                  ? 'border-primary bg-primary text-white'
+                  ? 'border-primary bg-primary text-primary-foreground'
                   : 'border-border bg-surface-2/50 text-foreground hover:border-primary/50'
                 }`}
             >
@@ -551,7 +544,7 @@ function OwmWeatherControls() {
   const setOpacity = useMapStore((s) => s.setOwmWeatherOpacity);
 
   return (
-    <div className="pl-5 space-y-2 mt-1">
+    <div className="ps-5 space-y-2 mt-1">
       {/* Layer selector */}
       <div>
         <div className="text-[9px] text-muted-foreground mb-1">{t('owmWeatherModeLabel' as TranslationKey)}</div>
@@ -563,7 +556,7 @@ function OwmWeatherControls() {
               onClick={() => setOwmLayer(m.value)}
               className={`rounded-full px-2 py-0.5 text-[10px] font-medium border transition-all
                 ${owmLayer === m.value
-                  ? 'border-primary bg-primary text-white'
+                  ? 'border-primary bg-primary text-primary-foreground'
                   : 'border-border bg-surface-2/50 text-foreground hover:border-primary/50'
                 }`}
             >
@@ -598,7 +591,7 @@ function PopulationDensityControls() {
   const setOpacity = useMapStore((s) => s.setPopulationDensityOpacity);
 
   return (
-    <div className="pl-5 mt-1">
+    <div className="ps-5 mt-1">
       <div className="flex items-center justify-between text-[9px] text-muted-foreground mb-1">
         <span>{t('populationDensityOpacity' as TranslationKey)}</span>
         <span>{Math.round(opacity * 100)}%</span>
@@ -622,7 +615,7 @@ function LandCoverControls() {
   const setLandCoverOpacity = useMapStore((s) => s.setLandCoverOpacity);
 
   return (
-    <div className="pl-5 mt-1">
+    <div className="ps-5 mt-1">
       <div className="flex items-center justify-between text-[9px] text-muted-foreground mb-1">
         <span>{t('landCoverOpacityLabel' as TranslationKey)}</span>
         <span>{Math.round(landCoverOpacity * 100)}%</span>
@@ -749,8 +742,10 @@ export default function MapControls({ mobileOpen = false, onMobileOpenChange }: 
       <GlassPanel
         title={t('layersPanel')}
         collapsible
+        // Desktop starts collapsed so the map is the focus; the mobile sheet opens expanded.
+        defaultCollapsed={!mobileOpen}
         headerActions={
-          <span className="ml-1.5 rounded-full bg-primary/15 px-1.5 py-0.5 text-[10px] font-bold text-primary tabular-nums">
+          <span className="ms-1.5 rounded-full bg-primary/15 px-1.5 py-0.5 text-[10px] font-bold text-primary tabular-nums">
             {activeCount}/{totalCount}
           </span>
         }
@@ -794,7 +789,7 @@ export default function MapControls({ mobileOpen = false, onMobileOpenChange }: 
                       aria-pressed={basemap === value}
                       className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium transition-all border
                         ${basemap === value
-                          ? 'border-primary bg-primary text-white shadow-sm'
+                          ? 'border-primary bg-primary text-primary-foreground shadow-sm'
                           : 'border-border bg-surface-2/50 text-foreground hover:border-primary/50'
                         }`}
                     >
@@ -854,7 +849,7 @@ export default function MapControls({ mobileOpen = false, onMobileOpenChange }: 
                 </div>
                 <div className="space-y-1.5 mt-1">
                   {RESOURCE_SUB_LAYERS.map(({ key, labelKey, icon }) => (
-                    <div key={key} className="flex items-center justify-between min-h-[32px] pl-4">
+                    <div key={key} className="flex items-center justify-between min-h-[32px] ps-4">
                       <span className="flex items-center gap-1.5 text-[11px] text-foreground">
                         <Icon name={icon} size={13} className="text-muted-foreground" aria-hidden />
                         {t(labelKey as TranslationKey)}
@@ -901,7 +896,7 @@ export default function MapControls({ mobileOpen = false, onMobileOpenChange }: 
                 </div>
                 <div className="space-y-1.5 mt-1">
                   {INFRA_SUB_LAYERS.map(({ key, labelKey, icon }) => (
-                    <div key={key} className="flex items-center justify-between min-h-[32px] pl-4">
+                    <div key={key} className="flex items-center justify-between min-h-[32px] ps-4">
                       <span className="flex items-center gap-1.5 text-[11px] text-foreground">
                         <Icon name={icon} size={13} className="text-muted-foreground" aria-hidden />
                         {t(labelKey as TranslationKey)}
@@ -924,6 +919,7 @@ export default function MapControls({ mobileOpen = false, onMobileOpenChange }: 
               <AccordionTrigger>{t('environment' as TranslationKey)}</AccordionTrigger>
               <AccordionContent>
                 <div className="space-y-1.5">
+                  {isVisible('riskModel') && <LayerRow layerKey="riskModel" />}
                   {isVisible('owmWeather') && <LayerRow layerKey="owmWeather" />}
                   {layers.owmWeather && <OwmWeatherControls />}
                   {isVisible('windVectors') && <WindLayerRow />}
@@ -937,7 +933,7 @@ export default function MapControls({ mobileOpen = false, onMobileOpenChange }: 
                   {isVisible('landCover') && <LayerRow layerKey="landCover" />}
                   {layers.landCover && <LandCoverControls />}
                   {anyHeavyRasterActive && (
-                    <div className="text-[9px] text-accent-fire pl-0.5 mt-1 flex items-center gap-1">
+                    <div className="text-[9px] text-accent-fire ps-0.5 mt-1 flex items-center gap-1">
                       <Icon name="warning" size={11} className="text-accent-fire" aria-hidden />
                       {t('heavyRasterWarning' as TranslationKey)}
                     </div>
@@ -960,7 +956,7 @@ export default function MapControls({ mobileOpen = false, onMobileOpenChange }: 
                   {isVisible('camsAerosol') && <LayerRow layerKey="camsAerosol" />}
                   {layers.camsAerosol && <CamsAerosolControls />}
                   {pamfRmaHasData === false && (layers.pamfCommunes || layers.rmaCommunes) && (
-                    <div className="text-[9px] text-muted-foreground pl-5">
+                    <div className="text-[9px] text-muted-foreground ps-5">
                       {t('insufficientFireData' as TranslationKey)}
                     </div>
                   )}

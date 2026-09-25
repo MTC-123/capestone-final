@@ -1,142 +1,141 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/cn';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useAuthStore } from '@/store/useAuthStore';
-import { Icon, type IconName } from '@/components/ui/Icon';
+import { useDismiss } from '@/hooks/useDismiss';
+import { Icon } from '@/components/ui/Icon';
+import LanguageSwitcher from '@/components/layout/LanguageSwitcher';
+import { ThemeToggle } from '@/components/layout/ThemeToggle';
+import { navFor, isActive, type NavItem } from '@/components/shell/nav';
+import { signOut } from '@/components/shell/UserMenu';
 
-interface TabItem {
-  href: string;
-  label: string;
-  icon: IconName;
-  officialOnly?: boolean;
-}
-
-const MAIN_TABS: TabItem[] = [
-  { href: '/map', label: 'fireMap', icon: 'map' },
-  { href: '/analytics', label: 'analytics', icon: 'analytics' },
-  { href: '/report', label: 'reportFire', icon: 'campaign' },
-];
-
-const MORE_ITEMS: TabItem[] = [
-  { href: '/reports-list', label: 'reports', icon: 'list' },
-  { href: '/equipment', label: 'equipment', icon: 'truck', officialOnly: true },
-  { href: '/fire-database', label: 'fireDatabase', icon: 'database', officialOnly: true },
-  { href: '/weather', label: 'weatherTitle', icon: 'thermostat' },
-];
-
+/**
+ * Bottom navigation for phones and small tablets: four destinations, a
+ * raised "report a fire" action in the centre, and a sheet for the rest.
+ */
 export function MobileTabBar() {
   const pathname = usePathname();
+  const router = useRouter();
   const { t } = useTranslation();
-  const [moreOpen, setMoreOpen] = useState(false);
   const user = useAuthStore((s) => s.user);
-  const isOfficial = user?.role === 'OFFICIAL';
+  const logout = useAuthStore((s) => s.logout);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const sheetRef = useRef<HTMLDivElement>(null);
+  const close = useCallback(() => setMoreOpen(false), []);
+  useDismiss(sheetRef, moreOpen, close);
+  // Close the sheet when the route changes (state adjustment during render).
+  const [lastPath, setLastPath] = useState(pathname);
+  if (lastPath !== pathname) {
+    setLastPath(pathname);
+    setMoreOpen(false);
+  }
 
-  const isMoreActive = MORE_ITEMS.some((item) => pathname === item.href);
+  const items = navFor(user?.role);
+  const report = items.find((i) => i.primary);
+  const tabs = items.filter((i) => !i.primary).slice(0, 3);
+  const rest = items.filter((i) => !i.primary && !tabs.includes(i));
+  const moreActive = rest.some((i) => isActive(pathname, i.href));
+
+  const tab = (item: NavItem) => {
+    const active = isActive(pathname, item.href);
+    return (
+      <Link
+        key={item.href + item.labelKey}
+        href={item.href}
+        aria-current={active ? 'page' : undefined}
+        className={cn(
+          'flex flex-1 flex-col items-center justify-center gap-1 rounded-lg py-1.5 text-[10.5px] font-medium',
+          active ? 'text-primary' : 'text-muted-foreground'
+        )}
+      >
+        <Icon name={item.icon} size={21} strokeWidth={active ? 2.3 : 1.9} />
+        <span className="max-w-full truncate px-1">{t(item.shortKey ?? item.labelKey)}</span>
+      </Link>
+    );
+  };
 
   return (
     <>
-      {/* More flyout */}
+      {moreOpen && <div className="fixed inset-0 z-40 bg-background/50 backdrop-blur-[2px] lg:hidden" aria-hidden />}
       {moreOpen && (
-        <>
-          <div
-            className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm"
-            onClick={() => setMoreOpen(false)}
-            aria-hidden="true"
-          />
-          <div
-            className="fixed bottom-[calc(var(--mobile-tabbar-height)+0.5rem)] left-2 right-2 z-50 rounded-xl border border-border/60 bg-surface/95 p-1.5 shadow-elev-3 backdrop-blur-xl animate-slide-up-fade"
-          >
-            {MORE_ITEMS.map((item) => {
-              const isActive = pathname === item.href;
-              const isRestricted = item.officialOnly && !isOfficial;
-
-              if (isRestricted) {
-                return (
-                  <div
-                    key={item.href}
-                    className="flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-muted-foreground/40 cursor-not-allowed min-h-[44px]"
-                    title={t('restricted')}
-                    aria-disabled="true"
-                  >
-                    <Icon name={item.icon} size={20} aria-hidden />
-                    {t(item.label as Parameters<typeof t>[0])}
-                  </div>
-                );
-              }
-
+        <div
+          ref={sheetRef}
+          role="dialog"
+          aria-label={t('navMore')}
+          className="fixed inset-x-2 bottom-[calc(var(--mobile-tabbar-height)+0.5rem)] z-50 animate-slide-up-fade rounded-2xl border border-border bg-surface p-2 shadow-elev-3 lg:hidden"
+        >
+          <div className="grid grid-cols-3 gap-1">
+            {rest.map((item) => {
+              const active = isActive(pathname, item.href);
               return (
                 <Link
-                  key={item.href}
+                  key={item.href + item.labelKey}
                   href={item.href}
-                  onClick={() => setMoreOpen(false)}
+                  aria-current={active ? 'page' : undefined}
                   className={cn(
-                    'flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition-colors min-h-[44px]',
-                    isActive
-                      ? 'bg-primary/10 text-primary'
-                      : 'text-foreground hover:bg-muted/60 active:bg-muted'
+                    'flex flex-col items-center gap-1.5 rounded-xl px-2 py-3 text-center text-[11px] font-medium',
+                    active ? 'bg-primary/10 text-primary' : 'text-foreground hover:bg-muted'
                   )}
                 >
-                  <span className={cn(
-                    'grid h-8 w-8 place-items-center rounded-md',
-                    isActive ? 'bg-primary/15 text-primary' : 'bg-surface-2'
-                  )}>
-                    <Icon name={item.icon} size={18} aria-hidden />
-                  </span>
-                  {t(item.label as Parameters<typeof t>[0])}
+                  <Icon name={item.icon} size={20} />
+                  <span className="line-clamp-2">{t(item.labelKey)}</span>
                 </Link>
               );
             })}
           </div>
-        </>
+          <div className="mt-2 flex items-center justify-between gap-2 border-t border-border px-1 pt-2">
+            <LanguageSwitcher size="sm" />
+            <div className="flex items-center gap-1">
+              <ThemeToggle />
+              <button
+                type="button"
+                onClick={() => signOut(router, logout)}
+                className="flex h-9 items-center gap-1.5 rounded-lg px-3 text-xs font-medium text-danger hover:bg-danger-muted"
+              >
+                <Icon name="logout" size={16} />
+                {t('accountSignOut')}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
-      {/* Tab bar */}
       <nav
-        aria-label={t('primaryNavigation')}
-        className={cn(
-          'fixed bottom-0 left-0 right-0 z-40 flex h-[var(--mobile-tabbar-height)] items-start',
-          'border-t border-border/40 glass md:hidden'
-        )}
+        aria-label={t('navMore')}
+        className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl lg:hidden"
       >
-        {MAIN_TABS.map((tab) => {
-          const isActive = pathname === tab.href;
-          return (
-            <Link
-              key={tab.href}
-              href={tab.href}
-              className={cn(
-                'relative flex min-h-[var(--mobile-tabbar-base-height)] flex-1 flex-col items-center justify-center gap-0.5 text-[10px] font-semibold transition-colors',
-                isActive ? 'text-primary' : 'text-muted-foreground active:text-foreground'
-              )}
-            >
-              {isActive && (
-                <span className="absolute top-0 left-1/2 -translate-x-1/2 h-[2px] w-8 rounded-full bg-primary" />
-              )}
-              <Icon name={tab.icon} size={21} aria-hidden />
-              <span>{t(tab.label as Parameters<typeof t>[0])}</span>
-            </Link>
-          );
-        })}
-
-        {/* More button */}
-        <button
-          type="button"
-          onClick={() => setMoreOpen((v) => !v)}
-          className={cn(
-            'relative flex min-h-[var(--mobile-tabbar-base-height)] flex-1 flex-col items-center justify-center gap-0.5 text-[10px] font-semibold transition-colors',
-            isMoreActive || moreOpen ? 'text-primary' : 'text-muted-foreground active:text-foreground'
+        <div className="mx-auto flex h-[var(--mobile-tabbar-base-height)] max-w-lg items-stretch px-2">
+          {tabs.slice(0, 2).map(tab)}
+          {report && (
+            <div className="flex flex-1 items-start justify-center">
+              <Link
+                href={report.href}
+                aria-label={t(report.labelKey)}
+                aria-current={isActive(pathname, report.href) ? 'page' : undefined}
+                className="-mt-5 grid h-14 w-14 place-items-center rounded-2xl bg-accent-fire text-on-accent-fire shadow-glow-fire ring-4 ring-background transition-transform active:scale-95"
+              >
+                <Icon name="fire" size={24} strokeWidth={2.2} />
+              </Link>
+            </div>
           )}
-        >
-          {(isMoreActive && !moreOpen) && (
-            <span className="absolute top-0 left-1/2 -translate-x-1/2 h-[2px] w-8 rounded-full bg-primary" />
-          )}
-          <Icon name="more_horiz" size={21} aria-hidden />
-          <span>{t('mobileMore' as Parameters<typeof t>[0])}</span>
-        </button>
+          {tabs.slice(2).map(tab)}
+          <button
+            type="button"
+            onClick={() => setMoreOpen((v) => !v)}
+            aria-expanded={moreOpen}
+            className={cn(
+              'flex flex-1 flex-col items-center justify-center gap-1 rounded-lg py-1.5 text-[10.5px] font-medium',
+              moreOpen || moreActive ? 'text-primary' : 'text-muted-foreground'
+            )}
+          >
+            <Icon name="menu" size={21} />
+            <span>{t('navMore')}</span>
+          </button>
+        </div>
       </nav>
     </>
   );

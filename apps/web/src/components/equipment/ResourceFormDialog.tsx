@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Icon } from '@/components/ui/Icon';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export interface FormField {
   name: string;
@@ -42,6 +43,7 @@ export function ResourceFormDialog({
   cancelLabel,
   savingLabel,
 }: Props) {
+  const { t } = useTranslation();
   const [values, setValues] = useState<Record<string, unknown>>({});
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -62,7 +64,7 @@ export function ResourceFormDialog({
     const newErrors: Record<string, string> = {};
     for (const f of fields) {
       if (f.required && !values[f.name]) {
-        newErrors[f.name] = `${f.label} is required`;
+        newErrors[f.name] = t('requiredField');
       }
     }
     if (Object.keys(newErrors).length > 0) {
@@ -75,7 +77,7 @@ export function ResourceFormDialog({
       await onSubmit(values);
       onClose();
     } catch (e: unknown) {
-      setErrors({ _form: e instanceof Error ? e.message : 'Something went wrong' });
+      setErrors({ _form: e instanceof Error ? e.message : t('errorServer') });
     } finally {
       setSubmitting(false);
     }
@@ -120,7 +122,7 @@ export function ResourceFormDialog({
 
                 {field.type === 'select' ? (
                   <select
-                    className="w-full px-3 py-2 border border-input bg-surface text-foreground rounded-lg text-sm"
+                    className="w-full px-3 py-2 border border-input bg-surface text-foreground rounded-[10px] text-sm"
                     value={(values[field.name] as string) ?? ''}
                     onChange={(e) => handleChange(field.name, e.target.value)}
                   >
@@ -133,7 +135,7 @@ export function ResourceFormDialog({
                   </select>
                 ) : field.type === 'textarea' ? (
                   <textarea
-                    className="w-full px-3 py-2 border border-input bg-surface text-foreground rounded-lg text-sm"
+                    className="w-full px-3 py-2 border border-input bg-surface text-foreground rounded-[10px] text-sm"
                     rows={3}
                     placeholder={field.placeholder}
                     value={(values[field.name] as string) ?? ''}
@@ -142,7 +144,7 @@ export function ResourceFormDialog({
                 ) : field.type === 'date' ? (
                   <input
                     type="date"
-                    className="w-full px-3 py-2 border border-input bg-surface text-foreground rounded-lg text-sm"
+                    className="w-full px-3 py-2 border border-input bg-surface text-foreground rounded-[10px] text-sm"
                     value={
                       values[field.name]
                         ? new Date(values[field.name] as string).toISOString().slice(0, 10)
@@ -155,7 +157,7 @@ export function ResourceFormDialog({
                 ) : (
                   <input
                     type={field.type}
-                    className="w-full px-3 py-2 border border-input bg-surface text-foreground rounded-lg text-sm"
+                    className="w-full px-3 py-2 border border-input bg-surface text-foreground rounded-[10px] text-sm"
                     placeholder={field.placeholder}
                     value={(values[field.name] as string | number) ?? ''}
                     onChange={(e) =>

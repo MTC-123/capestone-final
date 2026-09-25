@@ -10,7 +10,7 @@ import {
 import type { Coordinates, RouteResponse } from '@/lib/routing/types';
 
 // Use a fresh in-process store per test to ensure isolation
-let mockStore = new Map<string, string>();
+const mockStore = new Map<string, string>();
 
 vi.mock('@/lib/cache/redis', () => ({
   cacheJSON: vi.fn(async (key: string, value: unknown) => {

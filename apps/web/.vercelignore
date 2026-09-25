@@ -1,0 +1,13 @@
+# Never upload local secrets, sessions, backups or build output.
+.env
+.env.*
+!.env.example
+.next
+.next-*
+node_modules
+backups
+coverage
+test-results
+playwright-report
+tests/e2e/.auth
+public/maplibre

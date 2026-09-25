@@ -2,6 +2,7 @@
 import { useState, useCallback } from 'react';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useMapStore } from '@/store/useMapStore';
+import { RISK_LEVEL_COLORS } from '@/lib/map/colors';
 import { GlassPanel } from '@/components/ui/GlassPanel';
 import { Icon } from '@/components/ui/Icon';
 import * as Collapsible from '@radix-ui/react-collapsible';
@@ -86,7 +87,7 @@ const FIRE_SPREAD_ITEMS = [
   { key: 'extreme', color: FIRE_SPREAD_COLORS.extreme, label: 'fireSpreadExtreme' },
 ];
 
-const DEFAULT_SECTIONS = ['incidents', 'resources', 'infra', 'firms', 'effis', 'vehicles', 'wind', 'owmWeather', 'soilMoisture', 'ndvi', 'reservoir', 'pamf', 'rma', 'camsAerosol', 'landCover', 'populationDensity', 'slope', 'hillshade', 'fireSpread', 'retardant'];
+const DEFAULT_SECTIONS = ['risk', 'incidents', 'resources', 'infra', 'firms', 'effis', 'vehicles', 'wind', 'owmWeather', 'soilMoisture', 'ndvi', 'reservoir', 'pamf', 'rma', 'camsAerosol', 'landCover', 'populationDensity', 'slope', 'hillshade', 'fireSpread', 'retardant'];
 
 const OWM_LAYER_LABELS: Record<string, string> = {
   precipitation_new: 'owmWeatherPrecipitation',
@@ -181,6 +182,8 @@ export default function MapLegend({ mobileOpen = false, onMobileOpenChange }: Ma
   const soilMoistureActive = useMapStore((s) => s.layers.soilMoisture);
   const ndviActive = useMapStore((s) => s.layers.ndvi);
   const reservoirsActive = useMapStore((s) => s.layers.reservoirs);
+  const riskModelActive = useMapStore((s) => s.layers.riskModel);
+  const riskMeta = useMapStore((s) => s.riskMeta);
   const pamfActive = useMapStore((s) => s.layers.pamfCommunes);
   const rmaActive = useMapStore((s) => s.layers.rmaCommunes);
   const camsAerosolActive = useMapStore((s) => s.layers.camsAerosol);
@@ -225,10 +228,10 @@ export default function MapLegend({ mobileOpen = false, onMobileOpenChange }: Ma
           'z-10 flex-col',
           mobileOpen
             ? 'fixed inset-x-2 bottom-[calc(var(--mobile-tabbar-height)+0.75rem)] z-50 flex md:hidden'
-            : 'absolute bottom-4 hidden min-w-[180px] max-h-[45vh] ltr:right-4 rtl:left-4 md:flex sm:max-h-[60vh]'
+            : 'absolute bottom-10 hidden min-w-[180px] max-h-[45vh] ltr:right-3 rtl:left-3 md:flex sm:max-h-[60vh]'
         )}
       >
-      <GlassPanel title={t('mapLegend')} collapsible>
+      <GlassPanel title={t('mapLegend')} collapsible defaultCollapsed={!mobileOpen}>
         <div
           className={cn(
             'space-y-3 overflow-auto border-t border-white/10 px-3 pb-3 pt-2.5',
@@ -248,6 +251,36 @@ export default function MapLegend({ mobileOpen = false, onMobileOpenChange }: Ma
               className="w-full rounded-lg border border-border bg-surface-2/50 py-1.5 ltr:pl-6 rtl:pr-6 ltr:pr-2 rtl:pl-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
             />
           </div>
+
+          {/* Model risk grid */}
+          {riskModelActive && matchesFilter(t('mapRiskLegend' as TranslationKey)) && (
+            <SectionCollapsible label={t('mapRiskLegend' as TranslationKey)} open={openSections.has('risk')} onToggle={() => toggleSection('risk')}>
+              <div className="grid grid-cols-4 gap-1">
+                {(['low', 'moderate', 'high', 'very_high'] as const).map((level) => (
+                  <div key={level} className="text-center">
+                    <div className="h-2.5 rounded-sm" style={{ backgroundColor: RISK_LEVEL_COLORS[level], opacity: 0.85 }} />
+                    <div className="mt-1 text-[10px] leading-tight text-muted-foreground">
+                      {t(({ low: 'riskLow', moderate: 'riskModerate', high: 'riskHigh', very_high: 'riskVeryHigh' } as const)[level])}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {riskMeta && (
+                <dl className="mt-2 space-y-0.5 text-[10.5px] text-muted-foreground">
+                  <div className="flex justify-between gap-2">
+                    <dt>{t('mapRiskModelInfo' as TranslationKey)}</dt>
+                    <dd className="font-mono text-foreground">{riskMeta.modelVersion ?? '—'}</dd>
+                  </div>
+                  {riskMeta.dataTime && (
+                    <div className="flex justify-between gap-2">
+                      <dt>{t('mapRiskDataTime' as TranslationKey)}</dt>
+                      <dd className="font-mono text-foreground">{riskMeta.dataTime.replace('T', ' ').replace('Z', ' UTC')}</dd>
+                    </div>
+                  )}
+                </dl>
+              )}
+            </SectionCollapsible>
+          )}
 
           {/* Incident Status */}
           {matchesFilter(t('incidentStatus')) && (

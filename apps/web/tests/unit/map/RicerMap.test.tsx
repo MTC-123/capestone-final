@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, act } from '@testing-library/react';
@@ -14,7 +14,7 @@ const mockGetMap = vi.fn(() => ({
 }));
 const mockMapRef = { current: { flyTo: mockFlyTo, getMap: mockGetMap } };
 
-vi.mock('react-map-gl', () => {
+vi.mock('react-map-gl/maplibre', () => {
   const actual = { useRef: () => mockMapRef };
   return {
     default: vi.fn(({ children, onClick, onMouseEnter, onMouseLeave, ...props }: any) => (
@@ -96,7 +96,8 @@ vi.mock('@/lib/map/dispatchLayers', () => ({
 }));
 
 // Helpers
-vi.mock('@/lib/map/helpers', () => ({
+vi.mock('@/lib/map/helpers', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/map/helpers')>()),
   asGeoJSON: vi.fn((d: any) => d),
   circleIcon: vi.fn(() => 'data:svg'),
   hexToRgba: vi.fn(() => [255, 0, 0, 255]),
@@ -260,7 +261,9 @@ describe('RicerMap', () => {
     });
   });
 
-  it('fetches resources on mount', async () => {
+  it('fetches resources on mount for officials', async () => {
+    const { useAuthStore } = await import('@/store/useAuthStore');
+    useAuthStore.setState({ user: { id: 'u1', cin: 'CD789012', phone: '', role: 'OFFICIAL', createdAt: new Date(), updatedAt: new Date() } });
     render(<RicerMap />);
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith(
@@ -268,6 +271,17 @@ describe('RicerMap', () => {
         expect.any(Object),
       );
     });
+    useAuthStore.setState({ user: null });
+  });
+
+  it('never requests official-only feeds for residents', async () => {
+    const { useAuthStore } = await import('@/store/useAuthStore');
+    useAuthStore.setState({ user: { id: 'u2', cin: 'AB123456', phone: '', role: 'CIVILIAN', createdAt: new Date(), updatedAt: new Date() } });
+    render(<RicerMap />);
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('geo/incidents'), expect.any(Object)));
+    const urls = (global.fetch as unknown as { mock: { calls: unknown[][] } }).mock.calls.map((c) => String(c[0]));
+    expect(urls.some((u) => /geo\/resources|geo\/vehicles|api\/retardant/.test(u))).toBe(false);
+    useAuthStore.setState({ user: null });
   });
 
   it('fetches infrastructure on mount', async () => {
@@ -365,7 +379,7 @@ describe('RicerMap', () => {
     };
 
     // Simulate click via the onClick handler
-    const ReactMapGL = (await import('react-map-gl')).default as any;
+    const ReactMapGL = (await import('react-map-gl/maplibre')).default as any;
     const lastCall = ReactMapGL.mock.calls[ReactMapGL.mock.calls.length - 1];
     if (lastCall) {
       const onClickProp = lastCall[0]?.onClick;
@@ -379,7 +393,7 @@ describe('RicerMap', () => {
     const { useMapStore } = await import('@/store/useMapStore');
     render(<RicerMap />);
 
-    const ReactMapGL = (await import('react-map-gl')).default as any;
+    const ReactMapGL = (await import('react-map-gl/maplibre')).default as any;
     const lastCall = ReactMapGL.mock.calls[ReactMapGL.mock.calls.length - 1];
     if (lastCall) {
       const onClickProp = lastCall[0]?.onClick;

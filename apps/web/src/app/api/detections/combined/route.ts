@@ -16,16 +16,23 @@ import { logger } from '@/lib/observability/logger';
 import { createFirmsRateLimiter } from '@/lib/ratelimit/slidingWindow';
 import type { GeoFeatureCollection, GeoFirmsDetectionProps } from '@/types';
 
+/** Same Middle Atlas window as EFFIS, so both feeds cover the province and its surroundings. */
 const IFRANE_BBOX = {
-  minLat: 33.3,
-  maxLat: 33.7,
-  minLon: -5.3,
-  maxLon: -4.9,
+  minLat: 32.5,
+  maxLat: 34.0,
+  minLon: -6.0,
+  maxLon: -4.5,
 };
 
+/**
+ * All three VIIRS satellites (375 m): each passes roughly twice a day, so
+ * together they cut the time between looks over the province. 48 hours keeps
+ * yesterday's passes visible, like the FIRMS map's default window.
+ */
 const FIRMS_CONFIG = {
-  source: 'VIIRS_NOAA20_NRT',
-  dayRange: 1,
+  sources: ['VIIRS_SNPP_NRT', 'VIIRS_NOAA20_NRT', 'VIIRS_NOAA21_NRT'],
+  cacheSource: 'VIIRS_ALL_NRT',
+  dayRange: 2,
   timeout: 10000,
 } as const;
 
@@ -82,7 +89,7 @@ export const GET = withApiHandler(async (request: Request) => {
   const effisBbox = MIDDLE_ATLAS_BBOX;
 
   // Check caches first
-  const firmsCached = await getCachedFirmsDetections(firmsBbox, FIRMS_CONFIG.source, FIRMS_CONFIG.dayRange);
+  const firmsCached = await getCachedFirmsDetections(firmsBbox, FIRMS_CONFIG.cacheSource, FIRMS_CONFIG.dayRange);
   const effisCached = await getCachedEffisDetections(effisBbox);
 
   let firmsData: GeoFeatureCollection<GeoFirmsDetectionProps> | null = firmsCached?.data ?? null;
@@ -117,21 +124,28 @@ export const GET = withApiHandler(async (request: Request) => {
           if (!validation.valid) return null;
 
           try {
-            const result = await fetchFirmsWithFallback({
-              apiKey,
-              source: FIRMS_CONFIG.source,
-              bbox: firmsBbox,
-              dayRange: FIRMS_CONFIG.dayRange,
-              timeoutMs: FIRMS_CONFIG.timeout,
-            });
-            if (!isFirmsCSVResponse(result.csvText)) return null;
-            const geoJSON = transformFirmsToGeoJSON(result.csvText);
-            // Tag FIRMS features with source
-            geoJSON.features = geoJSON.features.map((f) => ({
-              ...f,
-              properties: { ...f.properties, source: 'FIRMS' as const },
-            }));
-            await setCachedFirmsDetections(firmsBbox, FIRMS_CONFIG.source, FIRMS_CONFIG.dayRange, geoJSON);
+            const settled = await Promise.allSettled(
+              FIRMS_CONFIG.sources.map((source) =>
+                fetchFirmsWithFallback({ apiKey, source, bbox: firmsBbox, dayRange: FIRMS_CONFIG.dayRange, timeoutMs: FIRMS_CONFIG.timeout })
+              )
+            );
+            const collections = settled
+              .filter((r): r is PromiseFulfilledResult<Awaited<ReturnType<typeof fetchFirmsWithFallback>>> => r.status === 'fulfilled')
+              .map((r) => r.value.csvText)
+              .filter(isFirmsCSVResponse)
+              .map(transformFirmsToGeoJSON);
+            if (collections.length === 0) return null;
+            // Same pixel, same satellite, same pass: keep one.
+            const seen = new Set<string>();
+            const geoJSON: GeoFeatureCollection<GeoFirmsDetectionProps> = { type: 'FeatureCollection', features: [] };
+            for (const feature of collections.flatMap((c) => c.features)) {
+              const [lng, lat] = feature.geometry.coordinates as [number, number];
+              const key = `${lat.toFixed(4)},${lng.toFixed(4)},${feature.properties.acqDateTime},${feature.properties.satellite}`;
+              if (seen.has(key)) continue;
+              seen.add(key);
+              geoJSON.features.push({ ...feature, properties: { ...feature.properties, source: 'FIRMS' as const } });
+            }
+            await setCachedFirmsDetections(firmsBbox, FIRMS_CONFIG.cacheSource, FIRMS_CONFIG.dayRange, geoJSON);
             return geoJSON;
           } catch (error) {
             logger.warn({ event: 'combined_firms_fetch_failed', meta: { error: (error as Error)?.message } });
@@ -174,7 +188,7 @@ export const GET = withApiHandler(async (request: Request) => {
     detectionSource = 'effis';
   } else {
     // Both failed — try returning any available cached data
-    const fallbackFirms = await getCachedFirmsDetections(firmsBbox, FIRMS_CONFIG.source, FIRMS_CONFIG.dayRange);
+    const fallbackFirms = await getCachedFirmsDetections(firmsBbox, FIRMS_CONFIG.cacheSource, FIRMS_CONFIG.dayRange);
     const fallbackEffis = await getCachedEffisDetections(effisBbox);
 
     if (fallbackFirms || fallbackEffis) {
@@ -186,9 +200,19 @@ export const GET = withApiHandler(async (request: Request) => {
         detectionSource = 'cache';
       }
     } else {
-      throw new AppError(4000, {
-        message: 'All detection sources failed and no cached data available',
-      });
+      // No satellite source answered (or FIRMS has no key). This is a known,
+      // degraded state rather than a server error: the map shows the layer
+      // as unavailable and keeps polling.
+      const reason = process.env.FIRMS_MAP_KEY ? 'sources_unreachable' : 'firms_not_configured';
+      logger.warn({ event: 'combined_detections_unavailable', meta: { reason } });
+      const empty = NextResponse.json(
+        { type: 'FeatureCollection', features: [], meta: { status: 'unavailable', reason } },
+        { status: 200 }
+      );
+      empty.headers.set('X-Detection-Source', 'none');
+      empty.headers.set('X-Detection-Status', 'unavailable');
+      empty.headers.set('Cache-Control', 'private, max-age=60');
+      return empty;
     }
   }
 
@@ -209,7 +233,7 @@ export const GET = withApiHandler(async (request: Request) => {
   apiResponse.headers.set('X-Detection-Count', String(responseData.features.length));
   apiResponse.headers.set('X-High-Confidence-Count', String(stats.highConfidence));
   apiResponse.headers.set('X-Recent-Count', String(stats.recentCount));
-  apiResponse.headers.set('Cache-Control', 'public, s-maxage=900, stale-while-revalidate=300');
+  apiResponse.headers.set('Cache-Control', 'private, max-age=300');
   headers.forEach((value, key) => apiResponse.headers.set(key, value));
 
   return apiResponse;

@@ -73,7 +73,7 @@ describe('withApiHandler', () => {
     }
   });
 
-  it('does not include debug stack in production unless explicitly enabled', async () => {
+  it('never includes a debug stack in production, whatever the request headers', async () => {
     const originalEnv = process.env;
     Object.defineProperty(process, 'env', {
       value: { ...originalEnv, NODE_ENV: 'production' },
@@ -94,7 +94,9 @@ describe('withApiHandler', () => {
         {}
       );
       const json2 = await res2.json();
-      expect(json2.error.debug).toBeTruthy();
+      // A client header must never unlock stack traces in production.
+      expect(json2.error.debug).toBeUndefined();
+      expect(JSON.stringify(json2)).not.toMatch(/at .*\.(ts|js):\d+/);
     } finally {
       Object.defineProperty(process, 'env', { value: originalEnv, configurable: true });
     }

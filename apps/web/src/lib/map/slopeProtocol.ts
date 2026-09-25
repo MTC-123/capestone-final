@@ -7,7 +7,7 @@
  * Uses the promise-based addProtocol API (maplibre-gl v4+).
  */
 
-import maplibregl from 'maplibre-gl';
+import * as maplibregl from 'maplibre-gl';
 
 let baseUrl = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
 let encoding: 'terrarium' | 'mapbox' = 'terrarium';

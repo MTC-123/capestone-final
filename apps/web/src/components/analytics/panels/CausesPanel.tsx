@@ -17,6 +17,7 @@ import { useAnalyticsStore } from '@/store/useAnalyticsStore';
 import { useTranslation } from '@/hooks/useTranslation';
 import type { TranslationKey } from '@/i18n/translations';
 import { Card } from '@/components/ui/Card';
+import { SkeletonBox } from '@/components/ui/Skeleton';
 import { EmptyState } from '../EmptyState';
 
 const COLORS = [
@@ -72,8 +73,8 @@ export function CausesPanel() {
     return (
       <div className="space-y-8" aria-busy="true">
         {[1, 2].map((i) => (
-          <div key={i} className="animate-pulse rounded-xl border border-border bg-muted p-6">
-            <div className="h-[300px] rounded-xl bg-muted-foreground/10" />
+          <div key={i} className="rounded-2xl border border-border bg-surface p-6">
+            <SkeletonBox className="h-[300px] w-full" />
           </div>
         ))}
       </div>
@@ -136,8 +137,8 @@ export function CausesPanel() {
                 dataKey="count"
                 label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
               >
-                {causesData.map((_entry, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                {causesData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} aria-label={`${entry.name}: ${entry.count}`} />
                 ))}
               </Pie>
               <Tooltip
@@ -191,23 +192,23 @@ export function CausesPanel() {
 
           {/* Category table */}
           <div className="mt-4 overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-[13px]">
               <thead>
                 <tr className="border-b border-border">
-                  <th className="p-2 text-left text-muted-foreground">{t('causeCategory')}</th>
-                  <th className="p-2 text-left text-muted-foreground">{t('totalFires')}</th>
-                  <th className="p-2 text-left text-muted-foreground">{t('causePercentage')}</th>
+                  <th className="p-2 text-start font-medium text-muted-foreground">{t('causeCategory')}</th>
+                  <th className="p-2 text-end font-medium text-muted-foreground">{t('totalFires')}</th>
+                  <th className="p-2 text-end font-medium text-muted-foreground">{t('causePercentage')}</th>
                 </tr>
               </thead>
               <tbody>
                 {categoryData.map((cat) => (
-                  <tr key={cat.category} className="border-b border-border/50">
-                    <td className="p-2 flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: cat.color }} />
+                  <tr key={cat.category} className="border-b border-border/50 hover:bg-surface-2">
+                    <td className="flex items-center gap-2 p-2">
+                      <div className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: cat.color }} />
                       {cat.name}
                     </td>
-                    <td className="p-2 font-semibold">{cat.count}</td>
-                    <td className="p-2">
+                    <td className="p-2 text-end font-mono font-semibold tabular">{cat.count}</td>
+                    <td className="p-2 text-end font-mono tabular">
                       {((cat.count / data.stats.totalIncidents) * 100).toFixed(1)}%
                     </td>
                   </tr>

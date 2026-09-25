@@ -1,34 +1,36 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { IconButton } from '@/components/ui/IconButton';
 import { Icon } from '@/components/ui/Icon';
+import { useTranslation } from '@/hooks/useTranslation';
+import { useIsDark } from '@/lib/client/browserStores';
+import { useServerPreferences } from '@/components/providers/PreferencesProvider';
 
+/**
+ * Light/dark switch. The choice is stored in the `ricer-theme` cookie so the
+ * server renders the right scheme on the next request.
+ */
 export function ThemeToggle() {
-  const [theme, setTheme] = useState<'light' | 'dark'>('dark');
-
-  useEffect(() => {
-    const stored = localStorage.getItem('theme');
-    const initial = stored === 'light' ? 'light' : 'dark';
-    setTheme(initial);
-    document.documentElement.classList.toggle('dark', initial === 'dark');
-  }, []);
+  const { language } = useTranslation();
+  const { theme: serverTheme } = useServerPreferences();
+  const theme = useIsDark(serverTheme === 'dark') ? 'dark' : 'light';
 
   const toggleTheme = () => {
-    const newTheme = theme === 'light' ? 'dark' : 'light';
-    setTheme(newTheme);
-    localStorage.setItem('theme', newTheme);
-    document.documentElement.classList.toggle('dark', newTheme === 'dark');
+    const next = theme === 'light' ? 'dark' : 'light';
+    document.documentElement.classList.toggle('dark', next === 'dark');
+    document.cookie = `ricer-theme=${next}; Path=/; Max-Age=31536000; SameSite=Lax`;
   };
 
+  const labels = {
+    ar: { dark: 'الوضع الداكن', light: 'الوضع الفاتح' },
+    fr: { dark: 'Mode sombre', light: 'Mode clair' },
+    en: { dark: 'Dark mode', light: 'Light mode' },
+  }[language];
+
   return (
-    <IconButton
-      label={theme === 'light' ? 'Dark mode' : 'Light mode'}
-      onClick={toggleTheme}
-    >
-      <span className="transition-transform duration-200 hover:rotate-12">
-        <Icon name={theme === 'light' ? 'moon' : 'sun'} aria-hidden size={18} />
-      </span>
+    <IconButton label={theme === 'light' ? labels.dark : labels.light} onClick={toggleTheme}>
+      <Icon name={theme === 'light' ? 'moon' : 'sun'} aria-hidden size={18} />
     </IconButton>
   );
 }

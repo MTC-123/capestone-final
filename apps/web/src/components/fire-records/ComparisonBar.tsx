@@ -12,7 +12,7 @@ export function ComparisonBar() {
 
   return (
     <div
-      className="flex flex-col gap-3 rounded-lg border border-primary/30 bg-primary/5 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:py-2"
+      className="flex flex-col gap-3 rounded-2xl border border-primary/30 bg-primary/5 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:py-2"
       data-testid="comparison-bar"
     >
       <span className="text-sm font-medium">

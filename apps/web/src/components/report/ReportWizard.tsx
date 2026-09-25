@@ -2,8 +2,10 @@
 
 import { useState } from 'react';
 import { useTranslation } from '@/hooks/useTranslation';
-import { fetchWithAuth } from '@/lib/api/fetchWithAuth';
-import { getApiErrorUserMessage } from '@/lib/errors/sdk';
+import { useOfflineQueue } from '@/lib/offline/useOfflineQueue';
+import { SubmissionStateChip } from '@/components/offline/SubmissionStateChip';
+import { Button } from '@/components/ui/Button';
+import { Icon } from '@/components/ui/Icon';
 import { ErrorDisplay } from '@/components/ui/ErrorDisplay';
 import { clientLogger } from '@/lib/observability/clientLogger';
 import { ProgressBar } from '@/components/report/ProgressBar';
@@ -14,6 +16,16 @@ import { ConfirmationScreen } from '@/components/report/ConfirmationScreen';
 import type { WizardStep, ReportFormData } from '@/types/report';
 import { DEFAULT_FORM_DATA } from '@/types/report';
 
+/** Decodes a base64 data URL without fetch(), which the CSP's connect-src would block for data: URLs. */
+async function dataUrlToBlob(dataUrl: string): Promise<Blob> {
+  const [header, base64 = ''] = dataUrl.split(',');
+  const type = /data:([^;]+)/.exec(header)?.[1] ?? 'image/jpeg';
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return new Blob([bytes], { type });
+}
+
 export function ReportWizard() {
   const { t } = useTranslation();
   const [step, setStep] = useState<WizardStep>('location');
@@ -22,7 +34,9 @@ export function ReportWizard() {
   const [error, setError] = useState('');
   const [errorCode, setErrorCode] = useState<number | undefined>();
   const [requestId, setRequestId] = useState<string | undefined>();
-  const [submittedReport, setSubmittedReport] = useState<{ id: string; referenceNumber: string } | null>(null);
+  const [queuedId, setQueuedId] = useState<string | null>(null);
+  const { items, online, enqueueReport, retry } = useOfflineQueue();
+  const queued = queuedId ? items.find((i) => i.clientSubmissionId === queuedId) : undefined;
 
   // Validation errors for step 2
   const [detailsErrors, setDetailsErrors] = useState<{ description?: string; cause?: string }>({});
@@ -65,54 +79,30 @@ export function ReportWizard() {
     setSubmitting(true);
 
     try {
-      const response = await fetchWithAuth('/api/reports', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          latitude: formData.latitude,
-          longitude: formData.longitude,
+      // Saved to IndexedDB first; the sync engine uploads photos and posts
+      // the report now if online, or as soon as the network returns.
+      const photos = await Promise.all(formData.images.map(dataUrlToBlob));
+      const id = await enqueueReport(
+        {
+          latitude: formData.latitude as number,
+          longitude: formData.longitude as number,
           description: formData.description,
           cause: formData.cause || 'UNKNOWN',
-          characteristics: formData.characteristics,
-          images: formData.images,
+          characteristics: formData.characteristics as unknown as Record<string, unknown>,
           contactPhone: formData.contactPhone || undefined,
           anonymous: formData.anonymous,
-        }),
-      });
-
-      const responseRequestId = response.headers.get('x-request-id');
-      const data = await response.json();
-
-      if (!response.ok) {
-        setError(getApiErrorUserMessage(data, t('errorServer')));
-        setErrorCode(data.error?.code);
-        setRequestId(data.error?.requestId || responseRequestId || undefined);
-
-        clientLogger.error({
-          event: 'report_submission_failed',
-          route: '/api/reports',
-          requestId: responseRequestId || undefined,
-          meta: { errorCode: data.error?.code, status: response.status },
-        });
-        return;
-      }
-
-      const reportId = typeof data.report?.id === 'string' ? data.report.id : '';
-      setSubmittedReport({
-        id: reportId,
-        referenceNumber: data.referenceNumber ?? data.report?.referenceNumber ?? '',
-      });
-    } catch (err) {
-      setError(t('connectionError'));
-
-      clientLogger.error({
-        event: 'report_submission_exception',
-        route: '/api/reports',
-        error: {
-          name: (err as Error)?.name,
-          message: (err as Error)?.message,
-          stack: (err as Error)?.stack,
+          capturedAt: new Date().toISOString(),
         },
+        photos
+      );
+      setQueuedId(id);
+    } catch (err) {
+      const quota = (err as Error)?.name === 'QuotaExceededError' || /quota/i.test((err as Error)?.message ?? '');
+      setError(quota ? t('errorPayloadTooLarge') : t('connectionError'));
+      clientLogger.error({
+        event: 'report_enqueue_failed',
+        route: '/report',
+        error: { name: (err as Error)?.name, message: (err as Error)?.message },
       });
     } finally {
       setSubmitting(false);
@@ -122,18 +112,50 @@ export function ReportWizard() {
   const handleReset = () => {
     setFormData({ ...DEFAULT_FORM_DATA, characteristics: { ...DEFAULT_FORM_DATA.characteristics } });
     setStep('location');
-    setSubmittedReport(null);
+    setQueuedId(null);
     setError('');
   };
 
-  // After successful submission — show confirmation
-  if (submittedReport !== null) {
+  if (queuedId && queued?.state === 'sent') {
     return (
       <ConfirmationScreen
-        reportId={submittedReport.id}
-        referenceNumber={submittedReport.referenceNumber}
+        reportId={queued.serverReportId ?? ''}
+        referenceNumber={queued.referenceNumber ?? ''}
         onReset={handleReset}
       />
+    );
+  }
+
+  if (queuedId) {
+    const attention = queued?.state === 'needs_attention' || queued?.state === 'failed';
+    return (
+      <div className="flex flex-col items-center px-2 py-10 text-center" role="status" aria-live="polite">
+        <span
+          className={`grid h-16 w-16 place-items-center rounded-2xl ${attention ? 'bg-warning-muted text-warning' : online ? 'bg-primary-muted text-primary' : 'bg-info-muted text-info'}`}
+        >
+          <Icon name={attention ? 'warning' : online ? 'loading' : 'wifiOff'} size={28} className={!attention && online ? 'animate-spin' : undefined} />
+        </span>
+        <h2 className="mt-5 text-xl font-semibold tracking-tight">{t('reportQueuedTitle')}</h2>
+        <p className="mt-2 max-w-md text-[15px] text-muted-foreground">
+          {attention ? queued?.lastError?.message ?? t('reportQueuedAttention') : online ? t('reportQueuedSending') : t('reportQueuedOffline')}
+        </p>
+        {queued && (
+          <div className="mt-4">
+            <SubmissionStateChip state={queued.state} />
+          </div>
+        )}
+        <div className="mt-7 flex flex-wrap justify-center gap-2">
+          {attention && queued && (
+            <Button variant="primary" onClick={() => retry(queued.clientSubmissionId)}>
+              <Icon name="refresh" size={16} />
+              {t('reportQueuedRetry')}
+            </Button>
+          )}
+          <Button variant="secondary" onClick={handleReset}>
+            {t('newReport')}
+          </Button>
+        </div>
+      </div>
     );
   }
 

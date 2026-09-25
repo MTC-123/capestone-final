@@ -4,135 +4,102 @@
 
 <p align="center">
   <a href="https://github.com/MTC-123/capestone-final/actions/workflows/ci.yml"><img src="https://github.com/MTC-123/capestone-final/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <img src="https://img.shields.io/badge/node-20-166432" alt="Node 20">
-  <img src="https://img.shields.io/badge/next.js-14-166432" alt="Next.js 14">
+  <img src="https://img.shields.io/badge/next.js-16-166432" alt="Next.js 16">
+  <img src="https://img.shields.io/badge/react-19-166432" alt="React 19">
+  <img src="https://img.shields.io/badge/node-22-166432" alt="Node 22">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-166432" alt="MIT license"></a>
 </p>
 
 <p align="center">
-  <a href="https://ricer-project.vercel.app/signin"><b>Live demo</b></a> &nbsp;·&nbsp;
+  <a href="docs/DEPLOYMENT.md"><b>Deploy (free tier)</b></a> &nbsp;·&nbsp;
   <a href="apps/web/docs/ARCHITECTURE.md">Architecture</a> &nbsp;·&nbsp;
   <a href="apps/web/docs/API.md">API</a> &nbsp;·&nbsp;
+  <a href="docs/EVALUATION.md">Test results</a> &nbsp;·&nbsp;
   <a href="docs/README.md">Documentation</a>
 </p>
 
 ---
 
-**RICER** (Resilient Infrastructures and Coordinated Emergency Response) is a web platform for forest-fire response in Ifrane Province, Morocco. It connects reports from residents and field staff with the officials who assess incidents, assign vehicles and teams, and coordinate across agencies, all on one shared record.
+**RICER** (Resilient Infrastructures and Coordinated Emergency Response) is a web platform for forest-fire response in Ifrane Province, Morocco. Reports from residents and field crews, the officials who assess and dispatch, and the agencies they coordinate with all work from one shared record.
 
-It is being developed as a Computer Science capstone at Al Akhawayn University in Ifrane, supervised by Houda Chakiri.
+It is a Computer Science capstone at Al Akhawayn University in Ifrane, supervised by Houda Chakiri.
 
-## Why
+## Two experiences, one record
 
-When a fire is reported, responders need its location, the evidence, available resources and the current response status in one place. Today those pieces sit in phone calls, device photos, paper forms and regional bulletins. RICER keeps the report, the dispatch decision and the response status in a single record that each authorised agency can see.
+| Residents (civic) | Officials (command centre) |
+|---|---|
+| Report a fire in three steps: place search, GPS or map pin; details; photos | Map-first operating picture: incidents, vehicles, infrastructure, FIRMS/EFFIS and weather layers |
+| Reports are saved on the phone first and sent automatically when the network returns | Conflict-free dispatch: routes and ETAs, atomic resource claims |
+| Track your reports and their status | ICS roles, mutual aid, POI and PMA workflows, campaign checklists, debriefings |
+| Clear emergency guidance (15 / 177) on every page | Model-backed fire-risk layer (partner team's XGBoost), fire-record verification, PDF export |
+| Arabic (RTL), French and English | Access-request approvals and an audit trail of every sensitive action |
 
-## Capabilities
+The civic experience uses a light "paper" theme; the command centre defaults to a dark "ops" theme. Both are available in either mode.
 
-<table>
-<tr>
-<th align="left" width="50%">What it does</th>
-<th align="left" width="50%">How it holds up</th>
-</tr>
-<tr valign="top">
-<td>
+## Engineering highlights
 
-- **Fire reporting**: map-based reports from residents and field staff
-- **Common operating picture**: incidents, vehicles, infrastructure and environmental layers on one MapLibre map
-- **Dispatch**: routed assignments, isochrones and nearest-team lookup
-- **Multi-agency coordination**: ICS roles, mutual-aid requests, communication logs
-- **Operations**: campaign checklists, debriefings, equipment and retardant inventory
-- **Fire records**: verification, approval, perimeters, NASA FIRMS import, PDF export
+- **Security, against selected OWASP ASVS 5.0 controls:**
+  - server-side RBAC in a request proxy and on every API route;
+  - sign-up can never grant the official role (approval workflow);
+  - account lockout;
+  - rotating refresh tokens with reuse detection;
+  - rate limits (Upstash);
+  - nonce-based strict CSP and security headers;
+  - zod input validation;
+  - photo uploads checked by file signature, with EXIF/GPS metadata stripped;
+  - an append-only audit log.
+- **Offline-first reporting:** an IndexedDB queue plus a service worker, with idempotent sync keyed by a client submission ID. It's tested so that retries, crashes and concurrent tabs never create duplicate reports.
+- **Concurrency:** dispatch claims vehicles and teams with conditional atomic updates. An integration test fires twelve simultaneous assignments of one truck at a real MongoDB; exactly one succeeds.
+- **Model integration:** the partner team's XGBoost model is evaluated in pure TypeScript. It matches the Python reference to about 1e-6, and reports its version, data time and an explicit "unavailable" state ([model card](apps/web/src/lib/risk/model/MODEL_CARD.md)).
+- **Accessibility:** WCAG 2.2 AA checks (axe) on every route, on seven browser and device profiles including Arabic RTL.
+- **Resilience:** a health endpoint with a per-dependency status, graceful degradation when an optional service is missing, and a rehearsed backup and restore ([runbook](docs/runbooks/backup-restore.md)).
 
-</td>
-<td>
+## Stack
 
-- **Role-based access control**: JWT sessions, server-side permissions for civilians and officials
-- **Attribution**: records note who created or changed them; per-incident communication logs
-- **Graceful degradation**: external data sources fail visibly, not silently
-- **Trilingual**: Arabic (right-to-left), French and English
-- **Observability**: structured errors, health endpoint, Sentry
-- **Tested**: 1,675 unit and integration tests, plus Playwright end-to-end suites
+Next.js 16 (App Router, Turbopack) · React 19 · TypeScript · Tailwind · Prisma 5 + MongoDB · MapLibre 6 + deck.gl · Upstash Redis/QStash · Vercel Blob · Ably · Resend · Twilio (WhatsApp sandbox) · Sentry
 
-</td>
-</tr>
-</table>
-
-## Architecture
-
-```mermaid
-flowchart LR
-    subgraph Clients
-        R[Residents and field staff]
-        O[Officials and dispatchers]
-    end
-    subgraph App["Next.js 14 · TypeScript"]
-        UI[App Router UI<br/>MapLibre · deck.gl]
-        API[API routes<br/>auth · incidents · dispatch · coordination]
-        W[Notification worker]
-    end
-    DB[(MongoDB<br/>via Prisma)]
-    EXT[FIRMS · EFFIS · CAMS<br/>Open-Meteo · GraphHopper]
-    MSG[Twilio WhatsApp]
-    RT[Ably realtime]
-
-    R --> UI
-    O --> UI
-    UI --> API
-    API --> DB
-    API --> EXT
-    API --> W --> MSG
-    API --> RT --> UI
-```
-
-See [ARCHITECTURE.md](apps/web/docs/ARCHITECTURE.md) and the [architecture decision records](apps/web/docs/adr) for detail.
+Free hosting: Vercel Hobby + MongoDB Atlas M0 + Upstash free tiers. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 ## Quick start
 
-Requires Node 20 and a MongoDB instance.
+Requires Node 22 LTS and Docker (for a local MongoDB replica set).
 
 ```bash
-git clone https://github.com/MTC-123/capestone-final.git
-cd capestone-final/apps/web
-cp .env.example .env.local   # then fill in DATABASE_URL and JWT_SECRET
-npm ci && npx prisma db push
-npm run dev                  # http://localhost:3000
+docker run -d --name ricer-mongo -p 27017:27017 mongo:7 --replSet rs0 --bind_ip_all
+docker exec ricer-mongo mongosh --eval 'rs.initiate({_id:"rs0",members:[{_id:0,host:"localhost:27017"}]})'
+
+cd apps/web
+cp .env.example .env.local        # set DATABASE_URL, JWT_SECRET, REFRESH_TOKEN_PEPPER
+npm ci
+npx prisma db push && npm run prisma:seed
+npm run dev                       # http://localhost:3000
 ```
 
-| Command | Purpose |
-|---|---|
-| `npm run test:unit` | Unit and integration tests (Vitest) |
-| `npm run test:e2e` | End-to-end tests (Playwright) |
-| `npm run lint` · `npm run typecheck` | Static checks |
-| `npm run worker:start` | Background notification worker |
+Demo accounts (password `password123`): official **CD789012**, resident **AB123456**. With `DEMO_MODE=true`, the sign-in page also offers one-click personas.
 
-Deployment: the live demo runs on Vercel ([installation guide](apps/web/INSTALLATION.md)). A multi-stage [Dockerfile](Dockerfile), a [Railway config](railway.toml) and a [Helm chart](apps/web/helm/ricer-web) are included for container hosting.
+## Tests
+
+| Command | What it covers |
+|---|---|
+| `npm run test:unit` | Unit and integration tests (Vitest, about 1,750 tests) |
+| `npm run test:db` | Real-MongoDB integration: auth hardening, token theft, dispatch race, idempotent reports and uploads |
+| `npx playwright test tests/e2e/live` | The live app on 7 profiles (Chrome, Firefox, Safari, Pixel 7, iPhone 14, iPad Pro, Arabic RTL): every route, axe WCAG 2.2, overflow, offline reporting, RBAC |
+| `npm run perf:k6` | Load at 10 / 25 / 50 concurrent users |
+| `npm run lint` · `npm run typecheck` | Static checks |
 
 ## Repository layout
 
 ```
-.
-├── apps/web/          Next.js application: source, tests, Prisma schema, Helm chart, OpenAPI spec
-├── data/gis/          GIS source layers for Ifrane Province
-├── scripts/gis/       GIS preparation scripts
-├── docs/              Specifications, dispatch guides, audits, research, roadmap
-└── .github/           CI workflow, issue and pull-request templates
+apps/web/        Next.js app: src, tests, Prisma schema, seed, perf, scripts
+data/gis/        GIS source layers for Ifrane Province
+scripts/gis/     GIS preparation (relief contours)
+docs/            Deployment, runbooks, specifications, audits, research
+.github/         CI (lint, unit, real-DB, build), security scanning (CodeQL, audit)
 ```
-
-## Roadmap
-
-The capstone (September to December 2026) extends the platform with:
-
-- **Offline-first field reporting**: IndexedDB queue and service worker, with idempotent sync so retries never create duplicates
-- **Model-backed risk layer**: the partner team's XGBoost wildfire-occurrence model served with version and data time, replacing the current weather-based heuristic
-- **Operational hardening**: rehearsed backup restore, load tests at 10 / 25 / 50 concurrent users, email as a third notification channel
-
-## Contributing and security
-
-See [CONTRIBUTING.md](CONTRIBUTING.md). Report vulnerabilities privately as described in [SECURITY.md](SECURITY.md), not in public issues.
 
 ## Acknowledgements
 
-Al Akhawayn University in Ifrane, School of Science and Engineering. Supervisor: Houda Chakiri. The wildfire-occurrence model is the work of the RICER machine-learning team (M. Erraisse, R. Souane, W. Hara). Environmental data from NASA FIRMS, Copernicus EFFIS and CAMS, and Open-Meteo.
+Al Akhawayn University in Ifrane, School of Science and Engineering. Supervisor: Houda Chakiri. The wildfire-occurrence model is the work of the RICER machine-learning team (M. Erraisse, R. Souane, W. Hara). Data from NASA FIRMS, Copernicus EFFIS and CAMS, Open-Meteo, OpenStreetMap contributors and AWS Terrain Tiles.
 
 ## License
 

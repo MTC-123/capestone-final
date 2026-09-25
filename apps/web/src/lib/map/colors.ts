@@ -100,6 +100,15 @@ export const NDVI_COLORS = {
 /**
  * Water reservoir colors
  */
+/** `#rrggbb` → `rgba(r,g,b,a)` for MapLibre colour ramps. */
+export function rgbaCss(hex: string, alpha: number): string {
+  const n = parseInt(hex.slice(1), 16);
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${alpha})`;
+}
+
+/** Forest tracks (pistes): amber, dashed, matching the legend swatch. */
+export const FOREST_ROAD_COLOR = '#b45309';
+
 export const RESERVOIR_COLORS = {
   marker: '#3b82f6',    // blue-500
   label: '#1e40af',     // blue-800
@@ -203,3 +212,11 @@ export function getFRPColor(frp: number): string {
   if (frp >= FIRMS_FRP_GRADIENT.medium.threshold) return FIRMS_FRP_GRADIENT.medium.color;
   return FIRMS_FRP_GRADIENT.low.color;
 }
+
+/** Model risk grid levels (partner-team XGBoost), low → very high. */
+export const RISK_LEVEL_COLORS = {
+  low: '#2f9e5b',
+  moderate: '#e2b33a',
+  high: '#ef7a2b',
+  very_high: '#d7263d',
+} as const;

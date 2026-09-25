@@ -9,6 +9,8 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useDispatchStore } from '@/store/useDispatchStore';
 import type { SelectedVehicle } from '@/store/useDispatchStore';
+import { SkeletonBox } from '@/components/ui/Skeleton';
+import { Icon } from '@/components/ui/Icon';
 
 interface VehicleSelectorProps {
   incidentId: string;
@@ -55,11 +57,11 @@ export function VehicleSelector({ incidentId }: VehicleSelectorProps) {
     }
     fetchVehicles();
     return () => { cancelled = true; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, []);
 
   if (loading) {
-    return <div className="animate-pulse h-20 bg-muted rounded" />;
+    return <SkeletonBox className="h-20 rounded-xl" />;
   }
 
   if (vehicles.length === 0) {
@@ -109,7 +111,7 @@ export function VehicleSelector({ incidentId }: VehicleSelectorProps) {
                 {t(typeKey as Parameters<typeof t>[0])} • {v.capacity}L
               </span>
             </div>
-            {selected && <span className="text-primary font-bold text-sm">✓</span>}
+            {selected && <Icon name="check" size={16} className="text-primary" aria-hidden />}
           </button>
         );
       })}
