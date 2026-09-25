@@ -96,7 +96,8 @@ vi.mock('@/lib/map/dispatchLayers', () => ({
 }));
 
 // Helpers
-vi.mock('@/lib/map/helpers', () => ({
+vi.mock('@/lib/map/helpers', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/map/helpers')>()),
   asGeoJSON: vi.fn((d: any) => d),
   circleIcon: vi.fn(() => 'data:svg'),
   hexToRgba: vi.fn(() => [255, 0, 0, 255]),

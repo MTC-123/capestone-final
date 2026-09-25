@@ -98,3 +98,42 @@ export function hexToRgba(hex: string, alpha = 255): [number, number, number, nu
     ? [parseInt(r[1], 16), parseInt(r[2], 16), parseInt(r[3], 16), alpha]
     : [100, 100, 100, alpha];
 }
+
+/** Grid key for "same place" (~11 m at Ifrane's latitude). */
+export function coordKey([lng, lat]: [number, number]): string {
+  return `${lng.toFixed(4)},${lat.toFixed(4)}`;
+}
+
+/**
+ * Screen-pixel offsets that fan markers sharing a location out onto a ring,
+ * so vehicles parked at a station stay individually visible and clickable.
+ * A marker is moved only when it shares its spot with another marker in the
+ * same layer, or with one in `occupied` (keys from layers drawn at the centre).
+ * Offsets are in pixels, so the ring keeps its size at every zoom.
+ */
+export function ringOffsets(
+  coords: [number, number][],
+  radiusPx: number,
+  startDeg = -90,
+  occupied?: ReadonlySet<string>
+): [number, number][] {
+  const groups = new Map<string, number[]>();
+  coords.forEach((c, i) => {
+    const key = coordKey(c);
+    const group = groups.get(key);
+    if (group) group.push(i);
+    else groups.set(key, [i]);
+  });
+
+  const offsets: [number, number][] = coords.map(() => [0, 0]);
+  for (const [key, members] of groups) {
+    if (members.length < 2 && !occupied?.has(key)) continue;
+    // Widen the ring for large groups so neighbours don't touch.
+    const radius = radiusPx + Math.max(0, members.length - 6) * 4;
+    members.forEach((index, k) => {
+      const angle = ((startDeg + (360 * k) / members.length) * Math.PI) / 180;
+      offsets[index] = [Math.round(radius * Math.cos(angle)), Math.round(radius * Math.sin(angle))];
+    });
+  }
+  return offsets;
+}

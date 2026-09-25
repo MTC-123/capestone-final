@@ -26,7 +26,8 @@ vi.mock('@deck.gl/layers', () => ({
   },
 }));
 
-vi.mock('@/lib/map/helpers', () => ({ circleIcon: (color: string) => `data:svg,${color}` }));
+vi.mock('@/lib/map/helpers', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/map/helpers')>()), circleIcon: (color: string) => `data:svg,${color}` }));
 
 const mockRoute: RouteResponse = {
   primary: {

@@ -19,7 +19,8 @@ vi.mock('@deck.gl/layers', () => ({
   },
 }));
 
-vi.mock('@/lib/map/helpers', () => ({
+vi.mock('@/lib/map/helpers', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/map/helpers')>()),
   circleIcon: (color: string) => `data:svg,${color}`,
   shapeIcon: (_shape: string, color: string) => `data:svg,${color}`,
   hexToRgba: (hex: string, alpha = 255) => [255, 100, 0, alpha],

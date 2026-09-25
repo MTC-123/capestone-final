@@ -199,7 +199,12 @@ export default function LocationPicker({ onLocationSelect, selectedLocation, exp
           onClick={handleClick}
           cursor="crosshair"
           style={{ width: '100%', height }}
-          onLoad={() => setMapReady(true)}
+          onLoad={(e) => {
+            // MapLibre opens the compact credit on load; on this small map it
+            // would cover the top. Collapse it; the (i) button still opens it.
+            e.target.getContainer().querySelector('.maplibregl-ctrl-attrib')?.classList.remove('maplibregl-compact-show');
+            setMapReady(true);
+          }}
           attributionControl={false}
         >
           {/* Top corners keep controls clear of the phone tab bar and the GPS button. */}

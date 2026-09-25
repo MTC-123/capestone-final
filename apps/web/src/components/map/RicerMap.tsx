@@ -33,7 +33,7 @@ import { usePopulationAtRisk } from '@/hooks/usePopulationAtRisk';
 import { useFireSpreadVectors } from '@/hooks/useFireSpreadVectors';
 import { registerSlopeProtocol, unregisterSlopeProtocol, configureSlopeProtocol } from '@/lib/map/slopeProtocol';
 import { fetchWithAuth } from '@/lib/api/fetchWithAuth';
-import { asGeoJSON } from '@/lib/map/helpers';
+import { asGeoJSON, coordKey } from '@/lib/map/helpers';
 import { logger } from '@/lib/observability/logger';
 import { createResourceLayer, createInfrastructureLayers, createIncidentPulseLayer, createRetardantLayer } from '@/lib/map/layers';
 import {
@@ -1036,6 +1036,31 @@ export default function RicerMap({ weather = null, weatherLoading = false }: Ric
   );
 
   // Static layers: resources + infrastructure — only recomputes when data or tier changes
+  // Decluttering: stations stay at the true point, vehicles ring around them and
+  // resources/retardant take an outer ring. Resources that are also tracked
+  // vehicles (same call sign) are drawn once, as the vehicle.
+  const stationKeys = useMemo(() => {
+    const keys = new Set<string>();
+    if (!layers.infrastructure) return keys;
+    for (const f of infrastructure.features) {
+      if (f.geometry.type === 'Point') keys.add(coordKey(f.geometry.coordinates as [number, number]));
+    }
+    return keys;
+  }, [infrastructure, layers.infrastructure]);
+
+  const trackedVehicles = useMemo(() => {
+    const keys = new Set<string>(stationKeys);
+    const callSigns = new Set<string>();
+    if (layers.vehicles) {
+      for (const f of vehiclesData.features) {
+        if (!f.geometry?.coordinates) continue;
+        keys.add(coordKey(f.geometry.coordinates as [number, number]));
+        callSigns.add(f.properties.callSign);
+      }
+    }
+    return { keys, callSigns };
+  }, [stationKeys, vehiclesData, layers.vehicles]);
+
   const staticDeckLayers = useMemo(() => {
     // Tier C: use MapLibre native layers only; skip deck.gl
     if (!tierConfig.useDeckGL) return [];
@@ -1047,7 +1072,11 @@ export default function RicerMap({ weather = null, weatherLoading = false }: Ric
       PERSONNEL: layers.rscPersonnel,
       EQUIPMENT: layers.rscEquipment,
     };
-    const resourceLayer = createResourceLayer(resources, layers.resources, resourceActiveTypes);
+    const untrackedResources = {
+      ...resources,
+      features: resources.features.filter((f) => !trackedVehicles.callSigns.has(f.properties.name)),
+    };
+    const resourceLayer = createResourceLayer(untrackedResources, layers.resources, resourceActiveTypes, trackedVehicles.keys);
     if (resourceLayer) list.push(resourceLayer);
     const infraLayers = createInfrastructureLayers(infrastructure, layers.infrastructure, {
       WATCHTOWER: layers.infraWatchtowers,
@@ -1056,10 +1085,10 @@ export default function RicerMap({ weather = null, weatherLoading = false }: Ric
       FIREBREAK: layers.infraFirebreaks,
     });
     list.push(...infraLayers);
-    const retardantLayer = createRetardantLayer(retardantData, layers.retardant);
+    const retardantLayer = createRetardantLayer(retardantData, layers.retardant, trackedVehicles.keys);
     if (retardantLayer) list.push(retardantLayer);
     return list;
-  }, [tierConfig.useDeckGL, resources, infrastructure, retardantData, layers.resources, layers.infrastructure, layers.retardant, layers.rscTrucks, layers.rscAircraft, layers.rscPersonnel, layers.rscEquipment, layers.infraWatchtowers, layers.infraWaterPoints, layers.infraFireStations, layers.infraFirebreaks]);
+  }, [tierConfig.useDeckGL, resources, infrastructure, retardantData, layers.resources, layers.infrastructure, layers.retardant, layers.rscTrucks, layers.rscAircraft, layers.rscPersonnel, layers.rscEquipment, layers.infraWatchtowers, layers.infraWaterPoints, layers.infraFireStations, layers.infraFirebreaks, trackedVehicles]);
 
   // Dispatch layers: routes + teams — recomputes only when dispatch state changes
   const dispatchDeckLayers = useMemo(() => {
@@ -1084,12 +1113,12 @@ export default function RicerMap({ weather = null, weatherLoading = false }: Ric
         status: f.properties.status,
         location: f.geometry as { type: 'Point'; coordinates: [number, number] },
       }));
-    const vehicleLayer = createVehicleLayer(vehicleLayerData, layers.vehicles);
+    const vehicleLayer = createVehicleLayer(vehicleLayerData, layers.vehicles, stationKeys);
     if (vehicleLayer) list.push(vehicleLayer);
 
     return list;
    
-  }, [layers.routes, layers.activeTeams, layers.vehicles, routeLayerData, selectedTeams, vehiclesData, pulsePhase]);
+  }, [layers.routes, layers.activeTeams, layers.vehicles, routeLayerData, selectedTeams, vehiclesData, pulsePhase, stationKeys]);
 
   // Animated layers: pulse + arcs — only on Tier A/B
   const animatedDeckLayers = useMemo(() => {
