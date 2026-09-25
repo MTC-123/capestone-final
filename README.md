@@ -6,7 +6,7 @@
   <a href="https://github.com/MTC-123/capestone-final/actions/workflows/ci.yml"><img src="https://github.com/MTC-123/capestone-final/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <img src="https://img.shields.io/badge/next.js-16-166432" alt="Next.js 16">
   <img src="https://img.shields.io/badge/react-19-166432" alt="React 19">
-  <img src="https://img.shields.io/badge/node-20-166432" alt="Node 20">
+  <img src="https://img.shields.io/badge/node-22-166432" alt="Node 22">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-166432" alt="MIT license"></a>
 </p>
 
@@ -61,7 +61,7 @@ Free hosting: Vercel Hobby + MongoDB Atlas M0 + Upstash free tiers. See [docs/DE
 
 ## Quick start
 
-Requires Node 20 and Docker (for a local MongoDB replica set).
+Requires Node 22 LTS and Docker (for a local MongoDB replica set).
 
 ```bash
 docker run -d --name ricer-mongo -p 27017:27017 mongo:7 --replSet rs0 --bind_ip_all

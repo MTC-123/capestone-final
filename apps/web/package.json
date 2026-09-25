@@ -17,13 +17,13 @@
     "generate:errors": "tsx scripts/generate/generate-error-catalog.ts",
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
-    "prisma:seed": "tsx prisma/seed.ts",
+    "prisma:seed": "tsx --env-file-if-exists=.env.local prisma/seed.ts",
     "scan:semgrep": "semgrep --config .semgrep.yml",
     "scan:zap": "zap-baseline.py -c security/zap-baseline.conf -t http://localhost:3000",
     "perf:k6": "k6 run perf/k6-workload.js",
     "deploy:verify": "tsx scripts/deploy/verify-deploy.ts",
     "ci": "npm run lint && npm run test:unit && npm run test:e2e",
-    "prisma:seed:load": "tsx prisma/seed-load.ts",
+    "prisma:seed:load": "tsx --env-file-if-exists=.env.local prisma/seed-load.ts",
     "db:backup": "bash scripts/db/backup.sh",
     "db:restore": "bash scripts/db/restore.sh",
     "ml:export": "python3 scripts/ml/export_xgboost.py",
@@ -79,7 +79,7 @@
     "@testing-library/user-event": "^14.5.2",
     "@types/bcryptjs": "^2.4.6",
     "@types/jsonwebtoken": "^9.0.7",
-    "@types/node": "^20",
+    "@types/node": "^22.20.4",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitest/coverage-v8": "^2.1.9",
@@ -96,7 +96,7 @@
     "vitest-axe": "^0.1.0"
   },
   "engines": {
-    "node": "20.x"
+    "node": "22.x"
   },
   "overrides": {
     "qs": "^6.16.0"
