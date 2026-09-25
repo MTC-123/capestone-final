@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { useAnalyticsStore } from '@/store/useAnalyticsStore';
+import { useAuthStore } from '@/store/useAuthStore';
 import { useTranslation } from '@/hooks/useTranslation';
 import type { AnalyticsTab } from '@/types/analytics';
 import type { TranslationKey } from '@/i18n/translations';
@@ -12,13 +13,14 @@ import { ResponsePanel } from './panels/ResponsePanel';
 import { EnvironmentPanel } from './panels/EnvironmentPanel';
 import { RexSummaryPanel } from './panels/RexSummaryPanel';
 
-const TABS: { id: AnalyticsTab; labelKey: TranslationKey }[] = [
+/** `officialOnly` tabs read internal records (debriefings) that residents may not see. */
+const TABS: { id: AnalyticsTab; labelKey: TranslationKey; officialOnly?: boolean }[] = [
   { id: 'overview', labelKey: 'tabOverview' },
   { id: 'temporal', labelKey: 'tabTemporal' },
   { id: 'causes', labelKey: 'tabCauses' },
   { id: 'response', labelKey: 'tabResponse' },
   { id: 'environment', labelKey: 'tabEnvironment' },
-  { id: 'rex', labelKey: 'tabRex' },
+  { id: 'rex', labelKey: 'tabRex', officialOnly: true },
 ];
 
 const PANELS: Record<AnalyticsTab, React.ComponentType> = {
@@ -39,12 +41,14 @@ export function AnalyticsTabs() {
   const customFrom = useAnalyticsStore((s) => s.customFrom);
   const customTo = useAnalyticsStore((s) => s.customTo);
   const loading = useAnalyticsStore((s) => s.loading);
+  const isOfficial = useAuthStore((s) => s.user?.role === 'OFFICIAL');
+  const tabs = TABS.filter((tab) => !tab.officialOnly || isOfficial);
 
   useEffect(() => {
     fetchData();
   }, [fetchData, dateRange, customFrom, customTo]);
 
-  const ActivePanel = PANELS[activeTab];
+  const ActivePanel = PANELS[tabs.some((tab) => tab.id === activeTab) ? activeTab : 'overview'];
 
   return (
     <div>
@@ -53,7 +57,7 @@ export function AnalyticsTabs() {
         aria-label={t('tabOverview')}
         className="mb-6 flex gap-1 overflow-x-auto rounded-[10px] border border-border bg-surface-2 p-1 md:flex-wrap md:overflow-visible"
       >
-        {TABS.map((tab) => (
+        {tabs.map((tab) => (
           <button
             key={tab.id}
             role="tab"
