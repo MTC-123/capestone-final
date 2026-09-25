@@ -172,7 +172,7 @@ describe('FIRMS API Integration', () => {
 
       expect(response.headers.get('X-Cache')).toBe('HIT');
       expect(response.headers.get('X-Cache-Age')).toBeTruthy();
-      expect(response.headers.get('Cache-Control')).toContain('public');
+      expect(response.headers.get('Cache-Control')).toBe('private, max-age=300');
       expect(response.headers.get('X-Detection-Count')).toBe('1');
       expect(response.headers.get('X-High-Confidence-Count')).toBeTruthy();
     });
@@ -529,7 +529,7 @@ describe('FIRMS API Integration', () => {
       expect(response.status).toBe(200);
       expect(response.headers.get('X-Cache')).toBe('HIT');
       expect(response.headers.get('X-Cache-Age')).toBe('60');
-      expect(response.headers.get('Cache-Control')).toContain('s-maxage=900');
+      expect(response.headers.get('Cache-Control')).toBe('private, max-age=300');
     });
 
     it('should return X-Cache: MISS for non-cached responses', async () => {

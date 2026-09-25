@@ -64,7 +64,7 @@ export const GET = withApiHandler(async (request: Request) => {
   }
 
   const response = NextResponse.json({ type: 'FeatureCollection', features });
-  response.headers.set('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=60');
+  response.headers.set('Cache-Control', 'private, max-age=300');
   response.headers.set('X-Data-Quality', `${validCount}/${items.length}`);
   return response;
 });

@@ -70,7 +70,7 @@ export const GET = withApiHandler(async (request: Request) => {
   }
 
   const response = NextResponse.json({ type: 'FeatureCollection', features });
-  response.headers.set('Cache-Control', 'public, s-maxage=10, stale-while-revalidate=5');
+  response.headers.set('Cache-Control', 'private, max-age=5');
   response.headers.set('X-Data-Quality', `${validCount}/${incidents.length}`);
   return response;
 });

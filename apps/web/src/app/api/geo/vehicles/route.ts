@@ -44,6 +44,6 @@ export const GET = withApiHandler(async (request: Request) => {
     .filter((f): f is NonNullable<typeof f> => f !== null);
 
   const response = NextResponse.json({ type: 'FeatureCollection', features });
-  response.headers.set('Cache-Control', 'public, s-maxage=10, stale-while-revalidate=5');
+  response.headers.set('Cache-Control', 'private, max-age=5');
   return response;
 });

@@ -450,8 +450,7 @@ describe('Combined Detections API', () => {
       expect(response.headers.get('X-Detection-Count')).toBeTruthy();
       expect(response.headers.get('X-High-Confidence-Count')).toBeTruthy();
       expect(response.headers.get('X-Recent-Count')).toBeTruthy();
-      expect(response.headers.get('Cache-Control')).toContain('s-maxage=900');
-      expect(response.headers.get('Cache-Control')).toContain('stale-while-revalidate=300');
+      expect(response.headers.get('Cache-Control')).toBe('private, max-age=300');
     });
 
     it('includes X-High-Confidence-Count from stats', async () => {

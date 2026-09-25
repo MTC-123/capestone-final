@@ -166,7 +166,7 @@ export const GET = withApiHandler(async (request: Request) => {
     const response = NextResponse.json(cached.data);
     response.headers.set('X-Cache', 'HIT');
     response.headers.set('X-Cache-Age', String(Math.floor((Date.now() - cached.cachedAt) / 1000)));
-    response.headers.set('Cache-Control', 'public, s-maxage=900, stale-while-revalidate=300'); // 15min + 5min stale
+    response.headers.set('Cache-Control', 'private, max-age=300');
     response.headers.set('X-Detection-Count', String(cached.data.features.length));
     response.headers.set('X-High-Confidence-Count', String(stats.highConfidence));
     response.headers.set('X-Recent-Count', String(stats.recentCount));
@@ -285,7 +285,7 @@ export const GET = withApiHandler(async (request: Request) => {
   const apiResponse = NextResponse.json(geoJSON);
   apiResponse.headers.set('X-Cache', 'MISS');
   apiResponse.headers.set('X-Data-Source', 'firms');
-  apiResponse.headers.set('Cache-Control', 'public, s-maxage=900, stale-while-revalidate=300');
+  apiResponse.headers.set('Cache-Control', 'private, max-age=300');
   apiResponse.headers.set('X-Detection-Count', String(geoJSON.features.length));
   apiResponse.headers.set('X-High-Confidence-Count', String(stats.highConfidence));
   apiResponse.headers.set('X-Recent-Count', String(stats.recentCount));

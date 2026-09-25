@@ -94,7 +94,7 @@ export const GET = withApiHandler(async (request: Request) => {
   });
 
   // Cache for 10 seconds (teams change status frequently)
-  response.headers.set('Cache-Control', 'public, s-maxage=10, stale-while-revalidate=5');
+  response.headers.set('Cache-Control', 'private, max-age=5');
 
   return response;
 });
