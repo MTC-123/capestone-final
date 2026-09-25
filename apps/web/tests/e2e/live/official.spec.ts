@@ -45,3 +45,29 @@ test('health endpoint reports the database as healthy', async ({ request }) => {
   const body = await res.json();
   expect(body.services.database.status).toBe('healthy');
 });
+
+test('fire-record filters narrow the results and sort in both directions', async ({ request }, testInfo) => {
+  test.skip(testInfo.project.name !== 'chromium', 'API behaviour, one run is enough');
+  type Page = { data: { causeDetail?: { category?: string }; locationDetail?: { commune?: string }; burnAreaHa?: number }[]; pagination: { total: number } };
+  const get = async (query: string) => {
+    const res = await request.get(`/api/fire-records?${query}`);
+    expect(res.status(), query).toBe(200);
+    return (await res.json()) as Page;
+  };
+
+  const all = await get('');
+  const byCause = await get('cause=NEGLIGENCE');
+  expect(byCause.pagination.total).toBeGreaterThan(0);
+  expect(byCause.pagination.total).toBeLessThan(all.pagination.total);
+  expect(byCause.data.every((r) => r.causeDetail?.category === 'NEGLIGENCE')).toBe(true);
+
+  const byCommune = await get('commune=azrou');
+  expect(byCommune.pagination.total).toBeGreaterThan(0);
+  expect(byCommune.data.every((r) => r.locationDetail?.commune === 'Azrou')).toBe(true);
+
+  // Search text is literal, never a regular expression.
+  expect((await get(`search=${encodeURIComponent('[(.*')}`)).pagination.total).toBe(0);
+
+  const areas = (await get('sortBy=burnAreaHa&sortOrder=asc')).data.map((r) => r.burnAreaHa ?? 0);
+  expect(areas).toEqual([...areas].sort((a, b) => a - b));
+});
