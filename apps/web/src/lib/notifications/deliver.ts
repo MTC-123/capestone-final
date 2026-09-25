@@ -60,6 +60,8 @@ export async function deliver(deliveryId: string): Promise<DeliverResult> {
       text: payload?.text ?? '',
       html: payload?.html,
       subject: payload?.subject,
+      // Lets live subscribers refresh exactly the data that changed.
+      meta: { event: row.event, targetType: row.targetType, targetId: row.targetId },
     });
 
     if (result.ok) {

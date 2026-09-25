@@ -8,6 +8,7 @@ import { useNotificationStore } from '@/store/useNotificationStore';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { useNotificationPoller } from '@/hooks/useNotificationPoller';
+import { useRealtime } from '@/hooks/useRealtime';
 import { Icon } from '@/components/ui/Icon';
 import { IconButton } from '@/components/ui/IconButton';
 import { ShortcutsOverlay } from '@/components/ui/ShortcutsOverlay';
@@ -42,6 +43,7 @@ export function AppFrame({ children }: { children: React.ReactNode }) {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const closePalette = useCallback(() => setPaletteOpen(false), [setPaletteOpen]);
   useNotificationPoller();
+  useRealtime();
 
   // Offline engine: start background sync, resume anything that was waiting
   // on a sign-in, and register the service worker for the offline shell.

@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react';
 import { useNotificationStore } from '@/store/useNotificationStore';
 import { fetchWithAuth } from '@/lib/api/fetchWithAuth';
 import type { Notification } from '@/types';
+import { REALTIME_EVENT } from '@/lib/realtime/channels';
 
 const POLL_INTERVAL_MS = 30_000; // 30 seconds
 
@@ -40,10 +41,13 @@ export function useNotificationPoller() {
       }
     }
     document.addEventListener('visibilitychange', handleVisibility);
+    // A live message means something new: fetch now rather than on the next tick.
+    window.addEventListener(REALTIME_EVENT, poll);
 
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
       document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener(REALTIME_EVENT, poll);
     };
   }, [setNotifications]);
 }

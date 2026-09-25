@@ -34,6 +34,7 @@ import { useFireSpreadVectors } from '@/hooks/useFireSpreadVectors';
 import { registerSlopeProtocol, unregisterSlopeProtocol, configureSlopeProtocol } from '@/lib/map/slopeProtocol';
 import { fetchWithAuth } from '@/lib/api/fetchWithAuth';
 import { asGeoJSON, coordKey } from '@/lib/map/helpers';
+import { REALTIME_EVENT } from '@/lib/realtime/channels';
 import { logger } from '@/lib/observability/logger';
 import { createResourceLayer, createInfrastructureLayers, createIncidentPulseLayer, createRetardantLayer } from '@/lib/map/layers';
 import {
@@ -481,6 +482,12 @@ export default function RicerMap({ weather = null, weatherLoading = false }: Ric
 
     // Per-source intervals using tier-aware durations
     const incidentInterval = setInterval(fetchIncidents, tierConfig.pollingInterval.incidents);
+    // Live updates (Ably): a new report or dispatch refreshes the picture at once.
+    const onRealtime = () => {
+      fetchIncidents();
+      fetchVehicles();
+    };
+    window.addEventListener(REALTIME_EVENT, onRealtime);
     const resourceInterval = setInterval(fetchResources, tierConfig.pollingInterval.resources);
     const vehicleInterval = setInterval(fetchVehicles, tierConfig.pollingInterval.resources);
     const firmsInterval = setInterval(fetchFirms, tierConfig.pollingInterval.firms);
@@ -489,6 +496,7 @@ export default function RicerMap({ weather = null, weatherLoading = false }: Ric
       cancelled = true;
       abortController.abort();
       clearInterval(incidentInterval);
+      window.removeEventListener(REALTIME_EVENT, onRealtime);
       clearInterval(resourceInterval);
       clearInterval(vehicleInterval);
       clearInterval(firmsInterval);
