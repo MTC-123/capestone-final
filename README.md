@@ -11,9 +11,11 @@
 </p>
 
 <p align="center">
+  <a href="https://ricer-ifrane.vercel.app"><b>Live demo</b></a> &nbsp;·&nbsp;
   <a href="docs/DEPLOYMENT.md"><b>Deploy (free tier)</b></a> &nbsp;·&nbsp;
   <a href="apps/web/docs/ARCHITECTURE.md">Architecture</a> &nbsp;·&nbsp;
   <a href="apps/web/docs/API.md">API</a> &nbsp;·&nbsp;
+  <a href="docs/DEMO.md">Demo script</a> &nbsp;·&nbsp;
   <a href="docs/EVALUATION.md">Test results</a> &nbsp;·&nbsp;
   <a href="docs/README.md">Documentation</a>
 </p>
@@ -28,8 +30,8 @@ It is a Computer Science capstone at Al Akhawayn University in Ifrane, supervise
 
 | Residents (civic) | Officials (command centre) |
 |---|---|
-| Report a fire in three steps: place search, GPS or map pin; details; photos | Map-first operating picture: incidents, vehicles, infrastructure, FIRMS/EFFIS and weather layers |
-| Reports are saved on the phone first and sent automatically when the network returns | Conflict-free dispatch: routes and ETAs, atomic resource claims |
+| Report a fire in three steps: place search, GPS or map pin; details; photos | Map-first operating picture: incidents, vehicles, infrastructure, NASA FIRMS, EFFIS, forest tracks and weather layers |
+| Reports are saved on the phone first and sent automatically when the network returns | Conflict-free dispatch: TomTom routes with live traffic, reachable ranges and ETAs; atomic resource claims |
 | Track your reports and their status | ICS roles, mutual aid, POI and PMA workflows, campaign checklists, debriefings |
 | Clear emergency guidance (15 / 177) on every page | Model-backed fire-risk layer (partner team's XGBoost), fire-record verification, PDF export |
 | Arabic (RTL), French and English | Access-request approvals and an audit trail of every sensitive action |
@@ -56,7 +58,7 @@ The civic experience uses a light "paper" theme; the command centre defaults to 
 
 ## Stack
 
-Next.js 16 (App Router, Turbopack) · React 19 · TypeScript · Tailwind · Prisma 5 + MongoDB · MapLibre 6 + deck.gl · Upstash Redis/QStash · Vercel Blob · Ably · Resend · Twilio (WhatsApp sandbox) · Sentry
+Next.js 16 (App Router, Turbopack) · React 19 · TypeScript · Tailwind · Prisma 5 + MongoDB · MapLibre 6 + deck.gl · TomTom routing · NASA FIRMS · Upstash Redis/QStash · Vercel Blob · Ably · Resend · Twilio (WhatsApp sandbox) · Sentry
 
 Free hosting: Vercel Hobby + MongoDB Atlas M0 + Upstash free tiers. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
@@ -75,13 +77,13 @@ npx prisma db push && npm run prisma:seed
 npm run dev                       # http://localhost:3000
 ```
 
-Demo accounts (password `password123`): official **CD789012**, resident **AB123456**. With `DEMO_MODE=true`, the sign-in page also offers one-click personas.
+Demo accounts (password `password123`): official **CD789012**, resident **AB123456**. With `DEMO_MODE=true`, the sign-in page also offers one-click personas. A 12-minute walkthrough is in [docs/DEMO.md](docs/DEMO.md).
 
 ## Tests
 
 | Command | What it covers |
 |---|---|
-| `npm run test:unit` | Unit and integration tests (Vitest, about 1,750 tests) |
+| `npm run test:unit` | Unit and integration tests (Vitest, about 1,840 tests) |
 | `npm run test:db` | Real-MongoDB integration: auth hardening, token theft, dispatch race, idempotent reports and uploads |
 | `npx playwright test tests/e2e/live` | The live app on 7 profiles (Chrome, Firefox, Safari, Pixel 7, iPhone 14, iPad Pro, Arabic RTL): every route, axe WCAG 2.2, overflow, offline reporting, RBAC |
 | `npm run perf:k6` | Load at 10 / 25 / 50 concurrent users |

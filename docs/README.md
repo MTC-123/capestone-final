@@ -4,7 +4,7 @@
 |---|---|
 | Architecture | [ARCHITECTURE.md](../apps/web/docs/ARCHITECTURE.md) · [decision records](../apps/web/docs/adr) |
 | API | [API.md](../apps/web/docs/API.md) · [OpenAPI spec](../apps/web/openapi/openapi.yaml) · [AsyncAPI spec](../apps/web/docs/asyncapi.yaml) |
-| Deployment | [Free-tier deployment guide](DEPLOYMENT.md) |
+| Deployment | [Free-tier deployment guide](DEPLOYMENT.md) · [Demo script](DEMO.md) |
 | Setup | [Installation](../apps/web/INSTALLATION.md) · [environment template](../apps/web/.env.example) |
 | Operations | [Runbooks](../apps/web/docs/runbooks) · [error catalogue](../apps/web/docs/errors) |
 | Specification | [Technical specification](specs/technical-specification.md) |
