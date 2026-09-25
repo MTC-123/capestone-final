@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextResponse } from 'next/server';
 import { withApiHandler } from '@/lib/errors/withApiHandler';
+import { AppError } from '@/lib/errors/AppError';
 
 /**
  * EFFIS WMS tile proxy.
@@ -54,17 +55,17 @@ export const GET = withApiHandler(async (request) => {
   const time = url.searchParams.get('time');
 
   if (!ALLOWED_LAYERS.has(layer)) {
-    return new NextResponse('Invalid layer', { status: 400 });
+    throw new AppError(1000, { fields: [{ field: 'layer', code: 'invalid' }] });
   }
 
   if (!bboxStr) {
-    return new NextResponse('Missing bbox parameter', { status: 400 });
+    throw new AppError(1000, { fields: [{ field: 'bbox', code: 'required' }] });
   }
 
   // Parse EPSG:3857 bbox and convert to EPSG:4326
   const parts = bboxStr.split(',').map(Number);
   if (parts.length !== 4 || parts.some(isNaN)) {
-    return new NextResponse('Invalid bbox format', { status: 400 });
+    throw new AppError(1000, { fields: [{ field: 'bbox', code: 'invalid' }] });
   }
 
   const [minLon, minLat] = epsg3857ToEpsg4326(parts[0], parts[1]);

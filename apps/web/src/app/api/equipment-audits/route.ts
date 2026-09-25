@@ -10,6 +10,8 @@ import type { Prisma } from '@prisma/client';
 export const GET = withApiHandler(async (request: Request) => {
   const currentUser = await getCurrentUser(request);
   if (!currentUser) throw new AppError(2000);
+  // Internal records: debriefings and equipment audits are for officials only.
+  if (currentUser.role !== 'OFFICIAL') throw new AppError(2001);
 
   const url = new URL(request.url);
   const fireRecordId = url.searchParams.get('fireRecordId');

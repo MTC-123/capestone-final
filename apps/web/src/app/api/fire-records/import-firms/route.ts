@@ -7,36 +7,37 @@ import { withApiHandler } from '@/lib/errors/withApiHandler';
 import { AppError } from '@/lib/errors/AppError';
 import { createAuditEntry } from '@/lib/fire-records/validation';
 import type { Prisma } from '@prisma/client';
+import { z } from 'zod';
+import { parseJsonBody } from '@/lib/validation/parse';
 
-interface FirmsImportDetection {
-  latitude: number;
-  longitude: number;
-  acq_date: string;
-  acq_time: string;
-  confidence: string | number;
-  frp: number;
-  satellite?: string;
-}
+const ImportBody = z.object({
+  detections: z
+    .array(
+      z.object({
+        latitude: z.number().min(-90).max(90),
+        longitude: z.number().min(-180).max(180),
+        acq_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        acq_time: z.string().regex(/^\d{3,4}$/),
+        confidence: z.union([z.string().max(16), z.number()]),
+        frp: z.number().min(0).default(0),
+        satellite: z.string().max(16).optional(),
+      })
+    )
+    .min(1)
+    .max(500),
+});
 
 export const POST = withApiHandler(async (request: Request) => {
   const currentUser = await getCurrentUser(request);
   if (!currentUser) throw new AppError(2000);
   if (currentUser.role !== 'OFFICIAL') throw new AppError(2001);
 
-  const body = await request.json();
-  const { detections } = body;
-
-  if (!Array.isArray(detections) || detections.length === 0) {
-    throw new AppError(8009, { message: 'detections array is required and must be non-empty' });
-  }
+  const { detections } = await parseJsonBody(request, ImportBody);
 
   const results: { incidentId: string; recordId: string }[] = [];
 
   try {
-    for (const det of detections as FirmsImportDetection[]) {
-      if (typeof det.latitude !== 'number' || typeof det.longitude !== 'number') {
-        continue; // skip invalid entries
-      }
+    for (const det of detections) {
 
       // Create an incident for each detection
       const incident = await prisma.incident.create({
@@ -53,7 +54,7 @@ export const POST = withApiHandler(async (request: Request) => {
       });
 
       const alertReceivedAt = det.acq_date && det.acq_time
-        ? new Date(`${det.acq_date}T${det.acq_time.slice(0, 2)}:${det.acq_time.slice(2)}:00Z`)
+        ? new Date(`${det.acq_date}T${det.acq_time.padStart(4, '0').slice(0, 2)}:${det.acq_time.padStart(4, '0').slice(2)}:00Z`)
         : new Date();
 
       const auditEntry = createAuditEntry(
