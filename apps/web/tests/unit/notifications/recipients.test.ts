@@ -19,6 +19,7 @@ vi.mock('@/lib/observability/logger', () => ({
 }));
 
 import {
+  emailRecipients,
   isE164,
   resetOfficialsCache,
   resolveRecipientsForEvent,
@@ -42,12 +43,45 @@ describe('isE164', () => {
   });
 });
 
+describe('emailRecipients', () => {
+  const ORIGINAL_ENV = process.env;
+  beforeEach(() => {
+    process.env = { ...ORIGINAL_ENV };
+    delete process.env.RESEND_FROM;
+    delete process.env.TEST_EMAIL;
+  });
+  afterEach(() => {
+    process.env = ORIGINAL_ENV;
+  });
+
+  it('sends nothing from the Resend sandbox sender unless a demo inbox is set', () => {
+    expect(emailRecipients(['karim@example.ma'])).toEqual([]);
+  });
+
+  it('routes sandbox mail to TEST_EMAIL only, since Resend rejects other recipients', () => {
+    process.env.TEST_EMAIL = 'owner@example.com';
+    expect(emailRecipients(['karim@example.ma', null])).toEqual(['owner@example.com']);
+  });
+
+  it('mails real, valid addresses once a verified sender is configured', () => {
+    process.env.RESEND_FROM = 'RICER <alerts@ricer.ma>';
+    process.env.TEST_EMAIL = 'owner@example.com';
+    expect(emailRecipients(['karim@example.ma', 'not-an-email', null, 'karim@example.ma'])).toEqual([
+      'karim@example.ma',
+      'owner@example.com',
+    ]);
+  });
+});
+
 describe('resolveRecipientsForEvent', () => {
   const ORIGINAL_ENV = process.env;
 
   beforeEach(() => {
     process.env = { ...ORIGINAL_ENV };
     delete process.env.TEST_PHONE_NUMBER;
+    delete process.env.TEST_EMAIL;
+    // Verified sending domain: real recipients are mailed.
+    process.env.RESEND_FROM = 'RICER Ifrane <alerts@ricer.ma>';
     resetOfficialsCache();
     vi.clearAllMocks();
   });

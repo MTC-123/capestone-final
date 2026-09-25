@@ -72,8 +72,23 @@ function officialsWhatsappRecipients(officials: OfficialContact[]): string[] {
   return [...numbers].map(toWhatsappAddress);
 }
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/**
+ * Email addresses to notify. Resend's shared sandbox sender (used until
+ * RESEND_FROM names a verified domain) only delivers to the account owner, so
+ * in that mode mail goes to TEST_EMAIL alone instead of failing for everyone
+ * else. With a verified sender, the real addresses are used, plus TEST_EMAIL.
+ */
+export function emailRecipients(addresses: (string | null | undefined)[]): string[] {
+  const testEmail = process.env.TEST_EMAIL?.trim();
+  const extra = testEmail && EMAIL_RE.test(testEmail) ? [testEmail] : [];
+  if (!process.env.RESEND_FROM) return extra;
+  return [...new Set([...addresses.filter((a): a is string => !!a && EMAIL_RE.test(a)), ...extra])];
+}
+
 function officialsEmailRecipients(officials: OfficialContact[]): string[] {
-  return officials.filter((o) => !!o.email).map((o) => o.email as string);
+  return emailRecipients(officials.map((o) => o.email));
 }
 
 /* ------------------------------------------------------------------ */
@@ -100,8 +115,8 @@ async function resolveReportStatusChanged(reportId: string, userId: string): Pro
   const recipients: ResolvedRecipient[] = [
     { channel: 'IN_APP', address: `ricer:user:${user.id}`, locale: DEFAULT_LOCALE, targetType: 'report', targetId: reportId },
   ];
-  if (user.email) {
-    recipients.push({ channel: 'EMAIL', address: user.email, locale: DEFAULT_LOCALE, targetType: 'report', targetId: reportId });
+  for (const email of emailRecipients([user.email])) {
+    recipients.push({ channel: 'EMAIL', address: email, locale: DEFAULT_LOCALE, targetType: 'report', targetId: reportId });
   }
   if (isE164(user.phone)) {
     recipients.push({ channel: 'WHATSAPP', address: toWhatsappAddress(user.phone), locale: DEFAULT_LOCALE, targetType: 'report', targetId: reportId });
@@ -129,8 +144,8 @@ async function resolveOfficialRequestDecided(userId: string): Promise<ResolvedRe
   const recipients: ResolvedRecipient[] = [
     { channel: 'IN_APP', address: `ricer:user:${user.id}`, locale: DEFAULT_LOCALE, targetType: 'user', targetId: userId },
   ];
-  if (user.email) {
-    recipients.push({ channel: 'EMAIL', address: user.email, locale: DEFAULT_LOCALE, targetType: 'user', targetId: userId });
+  for (const email of emailRecipients([user.email])) {
+    recipients.push({ channel: 'EMAIL', address: email, locale: DEFAULT_LOCALE, targetType: 'user', targetId: userId });
   }
   if (isE164(user.phone)) {
     recipients.push({ channel: 'WHATSAPP', address: toWhatsappAddress(user.phone), locale: DEFAULT_LOCALE, targetType: 'user', targetId: userId });

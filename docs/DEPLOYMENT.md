@@ -19,7 +19,7 @@ The app degrades gracefully: anything marked *optional* can be added later, and 
 | 9 | [TomTom](https://developer.tomtom.com/user/register) | Road routes with live traffic, ETAs and reachable ranges (otherwise straight-line estimates) | `TOMTOM_API_KEY` | Optional |
 | 9b | [GraphHopper](https://graphhopper.com/dashboard/#/register) Cloud | Backup routing provider if TomTom fails | `GRAPHHOPPER_API_KEY` | Optional |
 | 10 | [Ably](https://ably.com/sign-up) | Live in-app updates | `ABLY_API_KEY` | Optional |
-| 11 | [Resend](https://resend.com/signup) | Email notifications | `RESEND_API_KEY` | Optional |
+| 11 | [Resend](https://resend.com/signup) | Email notifications. Until you verify a domain (`RESEND_FROM`), mail goes only to `TEST_EMAIL`, which must be your Resend account's address | `RESEND_API_KEY`, `TEST_EMAIL` | Optional |
 | 12 | [Twilio](https://www.twilio.com/try-twilio) WhatsApp sandbox | WhatsApp alerts. Each recipient first sends the join code; the sandbox session lasts 72 h | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_NUMBER` | Optional (card) |
 | 13 | [Sentry](https://sentry.io/signup/) | Error tracking | `SENTRY_DSN` | Optional |
 | 14 | [LocationIQ](https://locationiq.com/register) | Arabic and French place search | `LOCATIONIQ_API_KEY` | Optional |
