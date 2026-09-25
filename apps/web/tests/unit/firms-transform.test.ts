@@ -119,8 +119,9 @@ invalid,-5.1,350.5,1.2,1.1,2024-02-09,1345,N,VIIRS,high,2.0NRT,310.5,45.2,D
 
     it('should mark recent detections correctly', () => {
       const now = new Date();
-      const recentDate = now.toISOString().split('T')[0];
-      const recentTime = now.toTimeString().split(' ')[0].replace(/:/g, '').slice(0, 4);
+      // FIRMS dates and times are UTC; build both from the same UTC instant.
+      const recentDate = now.toISOString().slice(0, 10);
+      const recentTime = now.toISOString().slice(11, 16).replace(':', '');
 
       const csv = `latitude,longitude,brightness,scan,track,acq_date,acq_time,satellite,instrument,confidence,version,bright_t31,frp,daynight
 33.5,-5.1,350.5,1.2,1.1,${recentDate},${recentTime},N,VIIRS,high,2.0NRT,310.5,45.2,D
