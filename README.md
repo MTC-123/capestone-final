@@ -14,6 +14,7 @@
   <a href="docs/DEPLOYMENT.md"><b>Deploy (free tier)</b></a> &nbsp;·&nbsp;
   <a href="apps/web/docs/ARCHITECTURE.md">Architecture</a> &nbsp;·&nbsp;
   <a href="apps/web/docs/API.md">API</a> &nbsp;·&nbsp;
+  <a href="docs/EVALUATION.md">Test results</a> &nbsp;·&nbsp;
   <a href="docs/README.md">Documentation</a>
 </p>
 

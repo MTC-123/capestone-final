@@ -1,0 +1,99 @@
+# Evaluation: requirements, tests and results
+
+Test run of 25 September 2026 on the `overhaul` branch: Next.js 16.3.6, React 19.3, Node 22 LTS.
+
+**Machine:** Apple M5, 24 GB RAM, local MongoDB 7 replica set in Docker.
+
+The figures below come from this machine. They are not a capacity promise for the hosted free tier.
+
+## Summary
+
+| Suite | Command | Result |
+|---|---|---|
+| Type check | `npm run typecheck` | Pass |
+| Lint | `npm run lint` | 0 errors; 38 warnings, all React Compiler advisories. CI caps warnings at 38, so no new ones can land |
+| Unit and integration | `npm run test:unit` | **1,754 / 1,754 pass** (150 files) |
+| Real-database integration | `npm run test:db` | **16 / 16 pass** |
+| Live cross-device e2e | `npx playwright test tests/e2e/live` | **172 pass, 25 skipped by design, 1 fail** → fixed and re-run (iPad: 26 / 26 pass) |
+| Load | `npm run perf:k6` | **0 errors** in 14,001 requests; p95 ≤ 21 ms at 50 users |
+| Dependency audit | `npm audit --omit=dev` | **0 vulnerabilities** (was 40 before the overhaul) |
+| Production build | `next build` | Pass |
+
+The 25 skipped cases are deliberate: each one-off check runs once, on Chromium only, instead of on all seven profiles. These are:
+- form sign-in and the wrong-password message;
+- the sign-up privilege test;
+- the offline IndexedDB flow (Chromium engines only);
+- the keyboard command palette, which is skipped on phones.
+
+## Requirements matrix
+
+### Security (selected OWASP ASVS 5.0 controls)
+
+| Requirement | Evidence | Result |
+|---|---|---|
+| Server-side access control on pages | e2e: residents are kept out of official pages; anonymous visitors are redirected with a return path | Pass on 7 profiles |
+| Server-side access control on APIs | e2e: residents get 403 from official APIs; unit tests on each route guard | Pass |
+| Sign-up cannot grant privileges | db: *ignores a client-supplied OFFICIAL role*, *files an official-access request instead*; e2e: *signing up cannot grant official privileges* | Pass |
+| Approval workflow | db: *promotes the applicant, revokes their sessions and is decided only once*; *forbids civilians and self-review* | Pass |
+| Password storage | db: *stores bcrypt hashes, never the password* | Pass |
+| Brute-force protection | db: *locks the account after 5 failures, even for the right password* | Pass |
+| No account enumeration | db: *same answer for unknown CINs and wrong passwords*; e2e: wrong-credentials message | Pass |
+| Session management | db: refresh tokens *rotate on use*; *tolerate a concurrent duplicate within the grace window (two tabs)*; *revoke every session when a rotated token is replayed (theft)* | Pass |
+| Security headers and CSP | e2e: *pages ship a nonce-based CSP and hardening headers* | Pass on 7 profiles |
+| Upload validation | db: *deduplicates uploads by idempotency key and refuses non-images*; unit: file-signature checks and EXIF stripping | Pass |
+| Input validation | db: *rejects reports outside Morocco and photos the reporter does not own*; zod schemas on mutating routes | Pass |
+| Supply chain | `npm audit --omit=dev`: 0; CI runs CodeQL, dependency review and a critical-level audit | Pass |
+
+### Reliability and concurrency
+
+| Requirement | Evidence | Result |
+|---|---|---|
+| Conflict-free dispatch | db: *assigns the vehicle exactly once under 12 concurrent requests* | Pass |
+| Multi-vehicle dispatch is all-or-nothing | db: *is all-or-nothing when one of several vehicles is already taken* | Pass |
+| Idempotent report submission | db: *creates exactly one report for 8 concurrent submissions with the same clientSubmissionId*; *rejects another user replaying someone else's submission id* | Pass |
+| Offline-first reporting | e2e: *a report written offline is kept on the device and sent once the network returns*; unit: offline store, sync, triggers, queue hook | Pass |
+| Graceful degradation | `/api/health` reports each dependency and lists the active integrations; detections return an empty set with `X-Detection-Status: unavailable` when every source fails | Pass |
+| Backup and restore | Rehearsed `mongodump` → restore into a clean database, with record counts compared ([runbook](runbooks/backup-restore.md)) | Pass |
+
+### Model integration
+
+| Requirement | Evidence | Result |
+|---|---|---|
+| XGBoost parity with the Python reference | unit: `xgboost-parity.test.ts`, 300 reference rows, within about 1e-6 | Pass |
+| Missing inputs handled like XGBoost (`default_left`) | unit: `xgboost-missing.test.ts` | Pass |
+| Explicit "unavailable" state, version and data time | unit: `api-predict.test.ts`, `api-grid.test.ts`, `riskService.test.ts` | Pass |
+
+### Accessibility, internationalisation and devices
+
+| Requirement | Evidence | Result |
+|---|---|---|
+| WCAG 2.2 A/AA (axe, serious and critical) on every route | e2e: public, resident and official routes on each profile | Pass |
+| No horizontal scroll | e2e: overflow check on every route and profile. The iPad `/operations` overflow (long campaign title) was fixed; re-run 26/26 | Pass |
+| Arabic RTL | e2e `arabic-rtl` project: direction and language follow the request; logical CSS properties throughout | Pass |
+| Devices | Desktop Chrome, Firefox and Safari; Pixel 7; iPhone 14; iPad Pro 11; Arabic RTL | 28 cases each |
+
+### Performance (k6, production build, 1,000 synthetic reports plus 100 incidents)
+
+Each iteration:
+- an official loads the operating picture: incidents, reports, dispatch teams and health;
+- every tenth iteration, a resident files a report.
+
+| Concurrent users | Duration | p95 latency | Threshold |
+|---|---|---|---|
+| 10 | 60 s | 18.9 ms | < 800 ms ✓ |
+| 25 | 60 s | 20.9 ms | < 1,200 ms ✓ |
+| 50 | 60 s | 20.5 ms | < 2,000 ms ✓ |
+
+Totals across the run:
+- **Requests:** 14,001 over 3,408 iterations, **0 failed**.
+- **Reads:** p50 6 ms, p95 13.8 ms.
+- **Report submissions:** p50 33 ms, p95 165 ms.
+
+## Known limits
+
+- **Free-tier limits.** On Vercel Hobby and Atlas M0, cold starts and the shared M0 cluster add latency that the local figures above do not include. Re-run the e2e suite against the deployment:
+  ```bash
+  E2E_BASE_URL=https://YOUR-APP.vercel.app npx playwright test tests/e2e/live
+  ```
+- **Optional integrations.** Satellite detections, weather tiles, road routing, realtime updates, email and WhatsApp are each enabled by a free key ([DEPLOYMENT.md](DEPLOYMENT.md)). Until a key is set, the app shows the feature as unavailable.
+- **React Compiler advisories.** 38 lint warnings remain, mostly effects that set a loading flag before fetching. They are safe as written and are being migrated.
