@@ -9,6 +9,7 @@ import { Icon } from '@/components/ui/Icon';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useIsMobile } from '@/hooks/useBreakpoint';
 import { useDebounce } from '@/hooks/useDebounce';
+import { useDismiss } from '@/hooks/useDismiss';
 import { getMapStyle } from '@/lib/map/styles';
 import { useMapStore } from '@/store/useMapStore';
 import { cn } from '@/lib/cn';
@@ -40,6 +41,11 @@ export default function LocationPicker({ onLocationSelect, selectedLocation, exp
   const [searchState, setSearchState] = useState<'idle' | 'loading' | 'empty' | 'error'>('idle');
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
+  const searchRef = useRef<HTMLDivElement>(null);
+  /** Name of the place just picked, so writing it into the box doesn't search again. */
+  const chosenRef = useRef<string | null>(null);
+  const closeList = useCallback(() => setOpen(false), []);
+  useDismiss(searchRef, open, closeList);
 
   const pick = useCallback(
     (lat: number, lng: number, zoom = 15) => {
@@ -51,7 +57,7 @@ export default function LocationPicker({ onLocationSelect, selectedLocation, exp
 
   useEffect(() => {
     const q = debounced.trim();
-    if (q.length < 2) return;
+    if (q.length < 2 || q === chosenRef.current) return;
     const controller = new AbortController();
     (async () => {
       setSearchState('loading');
@@ -71,6 +77,7 @@ export default function LocationPicker({ onLocationSelect, selectedLocation, exp
   }, [debounced, language]);
 
   const choose = (place: Place) => {
+    chosenRef.current = place.name;
     setQuery(place.name);
     setOpen(false);
     pick(place.lat, place.lng, 14);
@@ -119,7 +126,7 @@ export default function LocationPicker({ onLocationSelect, selectedLocation, exp
   return (
     <div className="space-y-3">
       {/* Place search */}
-      <div className="relative">
+      <div ref={searchRef} className="relative">
         <label htmlFor={`${listId}-input`} className="mb-1.5 block text-[13px] font-medium">
           {t('placeSearchLabel')}
         </label>
@@ -142,8 +149,7 @@ export default function LocationPicker({ onLocationSelect, selectedLocation, exp
               }
             }}
             onKeyDown={onKeyDown}
-            onFocus={() => results.length && setOpen(true)}
-            onBlur={() => window.setTimeout(() => setOpen(false), 150)}
+            onFocus={() => results.length > 0 && setOpen(true)}
             placeholder={t('placeSearchPlaceholder')}
             autoComplete="off"
             className="h-full min-w-0 flex-1 bg-transparent text-[15px] outline-none placeholder:text-muted-foreground sm:text-sm"

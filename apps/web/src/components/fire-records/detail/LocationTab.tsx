@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from '@/hooks/useTranslation';
 import { TextField } from './FieldEditor';
 import { SectionLockButton } from './SectionLockButton';
+import { Button } from '@/components/ui/Button';
 import type { LocationDetail } from '@/types/fire-record';
 
 interface Props {
@@ -110,13 +111,9 @@ export function LocationTab({ recordId, data, burnAreaHa, isLocked, isReadOnly, 
       )}
 
       {!disabled && (
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="rounded bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-50"
-        >
+        <Button variant="primary" onClick={handleSave} disabled={saving} isLoading={saving}>
           {saving ? t('loading') : t('save' as Parameters<typeof t>[0])}
-        </button>
+        </Button>
       )}
     </div>
   );

@@ -56,7 +56,6 @@ export default function AdminApprovalsPage() {
   const role = useAuthStore((s) => s.user?.role);
   const { t, language } = useTranslation();
   const addToast = useToastStore((s) => s.addToast);
-  const isRTL = language === 'ar';
 
   const [filter, setFilter] = useState<FilterTab>('PENDING');
   const [items, setItems] = useState<OfficialRequest[]>([]);

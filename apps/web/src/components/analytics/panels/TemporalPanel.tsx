@@ -16,6 +16,7 @@ import {
 import { useAnalyticsStore, computeDateRange } from '@/store/useAnalyticsStore';
 import { useTranslation } from '@/hooks/useTranslation';
 import { Card } from '@/components/ui/Card';
+import { SkeletonBox } from '@/components/ui/Skeleton';
 import { fetchWithAuth } from '@/lib/api/fetchWithAuth';
 import type { TemporalData } from '@/types/analytics';
 
@@ -58,8 +59,8 @@ export function TemporalPanel() {
     return (
       <div className="space-y-8" aria-busy="true">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="animate-pulse rounded-xl border border-border bg-muted p-6">
-            <div className="h-[250px] rounded-xl bg-muted-foreground/10" />
+          <div key={i} className="rounded-2xl border border-border bg-surface p-6">
+            <SkeletonBox className="h-[250px] w-full" />
           </div>
         ))}
       </div>
@@ -114,10 +115,10 @@ export function TemporalPanel() {
                           aria-label={`${year}-${String(month).padStart(2, '0')}: ${count} ${fireLabel}`}
                         >
                           <div
-                            className="mx-auto h-8 w-full min-w-[2rem] rounded text-xs flex items-center justify-center font-medium"
+                            className="mx-auto flex h-8 w-full min-w-[2rem] items-center justify-center rounded-md text-xs font-medium tabular"
                             style={{
                               backgroundColor: count > 0
-                                ? `rgba(239, 68, 68, ${0.15 + intensity * 0.75})`
+                                ? `hsl(var(--danger) / ${0.15 + intensity * 0.75})`
                                 : 'hsl(var(--muted))',
                               color: intensity > 0.5 ? 'white' : 'hsl(var(--foreground))',
                             }}

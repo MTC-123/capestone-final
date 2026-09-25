@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/cn';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export interface WizardStep {
   title: string;
@@ -21,8 +22,9 @@ export function FormWizard({
   steps,
   onSubmit,
   isSubmitting,
-  submitLabel = 'Soumettre',
+  submitLabel,
 }: FormWizardProps) {
+  const { t } = useTranslation();
   const [currentStep, setCurrentStep] = useState(0);
   const [stepError, setStepError] = useState<string | null>(null);
 
@@ -34,7 +36,7 @@ export function FormWizard({
     if (step.validate) {
       const result = step.validate();
       if (result !== true) {
-        setStepError(typeof result === 'string' ? result : 'Veuillez compléter cette étape.');
+        setStepError(typeof result === 'string' ? result : t('completeStepError'));
         return;
       }
     }
@@ -52,7 +54,7 @@ export function FormWizard({
     if (step.validate) {
       const result = step.validate();
       if (result !== true) {
-        setStepError(typeof result === 'string' ? result : 'Veuillez compléter cette étape.');
+        setStepError(typeof result === 'string' ? result : t('completeStepError'));
         return;
       }
     }
@@ -62,7 +64,7 @@ export function FormWizard({
   return (
     <div className="space-y-6">
       {/* Progress bar */}
-      <nav aria-label="Progression du formulaire">
+      <nav aria-label={t('formProgress')}>
         <ol className="flex items-center gap-1">
           {steps.map((step, i) => {
             const isActive = i === currentStep;
@@ -110,7 +112,7 @@ export function FormWizard({
           onClick={goBack}
           disabled={currentStep === 0 || isSubmitting}
         >
-          Précédent
+          {t('previousStep')}
         </Button>
 
         {isLast ? (
@@ -121,11 +123,11 @@ export function FormWizard({
             isLoading={isSubmitting}
             disabled={isSubmitting}
           >
-            {submitLabel}
+            {submitLabel ?? t('submit')}
           </Button>
         ) : (
           <Button variant="primary" size="sm" onClick={goNext}>
-            Suivant
+            {t('nextStep')}
           </Button>
         )}
       </div>

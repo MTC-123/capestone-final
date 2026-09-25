@@ -51,8 +51,8 @@ export function RouteViewer() {
             data-testid="route-card"
             onClick={() => selectRoute(routeData.routeId)}
             className={`
-              w-full text-left p-3 rounded-lg border transition-all
-              ${isSelected ? 'bg-primary/10 border-primary ring-2 ring-primary/20' : 'bg-muted/50 border-border hover:bg-muted'}
+              w-full text-start p-3 rounded-2xl border transition-all
+              ${isSelected ? 'bg-primary/10 border-primary ring-2 ring-primary/20' : 'bg-surface-2 border-border hover:bg-muted'}
             `}
           >
             {/* Team/Vehicle Name */}
@@ -72,7 +72,7 @@ export function RouteViewer() {
                 <div className="text-muted-foreground mb-1">
                   {t('distance') || 'Distance'}
                 </div>
-                <div className="font-medium">
+                <div className="font-mono font-medium tabular">
                   {route.distance_km.toFixed(1)} km
                 </div>
               </div>
@@ -82,7 +82,7 @@ export function RouteViewer() {
                 <div className="text-muted-foreground mb-1">
                   {t('duration') || 'Duration'}
                 </div>
-                <div className="font-medium">
+                <div className="font-mono font-medium tabular">
                   {formatDuration(route.duration_min)}
                 </div>
               </div>
@@ -92,7 +92,7 @@ export function RouteViewer() {
                 <div className="text-muted-foreground mb-1">
                   {t('eta') || 'ETA'}
                 </div>
-                <div className="font-medium">
+                <div className="font-mono font-medium tabular">
                   {formatETA(route.duration_min)}
                 </div>
               </div>

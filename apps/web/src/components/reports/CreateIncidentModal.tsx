@@ -5,6 +5,7 @@ import { useTranslation } from '@/hooks/useTranslation';
 import type { Report, IncidentStatus } from '@/types';
 import { Button } from '@/components/ui/Button';
 import { Icon } from '@/components/ui/Icon';
+import { Slider } from '@/components/ui/Slider';
 
 interface CreateIncidentModalProps {
   report: Report | null;
@@ -65,12 +66,13 @@ export function CreateIncidentModal({ report, open, onClose, onSuccess }: Create
       aria-modal="true"
       aria-labelledby="create-incident-title"
     >
-      <div className="w-full max-w-lg rounded-lg bg-surface p-4 sm:p-6 shadow-xl mx-4">
+      <div className="w-full max-w-lg rounded-2xl bg-surface p-4 sm:p-6 shadow-elev-3 mx-4">
         <div className="mb-4 flex items-center justify-between">
           <h2 id="create-incident-title" className="text-xl font-semibold">{t('createIncident')}</h2>
           <button
+            type="button"
             onClick={onClose}
-            className="text-muted-foreground hover:text-foreground"
+            className="grid h-10 w-10 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             aria-label={t('closePanel')}
           >
             <Icon name="close" />
@@ -79,22 +81,15 @@ export function CreateIncidentModal({ report, open, onClose, onSuccess }: Create
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="incident-severity" className="mb-2 block text-sm font-medium">
+            <span className="mb-2 block text-sm font-medium">
               {t('severity')}
-            </label>
-            <input
-              id="incident-severity"
-              type="range"
-              min="1"
-              max="5"
+            </span>
+            <Slider
               value={severity}
-              onChange={(e) => setSeverity(parseInt(e.target.value))}
-              className="w-full"
-              aria-label={t('severity')}
-              aria-valuemin={1}
-              aria-valuemax={5}
-              aria-valuenow={severity}
-              aria-valuetext={`${severity} ${t('outOf')} 5`}
+              onValueChange={setSeverity}
+              min={1}
+              max={5}
+              label={t('severity')}
             />
             <div className="mt-1 text-sm text-muted-foreground" aria-live="polite">
               {t('severityLevel')}: {severity}/5
@@ -109,7 +104,7 @@ export function CreateIncidentModal({ report, open, onClose, onSuccess }: Create
               id="incident-status"
               value={status}
               onChange={(e) => setStatus(e.target.value as IncidentStatus)}
-              className="w-full rounded-lg border border-border bg-surface px-3 py-2"
+              className="w-full rounded-[10px] border border-border bg-surface px-3 py-2"
               aria-label={t('initialStatus')}
             >
               <option value="VIGILANCE">{t('statusVigilance')}</option>
@@ -127,13 +122,13 @@ export function CreateIncidentModal({ report, open, onClose, onSuccess }: Create
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={4}
-              className="w-full rounded-lg border border-border bg-surface px-3 py-2"
+              className="w-full rounded-[10px] border border-border bg-surface px-3 py-2"
               aria-label={t('description')}
             />
           </div>
 
           {error && (
-            <div role="alert" className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">
+            <div role="alert" className="rounded-xl bg-danger-muted px-3 py-2 text-sm text-danger-foreground">
               {error}
             </div>
           )}

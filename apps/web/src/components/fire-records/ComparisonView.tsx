@@ -20,13 +20,13 @@ export function ComparisonView() {
         </Button>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
+      <div className="overflow-x-auto rounded-2xl border border-border">
+        <table className="w-full text-[13px]">
+          <thead className="sticky top-0 bg-surface-2">
             <tr className="border-b border-border text-start">
               <th className="px-3 py-2 font-medium text-muted-foreground">{t('field' as Parameters<typeof t>[0])}</th>
               {comparisonRecords.map((r) => (
-                <th key={r.id} className="px-3 py-2 font-medium text-muted-foreground">
+                <th key={r.id} className="px-3 py-2 text-end font-mono font-medium text-muted-foreground tabular">
                   {r.id.slice(-8)}
                 </th>
               ))}
@@ -79,7 +79,7 @@ export function ComparisonView() {
 
 function ComparisonRow({ label, values }: { label: string; values: React.ReactNode[] }) {
   return (
-    <tr className="border-b border-border/50">
+    <tr className="border-b border-border/50 hover:bg-surface-2">
       <td className="px-3 py-2 font-medium text-muted-foreground">{label}</td>
       {values.map((v, i) => (
         <td key={i} className="px-3 py-2">{v}</td>

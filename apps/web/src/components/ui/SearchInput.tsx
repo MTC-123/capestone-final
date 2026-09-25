@@ -16,13 +16,13 @@ export const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
         <Icon
           name="search"
           aria-hidden={true}
-          className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+          className="pointer-events-none absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground"
           size={20}
         />
         <input
           ref={ref}
           className={cn(
-            'h-10 w-full rounded-md border border-border bg-surface px-10 text-sm text-foreground shadow-sm',
+            'h-10 w-full rounded-[10px] border border-border bg-surface ps-3 pe-10 text-sm text-foreground shadow-sm',
             'placeholder:text-muted-foreground',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background'
           )}

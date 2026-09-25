@@ -16,6 +16,7 @@ import { useTranslation } from '@/hooks/useTranslation';
 import { Card } from '@/components/ui/Card';
 import { KpiCard } from '@/components/ui/KpiCard';
 import { Icon } from '@/components/ui/Icon';
+import { SkeletonBox } from '@/components/ui/Skeleton';
 import { fetchWithAuth } from '@/lib/api/fetchWithAuth';
 import type { ResponseData, RexData } from '@/types/analytics';
 
@@ -71,8 +72,8 @@ export function ResponsePanel() {
     return (
       <div className="space-y-8" aria-busy="true">
         {[1, 2].map((i) => (
-          <div key={i} className="animate-pulse rounded-xl border border-border bg-muted p-6">
-            <div className="h-[250px] rounded-xl bg-muted-foreground/10" />
+          <div key={i} className="rounded-2xl border border-border bg-surface p-6">
+            <SkeletonBox className="h-[250px] w-full" />
           </div>
         ))}
       </div>

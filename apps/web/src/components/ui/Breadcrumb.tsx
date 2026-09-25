@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { Icon } from '@/components/ui/Icon';
 
 export interface BreadcrumbItem {
   label: string;
@@ -20,9 +21,7 @@ export function Breadcrumb({ items }: BreadcrumbProps) {
         {items.map((item, index) => (
           <li key={index} className="flex items-center gap-1.5">
             {index > 0 && (
-              <span aria-hidden="true" className="text-muted-foreground/50">
-                &gt;
-              </span>
+              <Icon name="chevronRight" size={14} aria-hidden className="rtl:rotate-180 text-muted-foreground/50" />
             )}
             {item.href && index < items.length - 1 ? (
               <Link

@@ -2,11 +2,13 @@
 
 import type { RecordStatus } from '@/types';
 import { useTranslation } from '@/hooks/useTranslation';
+import { Badge, type BadgeProps } from '@/components/ui/Badge';
+import { cn } from '@/lib/cn';
 
-const STATUS_STYLES: Record<RecordStatus, string> = {
-  DRAFT: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
-  VERIFIED: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
-  LOCKED: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
+const STATUS_TONE: Record<RecordStatus, NonNullable<BadgeProps['tone']>> = {
+  DRAFT: 'warning',
+  VERIFIED: 'primary',
+  LOCKED: 'success',
 };
 
 const STATUS_KEYS: Record<RecordStatus, string> = {
@@ -24,15 +26,10 @@ interface RecordStatusBadgeProps {
 export function RecordStatusBadge({ status, interactive, onClick }: RecordStatusBadgeProps) {
   const { t } = useTranslation();
 
-  const className = [
-    'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold',
-    STATUS_STYLES[status],
-    interactive ? 'cursor-pointer hover:ring-2 hover:ring-primary/50' : '',
-  ].join(' ');
-
   return (
-    <span
-      className={className}
+    <Badge
+      tone={STATUS_TONE[status]}
+      className={cn(interactive && 'cursor-pointer hover:ring-2 hover:ring-primary/50')}
       data-testid="record-status-badge"
       role={interactive ? 'button' : undefined}
       tabIndex={interactive ? 0 : undefined}
@@ -40,6 +37,6 @@ export function RecordStatusBadge({ status, interactive, onClick }: RecordStatus
       onKeyDown={interactive ? (e) => { if (e.key === 'Enter' || e.key === ' ') onClick?.(); } : undefined}
     >
       {t(STATUS_KEYS[status] as Parameters<typeof t>[0])}
-    </span>
+    </Badge>
   );
 }

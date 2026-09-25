@@ -11,6 +11,8 @@ import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { SelectField } from '@/components/ui/SelectField';
+import { PageContainer, PageHeader } from '@/components/ui/PageHeader';
+import { SkeletonBox } from '@/components/ui/Skeleton';
 import { getApiErrorUserMessage } from '@/lib/errors/sdk';
 import { fetchWithAuth } from '@/lib/api/fetchWithAuth';
 import { CreateIncidentModal } from '@/components/reports/CreateIncidentModal';
@@ -117,9 +119,7 @@ export default function ReportsListPage() {
   const [causeFilter, setCauseFilter] = useState('');
   const [query, setQuery] = useState('');
 
-  const isRTL = language === 'ar';
   const isOfficial = user?.role === 'OFFICIAL';
-  const textAlign = 'text-start';
   const errorServerMessage = t('errorServer');
   const connectionErrorMessage = t('connectionError');
 
@@ -295,26 +295,20 @@ export default function ReportsListPage() {
   ];
 
   return (
-    <div className="mx-auto max-w-7xl p-4 md:p-6 page-enter" dir={isRTL ? 'rtl' : 'ltr'}>
-      <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div className={textAlign}>
-          <p className="mb-2 text-xs font-bold uppercase text-primary">
-            {isOfficial ? t('reportsOfficialScope') : t('reportsCitizenScope')}
-          </p>
-          <h1 className="text-fluid-4xl font-bold text-foreground">
-            {t('reportsListTitle')}
-          </h1>
-          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-            {t('reportsListDesc')}
-          </p>
-        </div>
-        <Link href="/report" className="shrink-0">
-          <Button variant="primary" className="w-full sm:w-auto">
-            <Icon name="campaign" size={16} />
-            {t('newReport')}
-          </Button>
-        </Link>
-      </div>
+    <PageContainer wide className="pb-10 page-enter">
+      <PageHeader
+        eyebrow={isOfficial ? t('reportsOfficialScope') : t('reportsCitizenScope')}
+        title={t('reportsListTitle')}
+        description={t('reportsListDesc')}
+        actions={
+          <Link href="/report" className="shrink-0">
+            <Button variant="primary" className="w-full sm:w-auto">
+              <Icon name="campaign" size={16} />
+              {t('newReport')}
+            </Button>
+          </Link>
+        }
+      />
 
       <section className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label={t('reportsSummary')}>
         <SummaryTile label={t('reportsSummaryTotal')} value={stats.total} icon="clipboard" />
@@ -330,16 +324,13 @@ export default function ReportsListPage() {
               {t('searchReports')}
             </label>
             <div className="relative">
-              <Icon name="search" size={16} aria-hidden className={cn('absolute top-1/2 -translate-y-1/2 text-muted-foreground', isRTL ? 'right-3' : 'left-3')} />
+              <Icon name="search" size={16} aria-hidden className="absolute start-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <input
                 id="report-search"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder={t('searchReportsPlaceholder')}
-                className={cn(
-                  'h-10 w-full rounded-lg border border-input bg-surface px-3 text-sm text-foreground shadow-sm placeholder:text-muted-foreground focus:ring-2 focus:ring-ring',
-                  'ps-9'
-                )}
+                className="h-10 w-full rounded-[10px] border border-input bg-surface px-3 ps-9 text-sm text-foreground shadow-sm placeholder:text-muted-foreground focus:ring-2 focus:ring-ring"
               />
             </div>
           </div>
@@ -392,16 +383,16 @@ export default function ReportsListPage() {
       {loading && (
         <div className="grid grid-cols-1 gap-3" aria-busy="true" aria-label={t('loadingReports')}>
           {Array.from({ length: 5 }).map((_, index) => (
-            <div key={index} className="rounded-lg border border-border/60 bg-surface p-5 shadow-sm">
+            <div key={index} className="rounded-2xl border border-border/60 bg-surface p-5 shadow-elev-1">
               <div className="mb-4 flex items-center gap-3">
-                <div className="h-6 w-28 skeleton-shimmer rounded-full" />
-                <div className="h-4 w-40 skeleton-shimmer rounded-lg" />
+                <SkeletonBox className="h-6 w-28 rounded-full" />
+                <SkeletonBox className="h-4 w-40" />
               </div>
-              <div className="h-5 w-2/3 skeleton-shimmer rounded-lg" />
+              <SkeletonBox className="h-5 w-2/3" />
               <div className="mt-3 grid grid-cols-3 gap-3">
-                <div className="h-12 skeleton-shimmer rounded-lg" />
-                <div className="h-12 skeleton-shimmer rounded-lg" />
-                <div className="h-12 skeleton-shimmer rounded-lg" />
+                <SkeletonBox className="h-12" />
+                <SkeletonBox className="h-12" />
+                <SkeletonBox className="h-12" />
               </div>
             </div>
           ))}
@@ -456,7 +447,7 @@ export default function ReportsListPage() {
                   </div>
 
                   <p className="line-clamp-2 text-sm font-medium text-foreground">
-                    {report.description}
+                    <bdi>{report.description}</bdi>
                   </p>
 
                   <div className="mt-4 grid gap-2 text-sm text-muted-foreground md:grid-cols-3">
@@ -559,7 +550,7 @@ export default function ReportsListPage() {
           fetchReports(false);
         }}
       />
-    </div>
+    </PageContainer>
   );
 }
 
@@ -579,10 +570,10 @@ function SummaryTile({
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-xs font-semibold text-muted-foreground">{label}</p>
-          <p className="mt-1 text-2xl font-bold text-foreground">{value}</p>
+          <p className="mt-1 font-mono text-2xl font-bold tabular text-foreground">{value}</p>
         </div>
         <div className={cn(
-          'grid h-10 w-10 place-items-center rounded-lg',
+          'grid h-10 w-10 place-items-center rounded-xl',
           tone === 'neutral' && 'bg-primary-muted text-primary',
           tone === 'danger' && 'bg-danger-muted text-danger-foreground',
           tone === 'warning' && 'bg-warning-muted text-warning-foreground',
@@ -601,7 +592,7 @@ function MetaItem({ icon, label, value }: { icon: 'fire' | 'mapPin' | 'id'; labe
       <Icon name={icon} size={15} aria-hidden className="text-muted-foreground" />
       <div className="min-w-0">
         <p className="text-[11px] font-semibold text-muted-foreground">{label}</p>
-        <p className="truncate text-xs font-semibold text-foreground">{value}</p>
+        <p className="truncate text-xs font-semibold text-foreground"><bdi>{value}</bdi></p>
       </div>
     </div>
   );
@@ -622,19 +613,18 @@ function ReportDetailDialog({
   getCauseLabel: (cause: string | undefined | null) => string;
   getStatusLabel: (status: string) => string;
 }) {
-  const { t, language } = useTranslation();
+  const { t } = useTranslation();
   if (!open || !report) return null;
 
   const characteristics = report.characteristics ?? {};
-  const rtl = language === 'ar';
   const fallback = t('unknown');
 
   return (
     <div className="fixed inset-0 z-50 flex items-end bg-black/50 p-0 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="report-detail-title" data-testid="report-detail-dialog">
-      <div className="max-h-[92vh] w-full overflow-y-auto rounded-t-lg border border-border/60 bg-surface shadow-elev-3 sm:mx-auto sm:max-w-3xl sm:rounded-lg" dir={rtl ? 'rtl' : 'ltr'}>
+      <div className="max-h-[92vh] w-full overflow-y-auto rounded-t-2xl border border-border/60 bg-surface shadow-elev-3 sm:mx-auto sm:max-w-3xl sm:rounded-2xl">
         <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-border/60 bg-surface/95 p-4 backdrop-blur">
           <div>
-            <p className="mb-1 text-xs font-bold uppercase text-primary">{report.referenceNumber || report.id.slice(-8)}</p>
+            <p className="mb-1 text-xs font-bold uppercase text-primary font-mono">{report.referenceNumber || report.id.slice(-8)}</p>
             <h2 id="report-detail-title" className="text-xl font-bold text-foreground">{t('reportDetails')}</h2>
             <p className="mt-1 text-sm text-muted-foreground">{formatDate(report.createdAt)}</p>
           </div>
@@ -669,7 +659,7 @@ function ReportDetailDialog({
           <div>
             <h3 className="mb-2 text-sm font-bold text-foreground">{t('description')}</h3>
             <p className="whitespace-pre-wrap rounded-lg border border-border/60 bg-surface-2 p-4 text-sm leading-6 text-foreground">
-              {report.description}
+              <bdi>{report.description}</bdi>
             </p>
           </div>
 
@@ -711,7 +701,7 @@ function DetailField({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-lg border border-border/60 bg-surface-2 p-3">
       <p className="text-xs font-semibold text-muted-foreground">{label}</p>
-      <p className="mt-1 break-words text-sm font-semibold text-foreground">{value}</p>
+      <p className="mt-1 break-words text-sm font-semibold text-foreground"><bdi>{value}</bdi></p>
     </div>
   );
 }

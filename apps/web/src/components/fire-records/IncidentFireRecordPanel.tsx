@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useAuthStore } from '@/store/useAuthStore';
 import { RecordStatusBadge } from './RecordStatusBadge';
+import { Button } from '@/components/ui/Button';
 import type { FireEventRecord } from '@/types';
 
 interface Props {
@@ -61,13 +62,9 @@ export function IncidentFireRecordPanel({ incidentId }: Props) {
 
     return (
       <div className="border-t border-border p-3" data-testid="fire-record-panel">
-        <button
-          onClick={handleCreate}
-          disabled={creating}
-          className="w-full rounded bg-primary px-3 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-50"
-        >
+        <Button variant="primary" className="w-full" onClick={handleCreate} disabled={creating} isLoading={creating}>
           {creating ? t('creating') : t('fireRecordCreateFromIncident')}
-        </button>
+        </Button>
       </div>
     );
   }

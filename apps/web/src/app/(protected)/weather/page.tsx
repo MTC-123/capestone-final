@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from 'react';
 import type { WeatherData } from '@/types';
 import { Icon } from '@/components/ui/Icon';
 import { Card } from '@/components/ui/Card';
+import { PageContainer, PageHeader } from '@/components/ui/PageHeader';
+import { SkeletonBox } from '@/components/ui/Skeleton';
 import { useTranslation } from '@/hooks/useTranslation';
 import { fetchWithAuth } from '@/lib/api/fetchWithAuth';
 
@@ -32,41 +34,41 @@ export default function WeatherPage() {
 
   if (loading) {
     return (
-      <div className="max-w-7xl mx-auto p-4 md:p-6 page-enter" aria-busy="true" aria-label={t('loading')}>
+      <PageContainer className="pb-10 page-enter" aria-busy="true" aria-label={t('loading')}>
         <div className="mb-8">
-          <div className="mb-2 h-9 w-full max-w-64 animate-pulse rounded-lg bg-muted" />
-          <div className="h-5 w-full max-w-96 animate-pulse rounded-lg bg-muted" />
+          <SkeletonBox className="mb-2 h-9 w-full max-w-64" />
+          <SkeletonBox className="h-5 w-full max-w-96" />
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6 stagger-children">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="animate-pulse rounded-xl bg-surface border border-border/40 p-5 shadow-elev-1">
+            <div key={i} className="rounded-2xl bg-surface border border-border/40 p-5 shadow-elev-1">
               <div className="flex items-center justify-between mb-4">
-                <div className="h-11 w-11 rounded-xl bg-muted" />
+                <SkeletonBox className="h-11 w-11 rounded-xl" />
                 <div className="space-y-2">
-                  <div className="h-4 w-20 rounded-lg bg-muted" />
-                  <div className="h-10 w-16 rounded-lg bg-muted" />
+                  <SkeletonBox className="h-4 w-20" />
+                  <SkeletonBox className="h-10 w-16" />
                 </div>
               </div>
-              <div className="h-4 w-12 rounded-lg bg-muted" />
+              <SkeletonBox className="h-4 w-12" />
             </div>
           ))}
         </div>
-        <div className="mt-8 animate-pulse rounded-xl bg-surface border border-border/40 p-6">
+        <div className="mt-8 rounded-2xl bg-surface border border-border/40 p-6">
           <div className="flex items-start gap-4">
-            <div className="h-7 w-7 rounded-lg bg-muted" />
+            <SkeletonBox className="h-7 w-7 rounded-lg" />
             <div className="flex-1 space-y-2">
-              <div className="h-6 w-48 rounded-lg bg-muted" />
-              <div className="h-4 w-full rounded-lg bg-muted" />
+              <SkeletonBox className="h-6 w-48" />
+              <SkeletonBox className="h-4 w-full" />
             </div>
           </div>
         </div>
-      </div>
+      </PageContainer>
     );
   }
 
   if (error || !weather) {
     return (
-      <div className="max-w-7xl mx-auto p-4 md:p-6 page-enter">
+      <PageContainer className="pb-10 page-enter">
         <Card tone="elevated" className="p-8 text-center">
           <div className="mb-3 flex justify-center text-danger">
             <Icon name="warning" aria-hidden={true} size={36} />
@@ -76,14 +78,13 @@ export default function WeatherPage() {
             {error ? t(error as any) : t('weatherLoadFailed')}
           </p>
         </Card>
-      </div>
+      </PageContainer>
     );
   }
 
   const directionKeys = ['windN', 'windNE', 'windE', 'windSE', 'windS', 'windSW', 'windW', 'windNW'] as const;
   const directionIndex = Math.round(weather.windDirection / 45) % 8;
   const windDirectionText = t(directionKeys[directionIndex]);
-  const isRTL = language === 'ar';
   const textAlign = 'text-start';
 
   const weatherCards = [
@@ -94,6 +95,7 @@ export default function WeatherPage() {
       unit: t('temperatureUnit'),
       color: 'text-danger' as const,
       bgColor: 'bg-danger/10' as const,
+      numeric: true,
     },
     {
       icon: 'air' as const,
@@ -102,6 +104,7 @@ export default function WeatherPage() {
       unit: t('windSpeedUnit'),
       color: 'text-info' as const,
       bgColor: 'bg-info/10' as const,
+      numeric: true,
     },
     {
       icon: 'compass' as const,
@@ -110,15 +113,13 @@ export default function WeatherPage() {
       unit: `${weather.windDirection}°`,
       color: 'text-success' as const,
       bgColor: 'bg-success/10' as const,
+      numeric: false,
     },
   ];
 
   return (
-    <div className="max-w-7xl mx-auto p-4 md:p-6 page-enter">
-      <div className="mb-6 md:mb-8">
-        <h1 className={`text-fluid-3xl font-bold text-foreground mb-1 ${textAlign}`}>{t('weatherTitle')}</h1>
-        <p className={`text-sm text-muted-foreground ${textAlign}`}>{t('weatherSubtitle')}</p>
-      </div>
+    <PageContainer className="pb-10 page-enter">
+      <PageHeader title={t('weatherTitle')} description={t('weatherSubtitle')} />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6 stagger-children">
         {weatherCards.map((card) => (
@@ -129,7 +130,7 @@ export default function WeatherPage() {
               </span>
               <div className={`${textAlign} min-w-0`}>
                 <div className="text-xs font-medium text-muted-foreground mb-0.5">{card.label}</div>
-                <div className={`break-words text-2xl font-bold sm:text-3xl ${card.color}`}>
+                <div className={`break-words text-2xl font-bold sm:text-3xl ${card.color} ${card.numeric ? 'font-mono tabular' : ''}`}>
                   {card.value}
                 </div>
               </div>
@@ -140,7 +141,7 @@ export default function WeatherPage() {
       </div>
 
       {/* Weather Alert */}
-      <Card tone="elevated" className="mt-6 md:mt-8 p-5 border-warning/20 bg-warning-muted/30 dark:bg-warning-muted/20">
+      <Card tone="elevated" className="mt-6 md:mt-8 p-5 border-warning/20 bg-warning-muted">
         <div className="flex items-start gap-3">
           <span className="text-warning shrink-0 mt-0.5">
             <Icon name="warning" aria-hidden={true} size={22} />
@@ -160,8 +161,8 @@ export default function WeatherPage() {
 
       {/* Last Update */}
       <div className="mt-6 text-center text-xs text-muted-foreground">
-        {t('lastUpdatedLabel')}: {new Date(weather.timestamp).toLocaleString(language === 'ar' ? 'ar-MA' : 'fr-FR')}
+        {t('lastUpdatedLabel')}: <span className="font-mono tabular">{new Date(weather.timestamp).toLocaleString(language === 'ar' ? 'ar-MA' : 'fr-FR')}</span>
       </div>
-    </div>
+    </PageContainer>
   );
 }

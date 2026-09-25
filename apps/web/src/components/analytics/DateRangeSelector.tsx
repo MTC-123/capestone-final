@@ -53,7 +53,7 @@ export function DateRangeSelector() {
               type="date"
               value={customFrom}
               onChange={(e) => setCustomFrom(e.target.value)}
-              className="h-10 rounded-md border border-border bg-surface px-3 py-1.5 text-sm text-foreground"
+              className="h-10 rounded-[10px] border border-border bg-surface px-3 py-1.5 text-sm text-foreground"
             />
           </label>
           <label className="flex flex-col gap-1.5 text-sm text-muted-foreground sm:flex-row sm:items-center sm:gap-2">
@@ -62,7 +62,7 @@ export function DateRangeSelector() {
               type="date"
               value={customTo}
               onChange={(e) => setCustomTo(e.target.value)}
-              className="h-10 rounded-md border border-border bg-surface px-3 py-1.5 text-sm text-foreground"
+              className="h-10 rounded-[10px] border border-border bg-surface px-3 py-1.5 text-sm text-foreground"
             />
           </label>
         </div>

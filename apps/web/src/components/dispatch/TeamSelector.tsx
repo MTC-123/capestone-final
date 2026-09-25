@@ -11,6 +11,7 @@ import { useTranslation } from '@/hooks/useTranslation';
 import { useDispatchStore } from '@/store/useDispatchStore';
 import type { SelectedTeam } from '@/store/useDispatchStore';
 import { Icon } from '@/components/ui/Icon';
+import { SkeletonBox } from '@/components/ui/Skeleton';
 
 interface TeamSelectorProps {
   incidentId: string;
@@ -121,18 +122,18 @@ export function TeamSelector({ incidentId }: TeamSelectorProps) {
   };
 
   const statusColors: Record<string, string> = {
-    AVAILABLE: 'text-green-500',
-    EN_ROUTE: 'text-yellow-500',
-    ON_SCENE: 'text-blue-500',
-    RETURNING: 'text-purple-500',
-    UNAVAILABLE: 'text-red-500',
+    AVAILABLE: 'text-success',
+    EN_ROUTE: 'text-warning',
+    ON_SCENE: 'text-info',
+    RETURNING: 'text-primary',
+    UNAVAILABLE: 'text-danger',
   };
 
   if (loading) {
     return (
       <div className="space-y-2">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="animate-pulse bg-muted rounded-lg p-3 h-16"></div>
+          <SkeletonBox key={i} className="h-16 rounded-2xl" />
         ))}
       </div>
     );
@@ -140,7 +141,7 @@ export function TeamSelector({ incidentId }: TeamSelectorProps) {
 
   if (error) {
     return (
-      <div className="bg-destructive/10 text-destructive text-sm rounded-lg p-3">
+      <div className="bg-danger-muted text-danger-foreground text-sm rounded-2xl p-3">
         <Icon name="warning" className="inline me-1" />
         {error}
       </div>
@@ -155,7 +156,7 @@ export function TeamSelector({ incidentId }: TeamSelectorProps) {
           data-testid="team-status-filter"
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="flex-1 text-xs bg-muted border border-border rounded px-2 py-1"
+          className="flex-1 text-xs bg-surface border border-border rounded-[10px] px-2 py-1.5"
         >
           <option value="all">{t('allStatuses') || 'All Statuses'}</option>
           <option value="AVAILABLE">{t('available') || 'Available'}</option>
@@ -167,7 +168,7 @@ export function TeamSelector({ incidentId }: TeamSelectorProps) {
           data-testid="team-type-filter"
           value={typeFilter}
           onChange={(e) => setTypeFilter(e.target.value)}
-          className="flex-1 text-xs bg-muted border border-border rounded px-2 py-1"
+          className="flex-1 text-xs bg-surface border border-border rounded-[10px] px-2 py-1.5"
         >
           <option value="all">{t('allTypes') || 'All Types'}</option>
           <option value="GROUND_CREW">{teamTypeLabels.GROUND_CREW}</option>
@@ -192,8 +193,8 @@ export function TeamSelector({ incidentId }: TeamSelectorProps) {
               <label
                 key={team.properties.id}
                 className={`
-                  flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors
-                  ${isSelected ? 'bg-primary/10 border-primary' : 'bg-muted/50 border-border hover:bg-muted'}
+                  flex items-start gap-3 p-3 rounded-2xl border cursor-pointer transition-colors
+                  ${isSelected ? 'bg-primary/10 border-primary' : 'bg-surface-2 border-border hover:bg-muted'}
                   ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}
                 `}
                 data-testid={`team-checkbox-${team.properties.id}`}
@@ -203,7 +204,7 @@ export function TeamSelector({ incidentId }: TeamSelectorProps) {
                   checked={isSelected}
                   onChange={() => handleToggleTeam(team)}
                   disabled={isDisabled}
-                  className="mt-1"
+                  className="mt-1 h-4 w-4 accent-primary"
                 />
 
                 <div className="flex-1 min-w-0">
@@ -223,8 +224,8 @@ export function TeamSelector({ incidentId }: TeamSelectorProps) {
                   </div>
 
                   {team.properties.assignedTo && (
-                    <div className="mt-1 text-xs text-yellow-600">
-                      {t('assignedTo') || 'Assigned to'} {team.properties.assignedTo.slice(-6)}
+                    <div className="mt-1 text-xs text-warning">
+                      {t('assignedTo') || 'Assigned to'} <span className="font-mono">{team.properties.assignedTo.slice(-6)}</span>
                     </div>
                   )}
                 </div>

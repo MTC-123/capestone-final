@@ -18,7 +18,7 @@ export function SectionLockButton({ recordId, section, isLocked, disabled, onLoc
 
   if (isLocked) {
     return (
-      <span className="inline-flex items-center text-xs text-green-600 font-medium" data-testid={`lock-${section}`}>
+      <span className="inline-flex items-center text-xs text-success font-medium" data-testid={`lock-${section}`}>
         {t('sectionLocked' as Parameters<typeof t>[0])}
       </span>
     );

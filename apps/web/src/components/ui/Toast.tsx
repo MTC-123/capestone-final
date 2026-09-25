@@ -2,25 +2,28 @@
 
 import { useEffect } from 'react';
 import { useToastStore, type Toast } from '@/store/useToastStore';
+import { Icon, type IconName } from '@/components/ui/Icon';
+import { useTranslation } from '@/hooks/useTranslation';
 
 /* ─── Single toast ─── */
 
 const TOAST_STYLES: Record<Toast['type'], string> = {
-  success: 'border-green-500/40 bg-green-50 text-green-900 dark:bg-green-950/60 dark:text-green-100',
-  warning: 'border-yellow-500/40 bg-yellow-50 text-yellow-900 dark:bg-yellow-950/60 dark:text-yellow-100',
-  error: 'border-red-500/40 bg-red-50 text-red-900 dark:bg-red-950/60 dark:text-red-100',
-  info: 'border-blue-500/40 bg-blue-50 text-blue-900 dark:bg-blue-950/60 dark:text-blue-100',
+  success: 'border-success/25 bg-success-muted text-success-foreground',
+  warning: 'border-warning/25 bg-warning-muted text-warning-foreground',
+  error: 'border-danger/25 bg-danger-muted text-danger-foreground',
+  info: 'border-info/25 bg-info-muted text-info-foreground',
 };
 
-const TOAST_ICONS: Record<Toast['type'], string> = {
-  success: '✓',
-  warning: '⚠',
-  error: '✕',
-  info: 'ℹ',
+const TOAST_ICONS: Record<Toast['type'], IconName> = {
+  success: 'check-circle',
+  warning: 'warning',
+  error: 'close',
+  info: 'info',
 };
 
 function ToastItem({ toast }: { toast: Toast }) {
   const removeToast = useToastStore((s) => s.removeToast);
+  const { t } = useTranslation();
 
   useEffect(() => {
     if (toast.duration <= 0) return;
@@ -32,16 +35,19 @@ function ToastItem({ toast }: { toast: Toast }) {
     <div
       role="alert"
       aria-live="assertive"
-      className={`flex w-full max-w-sm pointer-events-auto items-start gap-3 rounded-lg border px-4 py-3 text-sm shadow-lg transition-all ${TOAST_STYLES[toast.type]}`}
+      className={`flex w-full max-w-sm pointer-events-auto items-start gap-3 rounded-2xl border px-4 py-3 text-sm shadow-elev-2 transition-all ${TOAST_STYLES[toast.type]}`}
     >
-      <span className="font-bold mt-0.5 flex-shrink-0">{TOAST_ICONS[toast.type]}</span>
-      <span className="flex-1">{toast.message}</span>
+      <Icon name={TOAST_ICONS[toast.type]} size={18} className="mt-0.5 shrink-0" />
+      <span className="flex-1">
+        <bdi>{toast.message}</bdi>
+      </span>
       <button
+        type="button"
         onClick={() => removeToast(toast.id)}
-        className="flex-shrink-0 opacity-60 hover:opacity-100 transition-opacity ms-1"
-        aria-label="Dismiss"
+        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md opacity-60 transition-opacity hover:opacity-100 ms-1"
+        aria-label={t('dismiss')}
       >
-        ✕
+        <Icon name="close" size={14} />
       </button>
     </div>
   );

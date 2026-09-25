@@ -21,7 +21,7 @@ export function ImportFirmsDialog() {
     try {
       // Fetch recent FIRMS detections for the region
       const detRes = await fetch('/api/firms/detections');
-      if (!detRes.ok) throw new Error('Failed to fetch FIRMS detections');
+      if (!detRes.ok) throw new Error(t('errorServer'));
       const detJson = await detRes.json();
 
       const features = detJson.features ?? detJson.data ?? [];
@@ -55,7 +55,7 @@ export function ImportFirmsDialog() {
         body: JSON.stringify({ detections }),
       });
 
-      if (!res.ok) throw new Error('Import failed');
+      if (!res.ok) throw new Error(t('errorServer'));
       const json = await res.json();
       setResult({ imported: json.imported });
 
@@ -63,7 +63,7 @@ export function ImportFirmsDialog() {
       fetchRecords(false);
       fetchStats();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
+      setError(err instanceof Error ? err.message : t('errorServer'));
     } finally {
       setImporting(false);
     }
@@ -84,17 +84,17 @@ export function ImportFirmsDialog() {
   }
 
   return (
-    <div className="rounded-lg border border-border bg-surface p-4 shadow-sm sm:col-span-3" data-testid="import-firms-dialog">
+    <div className="rounded-2xl border border-border bg-surface p-4 shadow-elev-1 sm:col-span-3" data-testid="import-firms-dialog">
       <h3 className="text-sm font-bold">{t('importFirmsTitle' as Parameters<typeof t>[0])}</h3>
       <p className="mt-1 text-xs text-muted-foreground">
         {t('importFirmsDesc' as Parameters<typeof t>[0])}
       </p>
 
       {error && (
-        <p className="mt-2 text-xs text-red-600">{error}</p>
+        <p className="mt-2 text-xs text-danger">{error}</p>
       )}
       {result && (
-        <p className="mt-2 text-xs text-green-600">
+        <p className="mt-2 text-xs text-success">
           {result.imported} {t('recordsImported' as Parameters<typeof t>[0])}
         </p>
       )}

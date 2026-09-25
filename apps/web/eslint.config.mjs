@@ -34,5 +34,10 @@ export default defineConfig([
       'jsx-a11y/no-static-element-interactions': 'off',
     },
   },
+  {
+    // Playwright fixtures receive a `use` callback that is not a React hook.
+    files: ['tests/e2e/**/*.ts'],
+    rules: { 'react-hooks/rules-of-hooks': 'off' },
+  },
   globalIgnores(['.next/**', '.next-prod/**', 'out/**', 'build/**', 'next-env.d.ts', 'coverage/**', 'playwright-report/**', 'test-results/**', 'public/sw.js']),
 ]);

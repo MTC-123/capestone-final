@@ -4,6 +4,11 @@ import { useEffect } from 'react';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useFireRecordStore } from '@/store/useFireRecordStore';
+import { PageContainer, PageHeader } from '@/components/ui/PageHeader';
+import { AccessDenied } from '@/components/ui/AccessDenied';
+import { Button } from '@/components/ui/Button';
+import { Icon } from '@/components/ui/Icon';
+import { SkeletonBox } from '@/components/ui/Skeleton';
 import { FireDatabaseKpis } from '@/components/fire-records/FireDatabaseKpis';
 import { FireRecordFiltersV2 } from '@/components/fire-records/FireRecordFiltersV2';
 import { FireRecordTableV2 } from '@/components/fire-records/FireRecordTableV2';
@@ -12,7 +17,7 @@ import dynamic from 'next/dynamic';
 // MapLibre is only needed when the map view is chosen, so it stays out of the page bundle.
 const FireRecordMapView = dynamic(() => import('@/components/fire-records/FireRecordMapView'), {
   ssr: false,
-  loading: () => <div className="h-[500px] w-full animate-pulse rounded-xl bg-muted/60" />,
+  loading: () => <SkeletonBox className="h-[500px] w-full rounded-2xl" />,
 });
 import { ComparisonBar } from '@/components/fire-records/ComparisonBar';
 import { ComparisonView } from '@/components/fire-records/ComparisonView';
@@ -22,11 +27,13 @@ export default function FireDatabasePage() {
   const { t } = useTranslation();
   const { user } = useAuthStore();
   const { fetchRecords, reset, viewMode, comparisonRecords } = useFireRecordStore();
+  const isOfficial = user?.role === 'OFFICIAL';
 
   useEffect(() => {
+    if (!isOfficial) return;
     fetchRecords();
     return () => reset();
-  }, [fetchRecords, reset]);
+  }, [fetchRecords, reset, isOfficial]);
 
   const handleExport = async (format: 'csv' | 'geojson') => {
     const res = await fetch(`/api/fire-records/export?format=${format}`);
@@ -41,35 +48,35 @@ export default function FireDatabasePage() {
     URL.revokeObjectURL(url);
   };
 
-  return (
-    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 page-enter">
-      {/* Header */}
-      <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-fluid-2xl font-bold">{t('fireDatabaseTitle')}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{t('fireDatabaseDesc')}</p>
-        </div>
+  if (!isOfficial) return <AccessDenied />;
 
-        {user?.role === 'OFFICIAL' && (
+  return (
+    <PageContainer wide className="pb-10 page-enter">
+      <PageHeader
+        title={t('fireDatabaseTitle')}
+        description={t('fireDatabaseDesc')}
+        actions={
           <div className="grid w-full grid-cols-1 gap-2 sm:w-auto sm:grid-cols-3">
             <ImportFirmsDialog />
-            <button
+            <Button
+              variant="secondary"
               onClick={() => handleExport('csv')}
-              className="min-h-10 rounded-lg border border-border/60 px-3 py-2 text-sm font-medium transition-colors hover:bg-muted"
               data-testid="export-csv"
             >
+              <Icon name="download" size={16} aria-hidden />
               {t('fireRecordExportCSV')}
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="secondary"
               onClick={() => handleExport('geojson')}
-              className="min-h-10 rounded-lg border border-border/60 px-3 py-2 text-sm font-medium transition-colors hover:bg-muted"
               data-testid="export-geojson"
             >
+              <Icon name="download" size={16} aria-hidden />
               {t('fireRecordExportGeoJSON')}
-            </button>
+            </Button>
           </div>
-        )}
-      </div>
+        }
+      />
 
       <div className="space-y-4">
         {/* KPI Cards */}
@@ -85,10 +92,10 @@ export default function FireDatabasePage() {
         {comparisonRecords.length > 0 && <ComparisonView />}
 
         {/* Main content area */}
-        <div className="rounded-lg border border-border/60 bg-surface shadow-elev-1">
+        <div className="rounded-2xl border border-border/60 bg-surface shadow-elev-1">
           {viewMode === 'table' ? <FireRecordTableV2 /> : <FireRecordMapView />}
         </div>
       </div>
-    </div>
+    </PageContainer>
   );
 }

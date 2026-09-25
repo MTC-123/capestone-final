@@ -160,7 +160,7 @@ export function InfrastructureSection() {
           ))}
         </div>
       ) : infrastructure.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-12 border border-border/40 rounded-lg bg-surface-2">
+        <div className="flex flex-col items-center justify-center py-12 border border-border/40 rounded-2xl bg-surface-2">
           <Icon name="shield" size={40} className="text-muted-foreground" aria-hidden />
           <p className="mt-3 text-sm text-muted-foreground">{t('noInfrastructure')}</p>
           <Button
