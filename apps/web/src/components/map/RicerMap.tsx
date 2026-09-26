@@ -1495,6 +1495,9 @@ export default function RicerMap({ weather = null, weatherLoading = false }: Ric
       <ReactMapGL
         ref={mapRef}
         initialViewState={initialViewState}
+        // Street/building level. No source here has more detail beyond it
+        // (satellite imagery stops at z18 and is enlarged one step).
+        maxZoom={19}
         onMoveEnd={(e) => setViewState(e.viewState)}
         onZoom={(e) => {
           const level = Math.floor(e.viewState.zoom);

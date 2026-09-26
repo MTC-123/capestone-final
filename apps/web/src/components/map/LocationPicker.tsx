@@ -196,6 +196,7 @@ export default function LocationPicker({ onLocationSelect, selectedLocation, exp
             zoom: selectedLocation ? 14 : 11,
           }}
           mapStyle={mapStyle as string}
+          maxZoom={19}
           onClick={handleClick}
           cursor="crosshair"
           style={{ width: '100%', height }}

@@ -52,6 +52,7 @@ export default function FireRecordMapView() {
     <div className="h-[500px] w-full rounded-2xl overflow-hidden" data-testid="fire-record-map-view">
       <Map
         initialViewState={INITIAL_VIEW}
+        maxZoom={19}
         style={{ width: '100%', height: '100%' }}
         mapStyle={getMapStyle(
           typeof document !== 'undefined' && document.documentElement.classList.contains('dark') ? 'dark' : 'streets'

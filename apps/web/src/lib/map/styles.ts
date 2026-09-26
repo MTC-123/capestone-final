@@ -33,6 +33,10 @@ const SATELLITE_STYLE = {
         'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
       ],
       tileSize: 256,
+      // Esri has no imagery over Ifrane Province beyond z18: deeper tiles are a
+      // grey "Map data not yet available" placeholder. Cap the source so MapLibre
+      // enlarges the z18 imagery instead of fetching placeholders.
+      maxzoom: 18,
       attribution: 'Esri, Maxar, Earthstar Geographics',
     },
   },
