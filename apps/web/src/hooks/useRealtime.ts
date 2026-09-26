@@ -23,6 +23,8 @@ export function useRealtime(): void {
 
     (async () => {
       const probe = await fetchWithAuth('/api/realtime/token', { cache: 'no-store' }).catch(() => null);
+      // Only the status matters here; release the body so the request completes.
+      await probe?.body?.cancel().catch(() => undefined);
       if (!probe?.ok || cancelled) return;
 
       const Ably = await import('ably');
