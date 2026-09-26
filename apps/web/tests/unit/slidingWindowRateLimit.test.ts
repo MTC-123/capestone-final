@@ -258,10 +258,10 @@ describe('SlidingWindowRateLimiter', () => {
   // ── 5. Role-based limits (OFFICIAL vs CIVILIAN) ────────────────────────
 
   describe('createFirmsRateLimiter (role-based limits)', () => {
-    it('gives CIVILIAN users a lower limit (10 requests/minute)', async () => {
+    it('gives CIVILIAN users a lower limit (60 requests/minute)', async () => {
       const limiter = createFirmsRateLimiter(false);
 
-      for (let i = 0; i < 10; i++) {
+      for (let i = 0; i < 60; i++) {
         const result = await limiter.checkLimit('civilian-1');
         expect(result.allowed).toBe(true);
       }
