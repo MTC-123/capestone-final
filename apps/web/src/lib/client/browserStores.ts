@@ -23,6 +23,21 @@ export function useIsDark(serverValue: boolean): boolean {
   );
 }
 
+const REDUCED_MOTION = '(prefers-reduced-motion: reduce)';
+
+/** The OS "reduce motion" setting, kept live. Server render assumes motion is allowed. */
+export function useReducedMotion(): boolean {
+  return useSyncExternalStore(
+    (onChange) => {
+      const query = window.matchMedia(REDUCED_MOTION);
+      query.addEventListener('change', onChange);
+      return () => query.removeEventListener('change', onChange);
+    },
+    () => window.matchMedia(REDUCED_MOTION).matches,
+    () => false
+  );
+}
+
 export function useIsApplePlatform(): boolean {
   return useSyncExternalStore(
     noopSubscribe,

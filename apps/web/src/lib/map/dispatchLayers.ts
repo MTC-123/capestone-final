@@ -237,11 +237,13 @@ export function createVehicleLayer(
   vehicles: VehicleLayerData[],
   isActive: boolean,
   /** Places already drawn at the centre (stations), so vehicles parked there ring around them. */
-  occupied?: ReadonlySet<string>
+  occupied?: ReadonlySet<string>,
+  /** Marker diameter in pixels (smaller at province scale). */
+  size = 30
 ): IconLayer | null {
   if (!isActive || vehicles.length === 0) return null;
 
-  const offsets = ringOffsets(vehicles.map((v) => v.coordinates), 30, -90, occupied);
+  const offsets = ringOffsets(vehicles.map((v) => v.coordinates), size, -90, occupied);
   const data = vehicles.map((v, i) => ({
     coordinates: v.coordinates,
     offset: offsets[i],
@@ -261,13 +263,14 @@ export function createVehicleLayer(
       width: 24,
       height: 24,
     }),
-    getSize: () => 30,
+    getSize: () => size,
     getPixelOffset: (d: (typeof data)[0]) => d.offset,
     pickable: true,
     updateTriggers: {
       getPosition: [data.length],
       getIcon: [data.length],
-      getPixelOffset: [data.length, occupied?.size],
+      getSize: [size],
+      getPixelOffset: [data.length, occupied?.size, size],
     },
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onHover: (info: any) => {

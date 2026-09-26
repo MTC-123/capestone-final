@@ -2,7 +2,7 @@
 
 import '@/lib/map/maplibreSetup';
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, useMemo } from 'react';
 import ReactMapGL, {
   Source,
   Layer,
@@ -35,6 +35,7 @@ import { registerSlopeProtocol, unregisterSlopeProtocol, configureSlopeProtocol 
 import { fetchWithAuth } from '@/lib/api/fetchWithAuth';
 import { asGeoJSON, coordKey } from '@/lib/map/helpers';
 import { REALTIME_EVENT } from '@/lib/realtime/channels';
+import { useReducedMotion } from '@/lib/client/browserStores';
 import { logger } from '@/lib/observability/logger';
 import { createResourceLayer, createInfrastructureLayers, createIncidentPulseLayer, createRetardantLayer } from '@/lib/map/layers';
 import {
@@ -112,9 +113,53 @@ function PopulationAtRiskBadge({ center }: { center: [number, number] }) {
 
 /* ────────── component ────────── */
 
-function DeckGLOverlay(props: MapboxOverlayProps) {
-  const overlay = useControl(() => new (MapboxOverlay as any)(props));
-  overlay.setProps(props);
+const PULSE_CYCLE_MS = 2500;
+const ANIMATION_FRAME_MS = 1000 / 30;
+
+/**
+ * deck.gl overlay that owns the animation clock. Static layers come from React;
+ * animated layers (incident pulse, route dashes) are rebuilt from a phase at up
+ * to 30 fps and pushed straight to deck.gl, so the map component itself never
+ * re-renders for animation. With prefers-reduced-motion, layers render once.
+ */
+function DeckGLOverlay({
+  layers,
+  animated,
+  animate,
+}: {
+  layers: MapboxOverlayProps['layers'];
+  animated: (phase: number) => any[];
+  animate: boolean;
+}) {
+  const overlay = useControl(() => new (MapboxOverlay as any)({ layers: [] })) as any;
+  const layersRef = useRef(layers);
+  const animatedRef = useRef(animated);
+  useLayoutEffect(() => {
+    layersRef.current = layers;
+    animatedRef.current = animated;
+  });
+
+  // Static changes are applied immediately (phase is re-read from the clock).
+  useEffect(() => {
+    const phase = animate ? (Date.now() % PULSE_CYCLE_MS) / PULSE_CYCLE_MS : 0;
+    overlay.setProps({ layers: [...((layers as any[]) ?? []), ...animated(phase)] });
+  }, [overlay, layers, animated, animate]);
+
+  useEffect(() => {
+    if (!animate) return;
+    let frame = 0;
+    let last = 0;
+    const tick = (now: number) => {
+      frame = requestAnimationFrame(tick);
+      if (now - last < ANIMATION_FRAME_MS || document.hidden) return;
+      last = now;
+      const phase = (Date.now() % PULSE_CYCLE_MS) / PULSE_CYCLE_MS;
+      overlay.setProps({ layers: [...((layersRef.current as any[]) ?? []), ...animatedRef.current(phase)] });
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [overlay, animate]);
+
   return null;
 }
 
@@ -133,12 +178,21 @@ export default function RicerMap({ weather = null, weatherLoading = false }: Ric
   const containerRef = useRef<HTMLDivElement>(null);
 
   /* store */
-  const viewState = useMapStore((s) => s.viewState);
+  // Uncontrolled camera: MapLibre owns the view while the user pans and zooms
+  // (no React render per frame); the store only keeps the last settled view so
+  // returning to the map restores it.
+  const [initialViewState] = useState(() => useMapStore.getState().viewState);
   const setViewState = useMapStore((s) => s.setViewState);
+  // Marker size steps with whole zoom levels (compact at province scale), so it
+  // re-renders only when a level is crossed, never per animation frame.
+  const [zoomLevel, setZoomLevel] = useState(() => Math.floor(initialViewState.zoom ?? 10));
+  const markerSize = zoomLevel < 10 ? 16 : zoomLevel < 11 ? 20 : zoomLevel < 12 ? 24 : 28;
   const layers = useMapStore((s) => s.layers);
   const selectedIncidentId = useMapStore((s) => s.selectedIncidentId);
   const setSelectedIncidentId = useMapStore((s) => s.setSelectedIncidentId);
   const basemap = useMapStore((s) => s.basemap);
+  // First label layer of the current basemap: relief shading is slotted beneath it.
+  const [labelLayerId, setLabelLayerId] = useState<string | undefined>(undefined);
   const isHeatmapEnabled = useMapStore((s) => s.isHeatmapEnabled);
   const setDataError = useMapStore((s) => s.setDataError);
   const storeIncidents = useMapStore((s) => s.incidents);
@@ -248,9 +302,6 @@ export default function RicerMap({ weather = null, weatherLoading = false }: Ric
 
   // Animation state — phase flushed to React state at 3fps (was 10fps).
   // For a 2.5s sinusoidal pulse, 3fps is visually identical but 3x fewer re-renders.
-  const [pulsePhase, setPulsePhase] = useState(0);
-  const phaseRef = useRef(0);
-  const animFrameRef = useRef<number | null>(null);
 
   /* ═══════════ GPU Detection (non-blocking) ═══════════ */
 
@@ -276,24 +327,10 @@ export default function RicerMap({ weather = null, weatherLoading = false }: Ric
     return () => unregisterSlopeProtocol();
   }, []);
 
-  /* ═══════════ Animation loop (Tier A/B only) ═══════════ */
-  // Phase stored in ref, flushed to state at 3fps — smooth enough for 2.5s sinusoidal pulse,
-  // but ~3x fewer re-renders than the previous 10fps flush.
-
-  useEffect(() => {
-    if (!tierConfig.enableAnimations) return;
-    const CYCLE = 2500;
-    const tick = () => {
-      phaseRef.current = (Date.now() % CYCLE) / CYCLE;
-      animFrameRef.current = requestAnimationFrame(tick);
-    };
-    animFrameRef.current = requestAnimationFrame(tick);
-    const flushInterval = setInterval(() => setPulsePhase(phaseRef.current), 333);
-    return () => {
-      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
-      clearInterval(flushInterval);
-    };
-  }, [tierConfig.enableAnimations]);
+  // Animation runs inside DeckGLOverlay (no React re-renders); off when the
+  // device tier has no animations or the user prefers reduced motion.
+  const reducedMotion = useReducedMotion();
+  const animateMap = tierConfig.enableAnimations && tierConfig.useDeckGL && !reducedMotion;
 
   /* ═══════════ Isochrone fetch ═══════════ */
 
@@ -876,7 +913,7 @@ export default function RicerMap({ weather = null, weatherLoading = false }: Ric
     const coords = feature.geometry.coordinates as [number, number];
     mapRef.current.flyTo({
       center: coords,
-      zoom: Math.max(viewState.zoom ?? 13, 15),
+      zoom: Math.max((mapRef.current?.getZoom() ?? 13), 15),
       duration: 1500,
       essential: true,
     });
@@ -1084,26 +1121,23 @@ export default function RicerMap({ weather = null, weatherLoading = false }: Ric
       ...resources,
       features: resources.features.filter((f) => !trackedVehicles.callSigns.has(f.properties.name)),
     };
-    const resourceLayer = createResourceLayer(untrackedResources, layers.resources, resourceActiveTypes, trackedVehicles.keys);
+    const resourceLayer = createResourceLayer(untrackedResources, layers.resources, resourceActiveTypes, trackedVehicles.keys, markerSize - 2);
     if (resourceLayer) list.push(resourceLayer);
     const infraLayers = createInfrastructureLayers(infrastructure, layers.infrastructure, {
       WATCHTOWER: layers.infraWatchtowers,
       WATER_POINT: layers.infraWaterPoints,
       STATION: layers.infraFireStations,
       FIREBREAK: layers.infraFirebreaks,
-    });
+    }, markerSize - 2);
     list.push(...infraLayers);
-    const retardantLayer = createRetardantLayer(retardantData, layers.retardant, trackedVehicles.keys);
+    const retardantLayer = createRetardantLayer(retardantData, layers.retardant, trackedVehicles.keys, markerSize - 2);
     if (retardantLayer) list.push(retardantLayer);
     return list;
-  }, [tierConfig.useDeckGL, resources, infrastructure, retardantData, layers.resources, layers.infrastructure, layers.retardant, layers.rscTrucks, layers.rscAircraft, layers.rscPersonnel, layers.rscEquipment, layers.infraWatchtowers, layers.infraWaterPoints, layers.infraFireStations, layers.infraFirebreaks, trackedVehicles]);
+  }, [tierConfig.useDeckGL, resources, infrastructure, retardantData, layers.resources, layers.infrastructure, layers.retardant, layers.rscTrucks, layers.rscAircraft, layers.rscPersonnel, layers.rscEquipment, layers.infraWatchtowers, layers.infraWaterPoints, layers.infraFireStations, layers.infraFirebreaks, trackedVehicles, markerSize]);
 
   // Dispatch layers: routes + teams — recomputes only when dispatch state changes
   const dispatchDeckLayers = useMemo(() => {
     const list: any[] = [];
-
-    const routeLayer = createRouteLayer(routeLayerData, layers.routes, pulsePhase);
-    if (routeLayer) list.push(routeLayer);
 
     const activeTeamsData = selectedTeams
       .filter((team) => team.location && team.location.coordinates)
@@ -1121,31 +1155,31 @@ export default function RicerMap({ weather = null, weatherLoading = false }: Ric
         status: f.properties.status,
         location: f.geometry as { type: 'Point'; coordinates: [number, number] },
       }));
-    const vehicleLayer = createVehicleLayer(vehicleLayerData, layers.vehicles, stationKeys);
+    const vehicleLayer = createVehicleLayer(vehicleLayerData, layers.vehicles, stationKeys, markerSize);
     if (vehicleLayer) list.push(vehicleLayer);
 
     return list;
    
-  }, [layers.routes, layers.activeTeams, layers.vehicles, routeLayerData, selectedTeams, vehiclesData, pulsePhase, stationKeys]);
+  }, [layers.activeTeams, layers.vehicles, selectedTeams, vehiclesData, stationKeys, markerSize]);
 
-  // Animated layers: pulse + arcs — only on Tier A/B
-  const animatedDeckLayers = useMemo(() => {
-    if (!tierConfig.enableAnimations || !tierConfig.useDeckGL) return [];
-    const list: any[] = [];
-
-    const pulseLayer = createIncidentPulseLayer(incidents, pulsePhase, layers.incidents);
-    if (pulseLayer) list.push(pulseLayer);
-
-    const arcLayer = createDispatchArcLayer(routeLayerData, layers.routes);
-    if (arcLayer) list.push(arcLayer);
-
-    return list;
-  }, [incidents, pulsePhase, layers.incidents, layers.routes, routeLayerData, tierConfig.enableAnimations, tierConfig.useDeckGL]);
-
-  const deckLayers = useMemo(
-    () => [...staticDeckLayers, ...dispatchDeckLayers, ...animatedDeckLayers],
-    [staticDeckLayers, dispatchDeckLayers, animatedDeckLayers]
+  // Animated layers, rebuilt per frame by DeckGLOverlay from the current phase.
+  const buildAnimatedLayers = useCallback(
+    (phase: number) => {
+      const list: any[] = [];
+      const routeLayer = createRouteLayer(routeLayerData, layers.routes, phase);
+      if (routeLayer) list.push(routeLayer);
+      if (tierConfig.useDeckGL && tierConfig.enableAnimations) {
+        const pulseLayer = createIncidentPulseLayer(incidents, phase, layers.incidents);
+        if (pulseLayer) list.push(pulseLayer);
+        const arcLayer = createDispatchArcLayer(routeLayerData, layers.routes);
+        if (arcLayer) list.push(arcLayer);
+      }
+      return list;
+    },
+    [incidents, layers.incidents, layers.routes, routeLayerData, tierConfig.enableAnimations, tierConfig.useDeckGL]
   );
+
+  const deckLayers = useMemo(() => [...staticDeckLayers, ...dispatchDeckLayers], [staticDeckLayers, dispatchDeckLayers]);
 
   /* ═══════════ Click handler ═══════════ */
 
@@ -1173,7 +1207,7 @@ export default function RicerMap({ weather = null, weatherLoading = false }: Ric
         ) {
           mapRef.current?.flyTo({
             center: [coords[0], coords[1]],
-            zoom: (viewState.zoom ?? 13) + 2,
+            zoom: (mapRef.current?.getZoom() ?? 13) + 2,
             duration: 800,
           });
         }
@@ -1186,7 +1220,7 @@ export default function RicerMap({ weather = null, weatherLoading = false }: Ric
       }
     },
      
-    [viewState, setSelectedIncidentId, layers.fireSpread, setFireSpreadSimPoint],
+    [setSelectedIncidentId, layers.fireSpread, setFireSpreadSimPoint],
   );
 
   /* ═══════════ Hover handlers with debouncing ═══════════ */
@@ -1357,6 +1391,11 @@ export default function RicerMap({ weather = null, weatherLoading = false }: Ric
 
   const handleMapLoad = useCallback(() => {
     const map = mapRef.current?.getMap() as any;
+    if (map) {
+      const findLabels = () => setLabelLayerId(map.getStyle()?.layers?.find((l: { type: string }) => l.type === 'symbol')?.id);
+      findLabels();
+      map.on('style.load', findLabels);
+    }
     if (map && !map.hasImage('wind-arrow')) {
       const img = createWindArrowImage(32);
       map.addImage('wind-arrow', img, { sdf: true });
@@ -1455,8 +1494,12 @@ export default function RicerMap({ weather = null, weatherLoading = false }: Ric
     >
       <ReactMapGL
         ref={mapRef}
-        {...viewState}
-        onMove={(e) => setViewState(e.viewState)}
+        initialViewState={initialViewState}
+        onMoveEnd={(e) => setViewState(e.viewState)}
+        onZoom={(e) => {
+          const level = Math.floor(e.viewState.zoom);
+          if (level !== zoomLevel) setZoomLevel(level);
+        }}
         mapStyle={mapStyle as any}
         onLoad={handleMapLoad}
         onClick={handleClick}
@@ -1477,8 +1520,36 @@ export default function RicerMap({ weather = null, weatherLoading = false }: Ric
               : 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'
           ]}
           tileSize={256}
+          maxzoom={12}
           encoding={HAS_PREMIUM_TILES ? 'mapbox' : 'terrarium'}
         />
+
+        {/* ═══ Basemap relief: quiet terrain shading under the labels, tuned per theme ═══ */}
+        {basemap !== 'satellite' && (
+          <Layer
+            id="basemap-relief"
+            type="hillshade"
+            source="terrain-dem"
+            beforeId={labelLayerId}
+            paint={
+              basemap === 'dark'
+                ? {
+                    'hillshade-exaggeration': 0.6,
+                    'hillshade-shadow-color': 'rgba(0, 0, 0, 0.6)',
+                    'hillshade-highlight-color': 'rgba(160, 185, 210, 0.22)',
+                    'hillshade-accent-color': 'rgba(0, 0, 0, 0.2)',
+                    'hillshade-illumination-direction': 315,
+                  }
+                : {
+                    'hillshade-exaggeration': 0.3,
+                    'hillshade-shadow-color': 'rgba(70, 60, 40, 0.28)',
+                    'hillshade-highlight-color': 'rgba(255, 255, 255, 0.35)',
+                    'hillshade-accent-color': 'rgba(70, 60, 40, 0.1)',
+                    'hillshade-illumination-direction': 315,
+                  }
+            }
+          />
+        )}
 
         {/* ═══ Hillshade layer (native MapLibre, zero extra cost) ═══ */}
         <Layer
@@ -1613,12 +1684,12 @@ export default function RicerMap({ weather = null, weatherLoading = false }: Ric
             <Layer
               id="risk-model-heat"
               type="heatmap"
-              maxzoom={14}
+              maxzoom={12}
               layout={{ visibility: layers.riskModel ? 'visible' : 'none' }}
               paint={{
                 'heatmap-weight': ['interpolate', ['linear'], ['get', 'score'], 0.0952, 0, 0.12, 0.3, 0.25, 0.55, 0.5, 0.8, 0.75, 1],
                 'heatmap-intensity': 1,
-                'heatmap-radius': ['interpolate', ['exponential', 2], ['zoom'], 7, 18, 8, 36, 12, 576],
+                'heatmap-radius': ['interpolate', ['exponential', 2], ['zoom'], 7, 18, 8, 36, 11, 288],
                 'heatmap-color': [
                   'interpolate', ['linear'], ['heatmap-density'],
                   0, 'rgba(0,0,0,0)',
@@ -1628,7 +1699,8 @@ export default function RicerMap({ weather = null, weatherLoading = false }: Ric
                   0.85, rgbaCss(RISK_LEVEL_COLORS.very_high, 0.42),
                   1, rgbaCss(RISK_LEVEL_COLORS.very_high, 0.5),
                 ],
-                'heatmap-opacity': ['interpolate', ['linear'], ['zoom'], 8, 0.85, 13, 0.5],
+                // Province-scale context: fades out by street level, where 11 km cells stop helping and the blur gets costly.
+                'heatmap-opacity': ['interpolate', ['linear'], ['zoom'], 8, 0.85, 10.5, 0.6, 12, 0],
               }}
             />
           </Source>
@@ -2740,7 +2812,7 @@ export default function RicerMap({ weather = null, weatherLoading = false }: Ric
           </Popup>
         )}
 
-        <DeckGLOverlay layers={deckLayers} />
+        <DeckGLOverlay layers={deckLayers} animated={buildAnimatedLayers} animate={animateMap} />
       </ReactMapGL>
 
       {/* ═══ Overlay controls ═══ */}
