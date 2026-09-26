@@ -76,7 +76,6 @@ interface Result { persona: string; method: Method; path: string; status: number
 test.describe.configure({ mode: 'serial' });
 
 test('every API endpoint honours the contract', async ({ baseURL }, testInfo) => {
-  test.skip(testInfo.project.name !== 'chromium', 'HTTP-level sweep; one run is enough');
   test.setTimeout(600_000);
   const local = /localhost|127\.0\.0\.1/.test(baseURL ?? '');
   const writes = local || process.env.API_SWEEP_WRITES === '1';

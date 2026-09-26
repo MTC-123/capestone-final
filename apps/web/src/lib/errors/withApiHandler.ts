@@ -100,6 +100,8 @@ export interface WrappedRouteHandler {
   (request: Request, context: { params: Promise<Record<string, string>> }): Promise<Response>;
 }
 
+const DEFAULT_CACHE_CONTROL = 'private, no-store';
+
 export function withApiHandler<TCtx extends ApiHandlerContext>(handler: ApiHandler<TCtx>): WrappedRouteHandler {
   return async (request: Request, routeContext?: RouteContext) => {
     const params = routeContext?.params ? await routeContext.params : undefined;
@@ -112,15 +114,19 @@ export function withApiHandler<TCtx extends ApiHandlerContext>(handler: ApiHandl
 
     try {
       const response = await handler(request, safeContext);
+      // API data is never cached by shared caches unless a route opts in
+      // explicitly (public environmental data sets its own Cache-Control).
       if (response instanceof NextResponse) {
         response.headers.set('x-request-id', requestId);
         response.headers.set('x-response-time-ms', `${Math.max(0, Math.round(performance.now() - startedAt))}`);
+        if (!response.headers.has('cache-control')) response.headers.set('cache-control', DEFAULT_CACHE_CONTROL);
         return response;
       }
 
       const headers = new Headers(response.headers);
       headers.set('x-request-id', requestId);
       headers.set('x-response-time-ms', `${Math.max(0, Math.round(performance.now() - startedAt))}`);
+      if (!headers.has('cache-control')) headers.set('cache-control', DEFAULT_CACHE_CONTROL);
       return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
     } catch (err) {
       const appError = mapUnknownToAppError(err);
@@ -190,6 +196,7 @@ export function withApiHandler<TCtx extends ApiHandlerContext>(handler: ApiHandl
           : undefined;
       const headers = new Headers({
         'content-type': 'application/problem+json; charset=utf-8',
+        'cache-control': 'no-store',
         'x-request-id': requestId,
         'x-response-time-ms': `${durationMs}`,
         ...(isRateLimited
