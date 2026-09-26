@@ -30,7 +30,9 @@ export function useVehicleTelemetry(
 
     async function checkAbly() {
       try {
-        const res = await fetch('/api/realtime/token');
+        const res = await fetch('/api/realtime/token', { cache: 'no-store' });
+        // Only the status matters here; release the body so the request completes.
+        await res.body?.cancel();
         if (!cancelled) {
           setAblyAvailable(res.ok);
         }

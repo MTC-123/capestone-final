@@ -18,7 +18,7 @@
 import { readdirSync, readFileSync, statSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { request as playwrightRequest, type APIRequestContext } from '@playwright/test';
-import { test, expect, OFFICIAL_STATE, RESIDENT_STATE } from './fixtures';
+import { test, expect } from './fixtures';
 
 const API_ROOT = join(__dirname, '../../../src/app/api');
 const METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'] as const;
@@ -82,10 +82,18 @@ test('every API endpoint honours the contract', async ({ baseURL }, testInfo) =>
   const bypass = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
   const headers = bypass ? { 'x-vercel-protection-bypass': bypass } : undefined;
 
+  // Dedicated seeded accounts, so the sweep never spends the rate-limit budget
+  // of the demo personas the browser suites use (AB123456 / CD789012).
+  const signedIn = async (cin: string) => {
+    const ctx = await playwrightRequest.newContext({ baseURL, extraHTTPHeaders: headers });
+    const res = await ctx.post('/api/auth/signin', { data: { cin, password: 'password123' } });
+    expect(res.status(), `sign in ${cin}`).toBe(200);
+    return ctx;
+  };
   const personas: Record<string, APIRequestContext> = {
     anonymous: await playwrightRequest.newContext({ baseURL, extraHTTPHeaders: headers }),
-    resident: await playwrightRequest.newContext({ baseURL, storageState: RESIDENT_STATE, extraHTTPHeaders: headers }),
-    official: await playwrightRequest.newContext({ baseURL, storageState: OFFICIAL_STATE, extraHTTPHeaders: headers }),
+    resident: await signedIn('EF345678'),
+    official: await signedIn('QR901234'),
   };
 
   const endpoints = discover().filter((e) => !matches(SKIP, e.path));

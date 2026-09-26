@@ -38,8 +38,8 @@ export default defineConfig({
   projects: [
     // Signs in once per persona (official, resident) for the live suite.
     { name: 'setup', testMatch: /live\/auth\.setup\.ts/ },
-    // HTTP contract sweep: runs on its own after the browser projects, so its
-    // few hundred calls never share the demo accounts' rate-limit budget with them.
+    // HTTP contract sweep. It signs in its own personas (separate rate-limit
+    // budgets from the browser suites), so it needs no setup and runs in parallel.
     { name: 'api', testMatch: /live\/api-contract\.spec\.ts/ },
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
     // Playwright drives service-worker networking only in Chromium; in its
@@ -59,8 +59,7 @@ export default defineConfig({
       },
     },
   ].map((project) => {
-    if (project.name === 'setup') return project;
-    if (project.name === 'api') return { ...project, dependencies: ['setup', 'chromium', 'firefox', 'webkit', 'pixel-7', 'iphone-14', 'ipad-pro', 'arabic-rtl'] };
+    if (project.name === 'setup' || project.name === 'api') return project;
     return { ...project, testIgnore: /live\/api-contract\.spec\.ts/, dependencies: ['setup'] };
   }),
   webServer: process.env.E2E_BASE_URL
