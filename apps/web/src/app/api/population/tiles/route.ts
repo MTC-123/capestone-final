@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextResponse } from 'next/server';
 import { withApiHandler } from '@/lib/errors/withApiHandler';
+import { AppError } from '@/lib/errors/AppError';
 
 /**
  * WorldPop population density tile proxy.
@@ -28,12 +29,12 @@ export const GET = withApiHandler(async (request) => {
   const bboxStr = url.searchParams.get('bbox');
 
   if (!bboxStr) {
-    return new NextResponse('Missing bbox parameter', { status: 400 });
+    throw new AppError(1000, { fields: [{ field: 'bbox', code: 'required' }] });
   }
 
   const parts = bboxStr.split(',').map(Number);
   if (parts.length !== 4 || parts.some(isNaN)) {
-    return new NextResponse('Invalid bbox format', { status: 400 });
+    throw new AppError(1000, { fields: [{ field: 'bbox', code: 'invalid' }] });
   }
 
   const wpUrl =

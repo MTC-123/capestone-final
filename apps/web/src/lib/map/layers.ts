@@ -14,7 +14,8 @@ export function createResourceLayer(
   resources: GeoFeatureCollection<GeoResourceProps>,
   isActive: boolean,
   activeTypes?: Record<string, boolean>,
-  occupied?: ReadonlySet<string>
+  occupied?: ReadonlySet<string>,
+  size = 28
 ): IconLayer | null {
   if (!isActive || resources.features.length === 0) return null;
 
@@ -23,7 +24,7 @@ export function createResourceLayer(
     : resources.features;
   if (filtered.length === 0) return null;
 
-  const offsets = ringOffsets(filtered.map((f) => f.geometry.coordinates as [number, number]), 54, -45, occupied);
+  const offsets = ringOffsets(filtered.map((f) => f.geometry.coordinates as [number, number]), Math.round(size * 1.9), -45, occupied);
   const data = filtered.map((f, i) => ({
     coordinates: f.geometry.coordinates as [number, number],
     offset: offsets[i],
@@ -40,9 +41,10 @@ export function createResourceLayer(
       width: 24,
       height: 24,
     }),
-    getSize: () => 28,
+    getSize: () => size,
     getPixelOffset: (d: (typeof data)[0]) => d.offset,
     updateTriggers: {
+      getSize: [size],
       getPosition: [data.length],
       getIcon: [data.length],
     },
@@ -57,6 +59,28 @@ export function createResourceLayer(
  * @param pulsePhase - Animation phase 0→1 driven by a rAF loop in the map component
  * @param isActive - Whether the incidents layer is toggled on
  */
+type PulseDatum = { coordinates: [number, number]; severity: number; color: string };
+const pulseDataCache = new WeakMap<GeoFeatureCollection<GeoIncidentProps>, PulseDatum[]>();
+
+/**
+ * Stable data per incidents collection: each animation frame then only
+ * re-evaluates radius and colour (via updateTriggers), not positions.
+ */
+function pulseData(incidents: GeoFeatureCollection<GeoIncidentProps>): PulseDatum[] {
+  let data = pulseDataCache.get(incidents);
+  if (!data) {
+    data = incidents.features
+      .filter((f) => f.properties.status !== 'ETEINT')
+      .map((f) => ({
+        coordinates: f.geometry.coordinates as [number, number],
+        severity: f.properties.severity ?? 1,
+        color: INCIDENT_STATUS_COLORS[f.properties.status] ?? '#6b7280',
+      }));
+    pulseDataCache.set(incidents, data);
+  }
+  return data;
+}
+
 export function createIncidentPulseLayer(
   incidents: GeoFeatureCollection<GeoIncidentProps>,
   pulsePhase: number,
@@ -64,27 +88,17 @@ export function createIncidentPulseLayer(
 ): ScatterplotLayer | null {
   if (!isActive) return null;
 
-  const activeFeatures = incidents.features.filter(
-    (f) => f.properties.status !== 'ETEINT',
-  );
-  if (activeFeatures.length === 0) return null;
-
-  const data = activeFeatures.map((f) => ({
-    coordinates: f.geometry.coordinates as [number, number],
-    severity: f.properties.severity ?? 1,
-    color: INCIDENT_STATUS_COLORS[f.properties.status] ?? '#6b7280',
-  }));
+  const data = pulseData(incidents);
+  if (data.length === 0) return null;
 
   const sinVal = Math.sin(pulsePhase * Math.PI * 2);
 
   return new ScatterplotLayer({
     id: 'incident-pulse',
     data,
-    getPosition: (d: (typeof data)[0]) => d.coordinates,
-    getRadius: (d: (typeof data)[0]) =>
-      (d.severity / 5) * (30 + sinVal * 14),
-    getFillColor: (d: (typeof data)[0]) =>
-      hexToRgba(d.color, Math.floor(60 + sinVal * 40)),
+    getPosition: (d: PulseDatum) => d.coordinates,
+    getRadius: (d: PulseDatum) => (d.severity / 5) * (30 + sinVal * 14),
+    getFillColor: (d: PulseDatum) => hexToRgba(d.color, Math.floor(60 + sinVal * 40)),
     radiusUnits: 'pixels',
     stroked: false,
     updateTriggers: {
@@ -100,7 +114,8 @@ export function createIncidentPulseLayer(
 export function createInfrastructureLayers(
   infrastructure: GeoFeatureCollection<GeoInfrastructureProps>,
   isActive: boolean,
-  activeTypes?: Record<string, boolean>
+  activeTypes?: Record<string, boolean>,
+  size = 28
 ): (IconLayer | PathLayer)[] {
   if (!isActive || infrastructure.features.length === 0) return [];
 
@@ -131,10 +146,11 @@ export function createInfrastructureLayers(
           width: 24,
           height: 24,
         }),
-        getSize: () => 28,
+        getSize: () => size,
         updateTriggers: {
           getPosition: [data.length],
           getIcon: [data.length],
+          getSize: [size],
         },
       })
     );
@@ -176,11 +192,12 @@ interface RetardantDataItem {
 export function createRetardantLayer(
   items: RetardantDataItem[],
   isActive: boolean,
-  occupied?: ReadonlySet<string>
+  occupied?: ReadonlySet<string>,
+  size = 28
 ): IconLayer | null {
   if (!isActive || items.length === 0) return null;
 
-  const offsets = ringOffsets(items.map((d) => d.coordinates), 54, 135, occupied);
+  const offsets = ringOffsets(items.map((d) => d.coordinates), Math.round(size * 1.9), 135, occupied);
   const data = items.map((d, i) => ({ ...d, offset: offsets[i] }));
 
   return new IconLayer({
@@ -193,9 +210,10 @@ export function createRetardantLayer(
       width: 24,
       height: 24,
     }),
-    getSize: () => 28,
+    getSize: () => size,
     updateTriggers: {
       getPosition: [data.length],
+      getSize: [size],
     },
   });
 }

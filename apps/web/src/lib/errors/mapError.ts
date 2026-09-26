@@ -26,6 +26,10 @@ export function mapUnknownToAppError(error: unknown): AppError {
     String((error as { name: string }).name).includes('Prisma');
 
   if (isPrismaClientKnownRequestError) {
+    // Client mistakes surfaced by the database are not server failures.
+    const code = (error as { code?: unknown }).code;
+    if (code === 'P2025' || code === 'P2001' || code === 'P2018') return new AppError(1003, { cause: error }); // record not found
+    if (code === 'P2023') return new AppError(1000, { cause: error }); // malformed id (not an ObjectId)
     return new AppError(5002, { cause: error });
   }
 

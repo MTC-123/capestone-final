@@ -213,6 +213,38 @@ div[data-ricer-map-ready]:fullscreen {
   height: 44px !important;
 }
 
+/* Controls follow the theme instead of staying white on the dark map. */
+.dark .maplibregl-ctrl-group {
+  background: hsl(var(--surface)) !important;
+  border: 1px solid hsl(var(--border));
+  box-shadow: 0 4px 14px rgb(0 0 0 / 0.45) !important;
+}
+.dark .maplibregl-ctrl-group button + button {
+  border-top-color: hsl(var(--border)) !important;
+}
+.dark .maplibregl-ctrl-group button:hover {
+  background-color: hsl(var(--muted)) !important;
+}
+.dark .maplibregl-ctrl button .maplibregl-ctrl-icon {
+  filter: invert(0.92) hue-rotate(180deg);
+}
+.dark .maplibregl-ctrl-attrib {
+  background: hsl(var(--surface) / 0.85) !important;
+  color: hsl(var(--foreground) / 0.85);
+}
+.dark .maplibregl-ctrl-attrib a,
+.dark .maplibregl-ctrl-attrib-inner {
+  color: hsl(var(--foreground) / 0.85) !important;
+}
+.dark .maplibregl-ctrl-attrib-button {
+  filter: invert(0.92);
+}
+.dark .maplibregl-ctrl-scale {
+  background: hsl(var(--surface) / 0.85);
+  color: hsl(var(--foreground));
+  border-color: hsl(var(--muted-foreground));
+}
+
 @media (max-width: 767px) {
   .maplibregl-ctrl-top-right {
     top: 4.75rem !important;

@@ -42,7 +42,7 @@ export function ImportFirmsDialog() {
           ? String(f.properties.acqDateTime).slice(0, 10)
           : new Date().toISOString().slice(0, 10),
         acq_time: f.properties?.acqDateTime
-          ? String(f.properties.acqDateTime).slice(11, 15).replace(':', '')
+          ? String(f.properties.acqDateTime).slice(11, 16).replace(':', '')
           : '0000',
         confidence: f.properties?.confidence ?? 'nominal',
         frp: (f.properties?.frp as number) ?? 0,

@@ -94,6 +94,36 @@ Totals across the run:
 - **Reads:** p50 6 ms, p95 13.8 ms.
 - **Report submissions:** p50 33 ms, p95 165 ms.
 
+## Non-functional requirements (ISO/IEC 25010)
+
+Every row below was checked on the production deployment on 26 September 2026, unless marked *local*.
+
+| Quality | Requirement | Evidence | Status |
+|---|---|---|---|
+| **Performance** | p95 < 800 ms at 10 users, < 2 s at 50 users | k6 on the production build (*local*): p95 18.9 / 20.9 / 20.5 ms at 10 / 25 / 50 users, 0 errors in 14,001 requests | ✅ |
+| | API endpoints stay fast | Contract sweep (*local*): 363 calls, internal p95 8 ms. Every production response carries `x-response-time-ms` | ✅ |
+| | Map stays fluid | Animation runs in the deck.gl overlay (30 fps, no React re-renders); the camera is uncontrolled; marker sizes step with zoom; the risk surface and elevation tiles are capped by zoom | ✅ |
+| **Scalability** | No per-server state | Serverless functions; rate limits and cache in Upstash Redis, shared by every instance (health reports `backend: upstash`); notifications delivered by QStash | ✅ |
+| **Availability** | Degrades rather than fails | `/api/health` reports each dependency and integration. Satellite, weather and routing outages fall back to empty sets, polling or straight-line estimates | ✅ |
+| | Uptime monitoring | No external monitor yet (UptimeRobot or Better Stack on `/api/health`, free) | ⚠️ open |
+| **Reliability** | No duplicates, no lost work | Idempotent reports and uploads (real-DB tests); offline queue; atomic dispatch (12-way race test) | ✅ |
+| | Retries | QStash retries notifications; the TomTom client retries 5xx once, then fails over to GraphHopper, then to an estimate | ✅ |
+| **Recoverability** | Backup and restore | Production Atlas backed up in 5.8 s (40 KB); restored into a clean database in 1.4 s, 295 documents with matching counts | ✅ |
+| | Scheduled backups (RPO) | Backups are run by hand (`npm run db:backup`); M0 has no automatic snapshots | ⚠️ open |
+| **Security** | Access control | Contract sweep of all 88 routes as anonymous, resident and official: nothing public by accident; residents are refused official APIs | ✅ |
+| | Transport and browser hardening | HSTS (2 years, preload), nonce-based CSP, `X-Frame-Options: DENY`, `nosniff`, referrer policy, permissions policy (production headers) | ✅ |
+| | Abuse resistance | 10 failed sign-ins → `429` with `Retry-After`; account lockout after 5 failures; subscribe-only, role-scoped realtime tokens | ✅ |
+| | No information leakage | No stack traces in production; signed-in data never CDN-cached (tests on every authenticated route) | ✅ |
+| | Supply chain | 0 known production vulnerabilities; CodeQL on every pull request | ✅ |
+| | Secret scanning | GitHub secret scanning is disabled by choice | ⚠️ owner decision |
+| **Privacy** | Data minimisation | Photo EXIF/GPS stripped; residents see only their own reports; incident and infrastructure feeds carry no personal fields (checked) | ✅ |
+| **Observability** | Traceable requests | Structured JSON logs with `requestId`, route, code, severity and duration; `x-request-id` on every response | ✅ |
+| | Error tracking | Sentry is supported but not configured (`SENTRY_DSN`) | ⚠️ open |
+| **Usability and accessibility** | WCAG 2.2 AA | axe on every route and on 7 browser and device profiles (171 / 171 on production); reduced motion respected on the map | ✅ |
+| | Languages | Arabic (RTL), French, English | ✅ |
+| **Compatibility** | Browsers and devices | Chrome, Firefox and Safari on desktop; Pixel 7; iPhone 14; iPad Pro | ✅ |
+| **Maintainability** | Quality gates | CI runs lint (warning budget), types, 1,852 unit and integration tests, real-database tests, the build and CodeQL. Previews get their own database | ✅ |
+
 ## Defects found and fixed during evaluation
 
 | Area | Defect | Fix |
@@ -105,6 +135,9 @@ Totals across the run:
 | Map | Infrastructure sub-filters had no effect; co-located markers hid each other; firebreaks stored as points never drew | Filters wired through; stations at the true point with vehicles and resources ringed around them |
 | Satellite data | One satellite, a box around Ifrane town only, unpadded times ("25:1") | Three VIIRS satellites over the Middle Atlas for 48 h; correct times |
 | Accessibility | Risk badge used white text on light risk colours | A readable text colour per risk level (WCAG AA) |
+| Access control | Residents could read debriefings and equipment audits | Official-only, found by the contract sweep |
+| Robustness | A missing record, an unknown agency or an empty FIRMS import returned 500 | Database not-found maps to 404 and bad ids to 400, for every route; validated input returns 422 with the field |
+| Map performance | The pulse animation re-rendered the whole map 3 times a second, and every pan or zoom frame re-rendered it too | Animation inside the deck.gl overlay; uncontrolled camera |
 
 ## Known limits
 
