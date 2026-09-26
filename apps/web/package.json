@@ -57,7 +57,7 @@
     "jose": "^5.10.0",
     "jsonwebtoken": "^9.0.2",
     "jspdf": "^4.2.0",
-    "lucide-react": "^0.474.0",
+    "lucide-react": "^1.47.0",
     "maplibre-gl": "^6.11.2",
     "next": "^16.3.6",
     "ol": "^10.10.0",
