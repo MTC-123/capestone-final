@@ -166,6 +166,9 @@ export class SlidingWindowRateLimiter {
 export function createFirmsRateLimiter(isOfficial: boolean): SlidingWindowRateLimiter {
   return new SlidingWindowRateLimiter({
     windowMs: 60 * 1000, // 1 minute
-    maxRequests: isOfficial ? 100 : 10,
+    // Detections are served from a 15-minute server cache, so the NASA quota is
+    // protected upstream; this only stops abuse. 10/min tripped real residents
+    // reloading the map or switching language a few times.
+    maxRequests: isOfficial ? 100 : 60,
   });
 }
