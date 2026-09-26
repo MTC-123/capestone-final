@@ -38,6 +38,9 @@ export default defineConfig({
   projects: [
     // Signs in once per persona (official, resident) for the live suite.
     { name: 'setup', testMatch: /live\/auth\.setup\.ts/ },
+    // HTTP contract sweep: runs on its own after the browser projects, so its
+    // few hundred calls never share the demo accounts' rate-limit budget with them.
+    { name: 'api', testMatch: /live\/api-contract\.spec\.ts/ },
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
     // Playwright drives service-worker networking only in Chromium; in its
     // Firefox build, worker-proxied cross-origin fetches (map tiles) fail. The
@@ -55,7 +58,11 @@ export default defineConfig({
         extraHTTPHeaders: { ...baseHeaders, 'Accept-Language': 'ar-MA,ar;q=0.9' },
       },
     },
-  ].map((project) => (project.name === 'setup' ? project : { ...project, dependencies: ['setup'] })),
+  ].map((project) => {
+    if (project.name === 'setup') return project;
+    if (project.name === 'api') return { ...project, dependencies: ['setup', 'chromium', 'firefox', 'webkit', 'pixel-7', 'iphone-14', 'ipad-pro', 'arabic-rtl'] };
+    return { ...project, testIgnore: /live\/api-contract\.spec\.ts/, dependencies: ['setup'] };
+  }),
   webServer: process.env.E2E_BASE_URL
     ? undefined
     : {
