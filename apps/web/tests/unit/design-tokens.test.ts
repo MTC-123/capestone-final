@@ -83,7 +83,7 @@ describe('Design Tokens Integration', () => {
   describe('Hardcoded Color Elimination', () => {
     const filesToCheck = [
       'src/app/(protected)/analytics/page.tsx',
-      'src/app/(protected)/report/page.tsx',
+      'src/app/report/page.tsx',
       'src/app/(protected)/reports-list/page.tsx',
       'src/app/(protected)/equipment/page.tsx',
     ];

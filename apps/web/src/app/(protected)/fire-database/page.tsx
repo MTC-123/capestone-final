@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useFireRecordStore } from '@/store/useFireRecordStore';
@@ -14,7 +14,7 @@ import { FireRecordFiltersV2 } from '@/components/fire-records/FireRecordFilters
 import { FireRecordTableV2 } from '@/components/fire-records/FireRecordTableV2';
 import dynamic from 'next/dynamic';
 
-// MapLibre is only needed when the map view is chosen, so it stays out of the page bundle.
+// OpenLayers is only loaded when the historical map is chosen.
 const FireRecordMapView = dynamic(() => import('@/components/fire-records/FireRecordMapView'), {
   ssr: false,
   loading: () => <SkeletonBox className="h-[500px] w-full rounded-2xl" />,
@@ -26,7 +26,8 @@ import { ImportFirmsDialog } from '@/components/fire-records/ImportFirmsDialog';
 export default function FireDatabasePage() {
   const { t } = useTranslation();
   const { user } = useAuthStore();
-  const { fetchRecords, reset, viewMode, comparisonRecords } = useFireRecordStore();
+  const { fetchRecords, reset, viewMode, setViewMode, comparisonRecords } = useFireRecordStore();
+  const [mapFiltersOpen, setMapFiltersOpen] = useState(false);
   const isOfficial = user?.role === 'OFFICIAL';
 
   useEffect(() => {
@@ -55,7 +56,7 @@ export default function FireDatabasePage() {
       <PageHeader
         title={t('fireDatabaseTitle')}
         description={t('fireDatabaseDesc')}
-        actions={
+        actions={viewMode === 'table' ?
           <div className="grid w-full grid-cols-1 gap-2 sm:w-auto sm:grid-cols-3">
             <ImportFirmsDialog />
             <Button
@@ -75,15 +76,16 @@ export default function FireDatabasePage() {
               {t('fireRecordExportGeoJSON')}
             </Button>
           </div>
-        }
+        : null}
       />
 
       <div className="space-y-4">
-        {/* KPI Cards */}
-        <FireDatabaseKpis />
+        {viewMode === 'table' ? <FireDatabaseKpis /> : <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-surface px-3 py-2">
+          <p className="text-xs font-semibold text-muted-foreground">Historical map · Ifrane Province</p>
+          <div className="flex gap-2"><Button variant="secondary" onClick={() => setMapFiltersOpen(!mapFiltersOpen)}>{mapFiltersOpen ? 'Hide filters' : 'Filter records'}</Button><Button variant="secondary" onClick={() => setViewMode('table')}>Table view</Button></div>
+        </div>}
 
-        {/* Filters */}
-        <FireRecordFiltersV2 />
+        {(viewMode === 'table' || mapFiltersOpen) && <FireRecordFiltersV2 />}
 
         {/* Comparison bar */}
         <ComparisonBar />
@@ -92,9 +94,7 @@ export default function FireDatabasePage() {
         {comparisonRecords.length > 0 && <ComparisonView />}
 
         {/* Main content area */}
-        <div className="rounded-2xl border border-border/60 bg-surface shadow-elev-1">
-          {viewMode === 'table' ? <FireRecordTableV2 /> : <FireRecordMapView />}
-        </div>
+        {viewMode === 'table' ? <div className="rounded-2xl border border-border/60 bg-surface shadow-elev-1"><FireRecordTableV2 /></div> : <FireRecordMapView />}
       </div>
     </PageContainer>
   );

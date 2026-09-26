@@ -72,12 +72,17 @@ export async function enqueueReport(input: EnqueueReportInput, photos: Blob[]): 
 
   const record: SubmissionRecord = {
     clientSubmissionId,
+    source: input.source ?? 'AUTHENTICATED',
     createdAt: now,
     capturedAt,
     payload: {
       latitude: input.latitude,
       longitude: input.longitude,
+      accuracyMeters: input.accuracyMeters,
       description: input.description,
+      observation: input.observation,
+      locationBasis: input.locationBasis,
+      locationText: input.locationText,
       cause: input.cause,
       anonymous: input.anonymous,
       contactPhone: input.contactPhone,
@@ -169,6 +174,26 @@ function extFromContentType(contentType: string): string {
 
 async function syncSubmission(initial: SubmissionRecord): Promise<void> {
   let record = initial;
+  const guest = record.source === 'GUEST';
+  let guestToken: string | undefined;
+  if (guest) {
+    try {
+      const session = await fetch('/api/public/report-session', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clientSubmissionId: record.clientSubmissionId }),
+      });
+      if (!session.ok) {
+        record = await applyOutcome(record, await classifyHttpFailure(session, record.attempts + 1));
+        emitOfflineChange({ type: 'submission-updated', clientSubmissionId: record.clientSubmissionId });
+        return;
+      }
+      guestToken = ((await session.json()) as { token: string }).token;
+    } catch (error) {
+      record = await applyOutcome(record, classifyNetworkFailure(error, record.attempts + 1));
+      emitOfflineChange({ type: 'submission-updated', clientSubmissionId: record.clientSubmissionId });
+      return;
+    }
+  }
 
   for (let i = 0; i < record.photoIds.length; i += 1) {
     const photoId = record.photoIds[i];
@@ -191,8 +216,11 @@ async function syncSubmission(initial: SubmissionRecord): Promise<void> {
     try {
       const form = new FormData();
       form.append('file', photo.blob, `${photoId}.${extFromContentType(photo.contentType)}`);
-      form.append('key', photoId);
-      response = await fetchWithAuth('/api/uploads', { method: 'POST', body: form });
+      form.append('key', guest ? String(i) : photoId);
+      if (guest) form.append('clientSubmissionId', record.clientSubmissionId);
+      response = guest
+        ? await fetch('/api/public/uploads', { method: 'POST', headers: { Authorization: `Bearer ${guestToken}` }, body: form })
+        : await fetchWithAuth('/api/uploads', { method: 'POST', body: form });
     } catch (err) {
       const outcome = classifyNetworkFailure(err, record.attempts);
       record = await applyOutcome(record, outcome);
@@ -221,14 +249,20 @@ async function syncSubmission(initial: SubmissionRecord): Promise<void> {
 
   let response: Response;
   try {
-    response = await fetchWithAuth('/api/reports', {
+    response = await (guest ? fetch : fetchWithAuth)(guest ? '/api/public/fire-reports' : '/api/reports', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...(guest ? { Authorization: `Bearer ${guestToken}` } : {}) },
       body: JSON.stringify({
         clientSubmissionId: record.clientSubmissionId,
         latitude: record.payload.latitude,
         longitude: record.payload.longitude,
+        accuracyMeters: record.payload.accuracyMeters,
         description: record.payload.description,
+        ...(guest ? {
+          observation: record.payload.observation,
+          locationBasis: record.payload.locationBasis,
+          locationText: record.payload.locationText,
+        } : {}),
         cause: record.payload.cause,
         anonymous: record.payload.anonymous,
         contactPhone: record.payload.contactPhone,
@@ -254,11 +288,12 @@ async function syncSubmission(initial: SubmissionRecord): Promise<void> {
   // 200 (duplicate: true) and 201 (duplicate: false) are both success —
   // a crash after the server accepted but before we recorded that locally
   // resolves here on the next sync pass.
-  const json = (await response.json()) as { report?: { id?: string }; referenceNumber?: string };
+  const json = (await response.json()) as { report?: { id?: string }; referenceNumber?: string; receipt?: string };
   record = await updateSubmission(record.clientSubmissionId, {
     state: 'sent',
     serverReportId: json.report?.id,
     referenceNumber: json.referenceNumber,
+    receipt: json.receipt,
     sentAt: new Date().toISOString(),
     lastError: undefined,
     nextAttemptAt: undefined,

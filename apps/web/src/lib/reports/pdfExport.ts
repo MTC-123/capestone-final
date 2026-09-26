@@ -10,9 +10,12 @@ type ReportStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED';
 
 export interface ReportPdfData {
   id: string;
-  userId: string;
-  latitude: number;
-  longitude: number;
+  userId: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  locationBasis?: string | null;
+  accuracyMeters?: number | null;
+  locationText?: string | null;
   description: string;
   images: string[];
   status: ReportStatus;
@@ -127,7 +130,9 @@ function formatDate(value: string | Date | null | undefined, language: ReportPdf
 }
 
 function formatCoordinates(report: ReportPdfData): string {
-  return `${Number(report.latitude).toFixed(6)}, ${Number(report.longitude).toFixed(6)}`;
+  if (report.latitude == null || report.longitude == null) return report.locationText || '-';
+  const prefix = report.locationBasis === 'OBSERVER' ? 'Observer position: ' : '';
+  return `${prefix}${report.latitude.toFixed(6)}, ${report.longitude.toFixed(6)}${report.accuracyMeters ? ` (±${Math.round(report.accuracyMeters)} m)` : ''}`;
 }
 
 function labelValue(
@@ -316,7 +321,7 @@ export function generateReportPdf(report: ReportPdfData, languageInput: string |
   addField('reportPdfSubmittedAt', formatDate(report.createdAt, language));
 
   addSection('reportPdfReporterSection');
-  addField('reporter', report.anonymous ? t(language, 'anonymousReport') : report.user?.cin || report.userId);
+  addField('reporter', report.anonymous ? t(language, 'anonymousReport') : report.user?.cin || report.userId || '-');
   addField('contactPhone', report.contactPhone || report.user?.phone || '-');
 
   addSection('reportPdfLocationSection');

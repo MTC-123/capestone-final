@@ -1,108 +1,108 @@
 <p align="center">
-  <img src="docs/assets/brand/banner.svg" alt="RICER Ifrane: fire reporting, dispatch and multi-agency coordination for Ifrane Province, Morocco" width="100%">
+  <img src="docs/assets/brand/banner.svg" alt="RICER Ifrane — wildfire reporting and response in Ifrane Province, Morocco" width="100%">
 </p>
 
 <p align="center">
-  <a href="https://github.com/MTC-123/capestone-final/actions/workflows/ci.yml"><img src="https://github.com/MTC-123/capestone-final/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <img src="https://img.shields.io/badge/next.js-16-166432" alt="Next.js 16">
-  <img src="https://img.shields.io/badge/react-19-166432" alt="React 19">
-  <img src="https://img.shields.io/badge/node-22-166432" alt="Node 22">
+  <a href="https://github.com/MTC-123/capestone-final/actions/workflows/ci.yml"><img src="https://github.com/MTC-123/capestone-final/actions/workflows/ci.yml/badge.svg" alt="CI status"></a>
+  <img src="https://img.shields.io/badge/Next.js-16-166432" alt="Next.js 16">
+  <img src="https://img.shields.io/badge/React-19-166432" alt="React 19">
+  <img src="https://img.shields.io/badge/Node-22-166432" alt="Node 22">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-166432" alt="MIT license"></a>
 </p>
 
 <p align="center">
-  <a href="https://ricer-ifrane.vercel.app"><b>Live demo</b></a> &nbsp;·&nbsp;
-  <a href="docs/DEPLOYMENT.md"><b>Deploy (free tier)</b></a> &nbsp;·&nbsp;
-  <a href="apps/web/docs/ARCHITECTURE.md">Architecture</a> &nbsp;·&nbsp;
-  <a href="apps/web/docs/API.md">API</a> &nbsp;·&nbsp;
-  <a href="docs/DEMO.md">Demo script</a> &nbsp;·&nbsp;
-  <a href="docs/EVALUATION.md">Test results</a> &nbsp;·&nbsp;
-  <a href="docs/README.md">Documentation</a>
+  <a href="https://ricer-ifrane.vercel.app"><strong>Open RICER</strong></a> ·
+  <a href="https://ricer-ifrane.vercel.app/report">Report a fire or smoke</a> ·
+  <a href="docs/DEMO.md">Demo guide</a> ·
+  <a href="docs/DEPLOYMENT.md">Deployment guide</a>
 </p>
 
----
+# RICER Ifrane
 
-**RICER** (Resilient Infrastructures and Coordinated Emergency Response) is a web platform for forest-fire response in Ifrane Province, Morocco. Reports from residents and field crews, the officials who assess and dispatch, and the agencies they coordinate with all work from one shared record.
+RICER brings public fire reports, official incident assessment, dispatch, and historical fire data into one application for Ifrane Province, Morocco. A resident can report smoke without creating an account. An official can assess that report alongside field teams, vehicles, watchtowers, fire weather, and satellite observations. The archive keeps verified fires separate from thermal detections, which are observations rather than confirmed incidents.
 
-It is a Computer Science capstone at Al Akhawayn University in Ifrane, supervised by Houda Chakiri.
+This is a Computer Science capstone at Al Akhawayn University in Ifrane, supervised by Houda Chakiri. The name stands for **Resilient Infrastructures and Coordinated Emergency Response**.
 
-## Two experiences, one record
+## What you can do
 
-| Residents (civic) | Officials (command centre) |
-|---|---|
-| Report a fire in three steps: place search, GPS or map pin; details; photos | Map-first operating picture: incidents, vehicles, infrastructure, NASA FIRMS, EFFIS, forest tracks and weather layers |
-| Reports are saved on the phone first and sent automatically when the network returns | Conflict-free dispatch: TomTom routes with live traffic, reachable ranges and ETAs; atomic resource claims |
-| Track your reports and their status | ICS roles, mutual aid, POI and PMA workflows, campaign checklists, debriefings |
-| Clear emergency guidance (15 / 177) on every page | Model-backed fire-risk layer (partner team's XGBoost), fire-record verification, PDF export |
-| Arabic (RTL), French and English | Access-request approvals and an audit trail of every sensitive action |
+### Report an observation
 
-The civic experience uses a light "paper" theme; the command centre defaults to a dark "ops" theme. Both are available in either mode.
+The [public report](https://ricer-ifrane.vercel.app/report) asks what you saw—fire, smoke, or unsure—and where you saw it. You can use a landmark, GPS, or an optional map adjustment. If you use GPS, the form asks whether the position marks the fire or *you*. Photos, a short description, and contact details are optional. A report saved without connectivity stays **queued** until the server acknowledges it; a receipt then lets you check its status. Reports enter an official triage queue and do not become confirmed incidents automatically.
 
-## Engineering highlights
+### Work from a fire-focused command map
 
-- **Security, against selected OWASP ASVS 5.0 controls:**
-  - server-side RBAC in a request proxy and on every API route;
-  - sign-up can never grant the official role (approval workflow);
-  - account lockout;
-  - rotating refresh tokens with reuse detection;
-  - rate limits (Upstash);
-  - nonce-based strict CSP and security headers;
-  - zod input validation;
-  - photo uploads checked by file signature, with EXIF/GPS metadata stripped;
-  - an append-only audit log.
-- **Offline-first reporting:** an IndexedDB queue plus a service worker, with idempotent sync keyed by a client submission ID. It's tested so that retries, crashes and concurrent tabs never create duplicate reports.
-- **Concurrency:** dispatch claims vehicles and teams with conditional atomic updates. An integration test fires twelve simultaneous assignments of one truck at a real MongoDB; exactly one succeeds.
-- **Model integration:** the partner team's XGBoost model is evaluated in pure TypeScript. It matches the Python reference to about 1e-6, and reports its version, data time and an explicit "unavailable" state ([model card](apps/web/src/lib/risk/model/MODEL_CARD.md)).
-- **Accessibility:** WCAG 2.2 AA checks (axe) on every route, on seven browser and device profiles including Arabic RTL.
-- **Resilience:** a health endpoint with a per-dependency status, graceful degradation when an optional service is missing, and a rehearsed backup and restore ([runbook](docs/runbooks/backup-restore.md)).
+The command map groups its main controls around **Field operations**, **Fire detection**, and **Prevention and risk**. Field operations brings dispatch routes, teams, vehicles, equipment, watchtowers, water points, stations, firebreaks, and forest roads into one view. Task presets switch between active incidents, weather and spread, and satellite context. Specialists can still open individual layers.
 
-## Stack
+The map uses MapLibre 6 and deck.gl for the live operating picture. Its Ifrane basemap is served from this project rather than a public tile server. Users can explicitly save the bounded Ifrane package for offline use; satellite imagery and live feeds still require a connection. If WebGL is unavailable, the incident list and report form remain usable.
 
-Next.js 16 (App Router, Turbopack) · React 19 · TypeScript · Tailwind · Prisma 5 + MongoDB · MapLibre 6 + deck.gl · TomTom routing · NASA FIRMS · Upstash Redis/QStash · Vercel Blob · Ably · Resend · Twilio (WhatsApp sandbox) · Sentry
+### Investigate verified fire history
 
-Free hosting: Vercel Hobby + MongoDB Atlas M0 + Upstash free tiers. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+The official archive uses OpenLayers. It maps verified records and perimeters, filters by ignition date, and compares two dates of NASA GIBS imagery with a swipe. A short list surfaces fire-relevant imagery and environmental layers; the full NASA catalogue remains searchable for deeper work. The interface labels imagery dates and keeps satellite hotspots distinct from official fire records.
 
-## Quick start
+## Data, keys, and limits
 
-Requires Node 22 LTS and Docker (for a local MongoDB replica set).
+| Source | Used for | Key |
+|---|---|---|
+| Project-hosted [Protomaps](https://docs.protomaps.com/basemaps/downloads) extract | Ifrane basemap and offline map | None |
+| [NASA GIBS](https://nasa-gibs.github.io/gibs-api-docs/access-basics/) | Dated imagery and layer catalogue | None |
+| [NASA FIRMS](https://firms.modaps.eosdis.nasa.gov/api/map_key/) | Recent satellite thermal observations | Free `FIRMS_MAP_KEY` |
+| [Copernicus EFFIS](https://forest-fire.emergency.copernicus.eu/downloads-instructions) | Fire weather and burned-area context | None for public WMS |
+| Open-Meteo | Weather and wind | None for noncommercial use, subject to provider limits |
+| Project database | Reports, confirmed incidents, dispatch, vehicles, and facilities | `DATABASE_URL` |
+
+The offline package covers Ifrane and nearby areas through zoom 14. It does not contain live operational feeds or NASA imagery. Hosted free data services do not provide an emergency-service uptime guarantee. See the [mapping runbook](apps/web/docs/runbooks/mapping.md) and [architecture decision](apps/web/docs/adr/0003-fire-intelligence-workspace.md) for source behavior and deployment needs.
+
+## Under the hood
+
+Next.js 16 · React 19 · TypeScript · Prisma 5 and MongoDB · MapLibre 6 and deck.gl for command · OpenLayers for history · PMTiles for the local basemap · NASA FIRMS and GIBS · Copernicus EFFIS · IndexedDB and a service worker for queued reports
+
+The app also includes role-based access, an audit log, idempotent report submission, scoped guest upload tokens, and official verification before an incident enters the confirmed record. Dispatch uses conditional updates to prevent two concurrent claims on the same resource. The partner team's XGBoost fire-risk model runs in TypeScript and reports its version and data time ([model card](apps/web/src/lib/risk/model/MODEL_CARD.md)).
+
+## Run it locally
+
+Use Node 22 LTS and Docker for a local MongoDB replica set.
 
 ```bash
 docker run -d --name ricer-mongo -p 27017:27017 mongo:7 --replSet rs0 --bind_ip_all
 docker exec ricer-mongo mongosh --eval 'rs.initiate({_id:"rs0",members:[{_id:0,host:"localhost:27017"}]})'
 
 cd apps/web
-cp .env.example .env.local        # set DATABASE_URL, JWT_SECRET, REFRESH_TOKEN_PEPPER
+cp .env.example .env.local
+# Set DATABASE_URL, JWT_SECRET, and REFRESH_TOKEN_PEPPER in .env.local.
+# Add FIRMS_MAP_KEY to enable live thermal detections.
 npm ci
-npx prisma db push && npm run prisma:seed
-npm run dev                       # http://localhost:3000
+npx prisma db push
+npm run prisma:seed
+npm run dev
 ```
 
-Demo accounts (password `password123`): official **CD789012**, resident **AB123456**. With `DEMO_MODE=true`, the sign-in page also offers one-click personas. A 12-minute walkthrough is in [docs/DEMO.md](docs/DEMO.md).
+Open `http://localhost:3000`. The seed provides demo accounts: official **CD789012** and resident **AB123456**, both with password `password123`. `DEMO_MODE=true` adds one-click personas for a showcase deployment; leave it unset for real data. The [demo guide](docs/DEMO.md) walks through the application, and the [deployment guide](docs/DEPLOYMENT.md) covers hosting and environment variables.
 
-## Tests
+## Check the work
 
-| Command | What it covers |
+Run commands from `apps/web`:
+
+```bash
+npm run lint
+npm run typecheck
+npm run test:unit
+npm run build
+```
+
+The repository also has real-MongoDB integration tests (`npm run test:db`), browser tests (`npx playwright test tests/e2e/live`), and k6 workloads (`npm run perf:k6`). The [CI workflow](.github/workflows/ci.yml) runs lint, typecheck, unit tests, database integration tests, and a production build.
+
+## Find your way around
+
+| Path | Contents |
 |---|---|
-| `npm run test:unit` | Unit and integration tests (Vitest, about 1,840 tests) |
-| `npm run test:db` | Real-MongoDB integration: auth hardening, token theft, dispatch race, idempotent reports and uploads |
-| `npx playwright test tests/e2e/live` | The live app on 7 profiles (Chrome, Firefox, Safari, Pixel 7, iPhone 14, iPad Pro, Arabic RTL): every route, axe WCAG 2.2, overflow, offline reporting, RBAC |
-| `npm run perf:k6` | Load at 10 / 25 / 50 concurrent users |
-| `npm run lint` · `npm run typecheck` | Static checks |
+| [`apps/web`](apps/web) | Next.js application, API routes, tests, and Prisma schema |
+| [`apps/web/docs`](apps/web/docs) | Architecture, API notes, and mapping decisions |
+| [`docs`](docs) | Deployment, demo, research, evaluation, and runbooks |
+| [`data/gis`](data/gis) | GIS source layers for Ifrane Province |
+| [`.github/workflows`](.github/workflows) | CI and security checks |
 
-## Repository layout
+## Credits and license
 
-```
-apps/web/        Next.js app: src, tests, Prisma schema, seed, perf, scripts
-data/gis/        GIS source layers for Ifrane Province
-scripts/gis/     GIS preparation (relief contours)
-docs/            Deployment, runbooks, specifications, audits, research
-.github/         CI (lint, unit, real-DB, build), security scanning (CodeQL, audit)
-```
+Built at Al Akhawayn University in Ifrane, School of Science and Engineering, under the supervision of Houda Chakiri. The wildfire-occurrence model is the work of the RICER machine-learning team: M. Erraisse, R. Souane, and W. Hara. Mapping and environmental data come from NASA FIRMS and GIBS, Copernicus EFFIS and CAMS, Open-Meteo, Protomaps, and OpenStreetMap contributors.
 
-## Acknowledgements
-
-Al Akhawayn University in Ifrane, School of Science and Engineering. Supervisor: Houda Chakiri. The wildfire-occurrence model is the work of the RICER machine-learning team (M. Erraisse, R. Souane, W. Hara). Data from NASA FIRMS, Copernicus EFFIS and CAMS, Open-Meteo, OpenStreetMap contributors and AWS Terrain Tiles.
-
-## License
-
-[MIT](LICENSE)
+Licensed under [MIT](LICENSE).

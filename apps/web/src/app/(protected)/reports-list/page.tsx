@@ -74,10 +74,19 @@ function statusClasses(status: string) {
 }
 
 function formatCoordinates(latitude: unknown, longitude: unknown, fallback: string) {
+  if (latitude == null || longitude == null || latitude === '' || longitude === '') return fallback;
   const lat = typeof latitude === 'number' ? latitude : Number(latitude);
   const lng = typeof longitude === 'number' ? longitude : Number(longitude);
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return fallback;
   return `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+}
+
+function formatReportLocation(report: Report, fallback: string) {
+  const coordinates = formatCoordinates(report.latitude, report.longitude, '');
+  const label = report.locationBasis === 'OBSERVER' ? 'Observer position'
+    : report.locationBasis === 'APPROXIMATE' ? 'Approximate fire area'
+      : report.locationBasis === 'FIRE' ? 'Reported fire position' : 'Landmark';
+  return [coordinates && `${label}: ${coordinates}${report.accuracyMeters ? ` (±${Math.round(report.accuracyMeters)} m)` : ''}`, report.locationText].filter(Boolean).join(' · ') || fallback;
 }
 
 function getCharacteristicValue(
@@ -261,7 +270,7 @@ export default function ReportsListPage() {
         report.description,
         report.user?.cin,
         getCauseLabel(report.cause),
-        formatCoordinates(report.latitude, report.longitude, t('unknown')),
+        formatReportLocation(report, t('unknown')),
       ].filter(Boolean).join(' ').toLowerCase();
       return haystack.includes(normalized);
     });
@@ -452,7 +461,7 @@ export default function ReportsListPage() {
 
                   <div className="mt-4 grid gap-2 text-sm text-muted-foreground md:grid-cols-3">
                     <MetaItem icon="fire" label={t('cause')} value={getCauseLabel(report.cause)} />
-                    <MetaItem icon="mapPin" label={t('location')} value={formatCoordinates(report.latitude, report.longitude, t('unknown'))} />
+                    <MetaItem icon="mapPin" label={t('location')} value={formatReportLocation(report, t('unknown'))} />
                     <MetaItem icon="id" label={t('reporter')} value={report.anonymous ? t('anonymousReport') : report.user?.cin || t('unknown')} />
                   </div>
                 </div>
@@ -542,6 +551,7 @@ export default function ReportsListPage() {
       />
 
       <CreateIncidentModal
+        key={reportToConvert?.id ?? 'closed'}
         report={reportToConvert}
         open={!!reportToConvert}
         onClose={() => setReportToConvert(null)}
@@ -653,7 +663,8 @@ function ReportDetailDialog({
             <DetailField label={t('reporter')} value={report.anonymous ? t('anonymousReport') : report.user?.cin || fallback} />
             <DetailField label={t('contactPhone')} value={report.contactPhone || report.user?.phone || fallback} />
             <DetailField label={t('cause')} value={getCauseLabel(report.cause)} />
-            <DetailField label={t('location')} value={formatCoordinates(report.latitude, report.longitude, fallback)} />
+            <DetailField label={t('location')} value={formatReportLocation(report, fallback)} />
+            {report.observation && <DetailField label="Observation" value={report.observation === 'FIRE' ? 'Fire or flames' : report.observation === 'SMOKE' ? 'Smoke' : 'Unsure'} />}
           </div>
 
           <div>

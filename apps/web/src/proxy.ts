@@ -14,7 +14,6 @@ import { jwtVerify } from 'jose';
 const PROTECTED_PREFIXES = [
   '/map',
   '/analytics',
-  '/report',
   '/reports-list',
   '/weather',
   '/equipment',

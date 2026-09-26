@@ -109,15 +109,20 @@ const REPORT_SUBMITTED_SUBJECT: Record<Locale, (ref: string) => string> = {
 interface ReportSubmittedInput {
   id: string;
   referenceNumber: string;
-  latitude: number;
-  longitude: number;
+  latitude: number | null;
+  longitude: number | null;
+  locationBasis?: string | null;
+  accuracyMeters?: number | null;
+  locationText?: string | null;
   description: string;
 }
 
 function buildReportSubmitted(report: ReportSubmittedInput, locale: Locale): BuiltMessage {
   const ref = report.referenceNumber;
-  const coords = `${report.latitude.toFixed(4)}, ${report.longitude.toFixed(4)}`;
-  const maps = mapsLink(report.latitude, report.longitude);
+  const hasCoords = report.latitude != null && report.longitude != null;
+  const coords = [report.locationBasis === 'OBSERVER' ? 'Observer position' : 'Reported fire area',
+    hasCoords ? `${report.latitude!.toFixed(4)}, ${report.longitude!.toFixed(4)}${report.accuracyMeters ? ` (±${Math.round(report.accuracyMeters)} m)` : ''}` : report.locationText || 'Location to verify'].join(': ');
+  const maps = hasCoords ? mapsLink(report.latitude!, report.longitude!) : '';
   const link = reportDeepLink(report.id);
   const description = truncate(report.description ?? '', 200);
 
@@ -129,7 +134,7 @@ function buildReportSubmitted(report: ReportSubmittedInput, locale: Locale): Bui
     `<p style="margin:0 0 8px 0;"><strong>${escapeHtml(ref)}</strong></p>
      <p style="margin:0 0 8px 0;">${escapeHtml(description)}</p>
      <p style="margin:0 0 8px 0;">${escapeHtml(coords)}</p>
-     <p style="margin:0 0 16px 0;"><a href="${maps}" style="color:${BRAND_GREEN};">Google Maps</a></p>
+     ${maps ? `<p style="margin:0 0 16px 0;"><a href="${maps}" style="color:${BRAND_GREEN};">Google Maps</a></p>` : ''}
      <p style="margin:0;"><a href="${link}" style="background-color:${BRAND_GREEN};color:#ffffff;padding:10px 16px;border-radius:6px;text-decoration:none;display:inline-block;">RICER Ifrane</a></p>`
   );
 

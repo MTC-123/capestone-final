@@ -21,6 +21,8 @@ export function CreateIncidentModal({ report, open, onClose, onSuccess }: Create
   const [description, setDescription] = useState(report?.description || '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fireLat, setFireLat] = useState(() => report?.locationBasis === 'OBSERVER' ? '' : String(report?.latitude ?? ''));
+  const [fireLng, setFireLng] = useState(() => report?.locationBasis === 'OBSERVER' ? '' : String(report?.longitude ?? ''));
 
   if (!open || !report) return null;
 
@@ -29,14 +31,22 @@ export function CreateIncidentModal({ report, open, onClose, onSuccess }: Create
     setLoading(true);
     setError(null);
 
+    const latitude = Number(fireLat);
+    const longitude = Number(fireLng);
+    if (!fireLat.trim() || !fireLng.trim() || !Number.isFinite(latitude) || !Number.isFinite(longitude) || latitude < 20.5 || latitude > 36.2 || longitude < -17.5 || longitude > -0.9) {
+      setError('Verify and enter the fire location before creating an incident. An observer position is not the fire location.');
+      setLoading(false);
+      return;
+    }
+
     try {
       const response = await fetch('/api/incidents', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           reportId: report.id,
-          latitude: report.latitude,
-          longitude: report.longitude,
+          latitude,
+          longitude,
           cause: report.cause || 'UNKNOWN',
           severity,
           status,
@@ -80,6 +90,11 @@ export function CreateIncidentModal({ report, open, onClose, onSuccess }: Create
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          <p className="text-sm text-muted-foreground">Report location: {report.locationBasis || 'legacy exact pin'}{report.locationText ? ` · ${report.locationText}` : ''}. Verify the fire position before confirmation.</p>
+          <div className="grid grid-cols-2 gap-3">
+            <label className="text-sm font-medium">Fire latitude<input required type="number" step="any" value={fireLat} onChange={(e) => setFireLat(e.target.value)} className="mt-1 w-full rounded-lg border border-border bg-background p-2" /></label>
+            <label className="text-sm font-medium">Fire longitude<input required type="number" step="any" value={fireLng} onChange={(e) => setFireLng(e.target.value)} className="mt-1 w-full rounded-lg border border-border bg-background p-2" /></label>
+          </div>
           <div>
             <span className="mb-2 block text-sm font-medium">
               {t('severity')}

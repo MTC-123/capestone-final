@@ -14,6 +14,7 @@ import type { Basemap } from '@/lib/map/styles';
 import type { TranslationKey } from '@/i18n/translations';
 import type { EffisFwiMode, EffisBurnedAreaMode, SoilMoistureDepth, CamsAerosolMode, OwmWeatherLayer } from '@/store/useMapStore';
 import { useToastStore } from '@/store/useToastStore';
+import { OfflineMapDownload } from '@/components/map/OfflineMapDownload';
 
 const RESOURCE_SUB_LAYERS = [
   { key: 'rscTrucks', labelKey: 'rscTrucks', icon: 'truck' as const },
@@ -136,6 +137,9 @@ const SOIL_DEPTHS: { value: SoilMoistureDepth; labelKey: string }[] = [
 ];
 
 const ALL_LAYER_KEYS = Object.keys(LAYER_KEY_MAP);
+const FIELD_OPS_KEYS = ['resources', 'infrastructure', 'routes', 'activeTeams', 'vehicles', 'rscTrucks', 'rscAircraft', 'rscPersonnel', 'rscEquipment', 'infraWatchtowers', 'infraWaterPoints', 'infraFireStations', 'infraFirebreaks', 'forestRoads'] as const;
+const DETECTION_KEYS = ['incidents', 'firmsDetections'] as const;
+const PREVENTION_KEYS = ['riskModel', 'effisFWI', 'windVectors'] as const;
 
 function WindLayerRow() {
   const { t } = useTranslation();
@@ -654,8 +658,9 @@ interface MapControlsProps {
 }
 
 export default function MapControls({ mobileOpen = false, onMobileOpenChange }: MapControlsProps) {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const filteredLayers = useLayerSearch(searchQuery);
   const addToast = useToastStore((s) => s.addToast);
 
@@ -720,6 +725,18 @@ export default function MapControls({ mobileOpen = false, onMobileOpenChange }: 
 
   // Default open sections
   const defaultSections = ['basemap', 'visualization', 'incidents', 'resources', 'dispatch', 'infra', 'environment', 'effis'];
+  const quickNames = language === 'ar'
+    ? { ops: 'العمليات الميدانية', detect: 'رصد الحرائق', prevent: 'الوقاية والمخاطر', advanced: 'إعدادات متقدمة', opsDetail: 'الفرق والمركبات والطرق وأبراج المراقبة', detectDetail: 'الحرائق المؤكدة والرصد الحراري', preventDetail: 'المخاطر والطقس والرياح' }
+    : language === 'fr'
+      ? { ops: 'Opérations terrain', detect: 'Détection des feux', prevent: 'Prévention et risque', advanced: 'Réglages avancés', opsDetail: 'Équipes, véhicules, routes et vigies', detectDetail: 'Incidents officiels et points chauds', preventDetail: 'Risque, météo incendie et vent' }
+      : { ops: 'Field operations', detect: 'Fire detection', prevent: 'Prevention and risk', advanced: 'Advanced layers', opsDetail: 'Teams, vehicles, routes and watchtowers', detectDetail: 'Official incidents and thermal observations', preventDetail: 'Risk, fire weather and wind' };
+  const toggleGroup = (keys: readonly (keyof typeof layers)[]) => {
+    const enabled = !keys.every((key) => layers[key]);
+    useMapStore.setState((state) => ({ layers: {
+      ...state.layers,
+      ...Object.fromEntries(keys.map((key) => [key, enabled])),
+    } }));
+  };
 
   return (
     <>
@@ -763,6 +780,22 @@ export default function MapControls({ mobileOpen = false, onMobileOpenChange }: 
               : 'max-h-[calc(50vh-3rem)] sm:max-h-[calc(70vh-3rem)]'
           )}
         >
+          <OfflineMapDownload />
+          <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Operational picture</p>
+          <div className="my-2 grid gap-2">
+            {([
+              [quickNames.ops, FIELD_OPS_KEYS, quickNames.opsDetail, 'route', 'border-l-orange-500'],
+              [quickNames.detect, DETECTION_KEYS, quickNames.detectDetail, 'fire', 'border-l-red-500'],
+              [quickNames.prevent, PREVENTION_KEYS, quickNames.preventDetail, 'shield', 'border-l-emerald-500'],
+            ] as const).map(([label, keys, detail, icon, accent]) => <button key={label} type="button" aria-pressed={keys.every((key) => layers[key])} onClick={() => toggleGroup(keys)}
+              className={cn('flex min-h-14 items-center gap-2 rounded-lg border border-l-4 border-border bg-surface-2/50 px-3 py-2 text-start transition-colors hover:border-primary/50', accent)}>
+              <Icon name={icon} size={19} className="shrink-0 text-primary" aria-hidden />
+              <span className="min-w-0 flex-1"><span className="block text-xs font-bold">{label}</span><span className="block text-[10px] text-muted-foreground">{detail}</span></span>
+              <span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-bold ${keys.some((key) => layers[key]) ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'}`}>{keys.every((key) => layers[key]) ? 'ON' : keys.some((key) => layers[key]) ? 'PART' : 'OFF'}</span>
+            </button>)}
+          </div>
+          <button type="button" aria-expanded={advancedOpen} onClick={() => setAdvancedOpen(!advancedOpen)} className="mb-2 text-xs font-semibold text-primary underline">{quickNames.advanced}</button>
+          <div hidden={!advancedOpen}>
           {/* Search */}
           <div className="relative mb-2">
             <Icon name="search" size={14} className="absolute ltr:left-2 rtl:right-2 top-1/2 -translate-y-1/2 text-muted-foreground" aria-hidden />
@@ -964,6 +997,7 @@ export default function MapControls({ mobileOpen = false, onMobileOpenChange }: 
               </AccordionContent>
             </AccordionItem>
           </Accordion>
+          </div>
 
           {/* Retry button — visible only when any external tile service is down */}
           {anyTileDown && (

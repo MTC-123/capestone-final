@@ -160,7 +160,7 @@ export async function resolveRecipientsForEvent(event: NotificationEvent): Promi
       case 'report.submitted':
         return await resolveReportSubmitted(event.report.id);
       case 'report.status_changed':
-        return await resolveReportStatusChanged(event.report.id, event.report.userId);
+        return event.report.userId ? await resolveReportStatusChanged(event.report.id, event.report.userId) : [];
       case 'dispatch.assigned':
         return await resolveDispatchAssigned(event.dispatchId);
       case 'official_request.decided':

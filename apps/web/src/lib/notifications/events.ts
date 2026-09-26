@@ -12,7 +12,7 @@ import { deliver } from './deliver';
  * recipients, retries and delivery logging live behind notifyEvent.
  */
 export type NotificationEvent =
-  | { type: 'report.submitted'; report: Report & { user?: { cin: string; phone: string; role: string } } }
+  | { type: 'report.submitted'; report: Report & { user?: { cin: string; phone: string; role: string } | null } }
   | { type: 'report.status_changed'; report: Report; previousStatus: string; actorId?: string }
   | { type: 'dispatch.assigned'; dispatchId: string; incidentId: string; unitLabel: string; etaMinutes?: number | null }
   | { type: 'official_request.decided'; userId: string; approved: boolean; note?: string | null };

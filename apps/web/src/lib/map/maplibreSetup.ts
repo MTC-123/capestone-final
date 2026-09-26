@@ -1,6 +1,7 @@
 'use client';
 
-import { setWorkerUrl } from 'maplibre-gl';
+import { addProtocol, setWorkerUrl } from 'maplibre-gl';
+import { Protocol } from 'pmtiles';
 
 /**
  * MapLibre 6 spawns an ES-module worker. Bundlers don't reliably emit it, so
@@ -9,4 +10,9 @@ import { setWorkerUrl } from 'maplibre-gl';
  */
 if (typeof window !== 'undefined') {
   setWorkerUrl('/maplibre/maplibre-gl-worker.mjs');
+  const globalWithPmtiles = window as typeof window & { __ricerPmtilesRegistered?: boolean };
+  if (!globalWithPmtiles.__ricerPmtilesRegistered) {
+    addProtocol('pmtiles', new Protocol().tile);
+    globalWithPmtiles.__ricerPmtilesRegistered = true;
+  }
 }

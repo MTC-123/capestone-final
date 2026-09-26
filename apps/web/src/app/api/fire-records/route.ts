@@ -56,14 +56,18 @@ export const GET = withApiHandler(async (request: Request) => {
   const cause = url.searchParams.get('cause') || undefined;
   const sortBy = url.searchParams.get('sortBy') || 'createdAt';
   const sortOrder = (url.searchParams.get('sortOrder') || 'desc') as 'asc' | 'desc';
+  const verifiedOnly = url.searchParams.get('verifiedOnly') === 'true';
 
   const where: Record<string, unknown> = {};
   if (status) where.recordStatus = status;
+  else if (verifiedOnly) where.recordStatus = { in: ['VERIFIED', 'LOCKED'] };
   if (alertSource) where.alertSource = alertSource;
   if (dateFrom || dateTo) {
-    where.createdAt = {
+    const endExclusive = dateTo ? new Date(dateTo) : undefined;
+    if (endExclusive) endExclusive.setUTCDate(endExclusive.getUTCDate() + 1);
+    where.ignitionAt = {
       ...(dateFrom && { gte: new Date(dateFrom) }),
-      ...(dateTo && { lte: new Date(dateTo) }),
+      ...(endExclusive && { lt: endExclusive }),
     };
   }
   if (minArea !== undefined && !isNaN(minArea)) {
@@ -95,7 +99,7 @@ export const GET = withApiHandler(async (request: Request) => {
     where.id = { in: matches.map((m) => m._id.$oid) };
   }
 
-  const allowedSortFields = ['createdAt', 'burnAreaHa', 'alertReceivedAt'];
+  const allowedSortFields = ['createdAt', 'burnAreaHa', 'alertReceivedAt', 'ignitionAt'];
   const orderField = allowedSortFields.includes(sortBy) ? sortBy : 'createdAt';
 
   const records = await prisma.fireEventRecord.findMany({

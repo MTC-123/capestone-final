@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { WeatherData, IncidentStatus } from '@/types';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -111,12 +112,32 @@ export default function MapPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [shareStatus, setShareStatus] = useState<string | null>(null);
   const [updateError, setUpdateError] = useState<string | null>(null);
+  const [webglSupported, setWebglSupported] = useState<boolean | null>(null);
 
   const selectedIncidentId = useMapStore((s) => s.selectedIncidentId);
   const setSelectedIncidentId = useMapStore((s) => s.setSelectedIncidentId);
   const incidents = useMapStore((s) => s.incidents);
   const setStoreWeather = useMapStore((s) => s.setWeather);
   const user = useAuthStore((s) => s.user);
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      try {
+        const canvas = document.createElement('canvas');
+        setWebglSupported(Boolean(canvas.getContext('webgl2') || canvas.getContext('webgl')));
+      } catch { setWebglSupported(false); }
+    });
+    return () => cancelAnimationFrame(frame);
+  }, []);
+
+  useEffect(() => {
+    if (webglSupported !== false) return;
+    const controller = new AbortController();
+    void fetchWithAuth('/api/geo/incidents', { signal: controller.signal }).then(async (response) => {
+      if (response.ok) useMapStore.getState().setIncidents(await response.json());
+    }).catch(() => { /* The report form stays available when the feed is unavailable. */ });
+    return () => controller.abort();
+  }, [webglSupported]);
 
   useEffect(() => {
     if (selectedIncidentId) setDrawerOpen(true);
@@ -268,11 +289,27 @@ export default function MapPage() {
       <h1 className="sr-only">{t('fireMap')}</h1>
 
       {/* Map fills entire viewport */}
-      <RicerMap weather={weather} weatherLoading={weatherLoading} />
+      {webglSupported === false ? (
+        <div className="h-full overflow-y-auto bg-background p-4 sm:p-8">
+          <div className="mx-auto max-w-2xl space-y-4">
+            <h2 className="text-2xl font-bold">{t('fireMap')}</h2>
+            <p className="text-sm text-muted-foreground">This device cannot display the interactive map. Incident details and fire reporting are available below.</p>
+            <Link href="/report" className="inline-flex min-h-11 items-center rounded-lg bg-primary px-4 font-semibold text-primary-foreground">Report a possible fire</Link>
+            <h3 className="font-semibold">Active incidents ({activeIncidents})</h3>
+            {incidents.features.filter((feature) => feature.properties.status !== 'ETEINT').map((feature) => (
+              <button key={feature.properties.id} type="button" onClick={() => setSelectedIncidentId(feature.properties.id)} className="block w-full rounded-xl border border-border bg-surface p-4 text-start hover:border-primary">
+                <span className="font-semibold">{getStatusLabel(feature.properties.status)}</span>
+                <span className="ms-2 text-sm text-muted-foreground">#{feature.properties.id.slice(0, 6)} · {feature.properties.description || t('fireIncident')}</span>
+              </button>
+            ))}
+            {activeIncidents === 0 && <p className="text-sm text-muted-foreground">No active incidents in the current feed.</p>}
+          </div>
+        </div>
+      ) : webglSupported === null ? <RicerMapLoading /> : <RicerMap weather={weather} weatherLoading={weatherLoading} />}
 
       {/* Floating overlays */}
-      <MapStatusBar weather={weather} activeIncidents={activeIncidents} lastUpdated={lastUpdated} />
-      <MapDataErrorBanner />
+      {webglSupported && <MapStatusBar weather={weather} activeIncidents={activeIncidents} lastUpdated={lastUpdated} />}
+      {webglSupported && <MapDataErrorBanner />}
 
       {/* Incident detail drawer — only when selected */}
       {selectedIncidentId && (

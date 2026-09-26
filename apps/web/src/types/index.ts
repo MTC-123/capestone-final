@@ -18,9 +18,14 @@ export interface User {
 
 export interface Report {
   id: string;
-  userId: string;
-  latitude: number;
-  longitude: number;
+  userId: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  source?: string;
+  observation?: string | null;
+  locationBasis?: string | null;
+  accuracyMeters?: number | null;
+  locationText?: string | null;
   description: string;
   images: string[];
   status: Status;
@@ -33,7 +38,7 @@ export interface Report {
   referenceNumber?: string;
   createdAt: Date;
   updatedAt: Date;
-  user?: User;
+  user?: User | null;
 }
 
 export type IncidentStatus = 'VIGILANCE' | 'ALERTE' | 'INTERVENTION' | 'MAITRISE' | 'ETEINT';

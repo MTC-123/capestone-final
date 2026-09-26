@@ -1,109 +1,36 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-describe('Map Styles', () => {
-  beforeEach(() => {
-    vi.resetModules();
+describe('self-hosted map styles', () => {
+  beforeEach(() => { vi.resetModules(); });
+
+  it.each(['streets', 'light', 'dark'] as const)('%s uses the Ifrane PMTiles archive with attribution', async (basemap) => {
+    const { getMapStyle } = await import('@/lib/map/styles');
+    const style = getMapStyle(basemap) as { sources: { protomaps: { url: string; attribution: string } }; glyphs: string };
+    expect(style.sources.protomaps.url).toContain('/maps/ifrane.pmtiles');
+    expect(style.sources.protomaps.attribution).toContain('OpenStreetMap');
+    expect(style.glyphs).toContain('/maps/fonts/');
   });
 
-  describe('free tier (no MAPTILER key)', () => {
-    beforeEach(() => {
-      vi.stubEnv('NEXT_PUBLIC_MAPTILER_API_KEY', '');
-    });
-
-    it('streets returns CARTO voyager URL', async () => {
-      const { getMapStyle } = await import('@/lib/map/styles');
-      const style = getMapStyle('streets');
-      expect(typeof style).toBe('string');
-      expect(style).toContain('cartocdn.com');
-      expect(style).toContain('voyager');
-    });
-
-    it('light returns CARTO positron URL', async () => {
-      const { getMapStyle } = await import('@/lib/map/styles');
-      const style = getMapStyle('light');
-      expect(typeof style).toBe('string');
-      expect(style).toContain('positron');
-    });
-
-    it('dark returns CARTO dark-matter URL', async () => {
-      const { getMapStyle } = await import('@/lib/map/styles');
-      const style = getMapStyle('dark');
-      expect(typeof style).toBe('string');
-      expect(style).toContain('dark-matter');
-    });
-
-    it('satellite returns object with ESRI source', async () => {
-      const { getMapStyle } = await import('@/lib/map/styles');
-      const style = getMapStyle('satellite');
-      expect(typeof style).toBe('object');
-      const obj = style as Record<string, unknown>;
-      expect(obj).toHaveProperty('sources');
-      const sources = obj.sources as Record<string, Record<string, unknown>>;
-      expect(sources.satellite.tiles).toBeDefined();
-      const tiles = sources.satellite.tiles as string[];
-      expect(tiles[0]).toContain('arcgisonline.com');
-    });
-
-    it('getOsmFallbackStyle returns version 8 with OSM source', async () => {
-      const { getOsmFallbackStyle } = await import('@/lib/map/styles');
-      const style = getOsmFallbackStyle() as Record<string, unknown>;
-      expect(style.version).toBe(8);
-      const sources = style.sources as Record<string, Record<string, unknown>>;
-      expect(sources.osm).toBeDefined();
-      const tiles = sources.osm.tiles as string[];
-      expect(tiles[0]).toContain('openstreetmap.org');
-    });
-
-    it('HAS_PREMIUM_TILES is false', async () => {
-      const { HAS_PREMIUM_TILES } = await import('@/lib/map/styles');
-      expect(HAS_PREMIUM_TILES).toBe(false);
-    });
+  it('uses keyless NASA GIBS for satellite context', async () => {
+    const { getMapStyle } = await import('@/lib/map/styles');
+    const style = getMapStyle('satellite') as { sources: { satellite: { tiles: string[]; attribution: string } } };
+    expect(style.sources.satellite.tiles[0]).toContain('gibs.earthdata.nasa.gov');
+    expect(style.sources.satellite.attribution).toContain('NASA GIBS');
   });
 
-  describe('premium tier (MAPTILER key set)', () => {
-    beforeEach(() => {
-      vi.stubEnv('NEXT_PUBLIC_MAPTILER_API_KEY', 'test-maptiler-key-123');
-    });
+  it('does not switch core basemaps to a paid provider when a terrain key exists', async () => {
+    vi.stubEnv('NEXT_PUBLIC_MAPTILER_API_KEY', 'test-maptiler-key-123');
+    const { getMapStyle, HAS_PREMIUM_TILES } = await import('@/lib/map/styles');
+    expect(HAS_PREMIUM_TILES).toBe(true);
+    const style = getMapStyle('streets') as { sources: { protomaps: { url: string } } };
+    expect(style.sources.protomaps.url).toContain('/maps/ifrane.pmtiles');
+    vi.unstubAllEnvs();
+  });
 
-    it('streets returns MapTiler URL with key', async () => {
-      const { getMapStyle } = await import('@/lib/map/styles');
-      const style = getMapStyle('streets') as string;
-      expect(style).toContain('api.maptiler.com');
-      expect(style).toContain('test-maptiler-key-123');
-    });
-
-    it('light returns MapTiler URL with key', async () => {
-      const { getMapStyle } = await import('@/lib/map/styles');
-      const style = getMapStyle('light') as string;
-      expect(style).toContain('api.maptiler.com');
-      expect(style).toContain('test-maptiler-key-123');
-    });
-
-    it('dark returns MapTiler URL with key', async () => {
-      const { getMapStyle } = await import('@/lib/map/styles');
-      const style = getMapStyle('dark') as string;
-      expect(style).toContain('api.maptiler.com');
-      expect(style).toContain('test-maptiler-key-123');
-    });
-
-    it('satellite returns MapTiler URL with key', async () => {
-      const { getMapStyle } = await import('@/lib/map/styles');
-      const style = getMapStyle('satellite') as string;
-      expect(style).toContain('api.maptiler.com');
-      expect(style).toContain('test-maptiler-key-123');
-    });
-
-    it('HAS_PREMIUM_TILES is true', async () => {
-      const { HAS_PREMIUM_TILES } = await import('@/lib/map/styles');
-      expect(HAS_PREMIUM_TILES).toBe(true);
-    });
-
-    it('all 4 basemaps return strings (not objects)', async () => {
-      const { getMapStyle } = await import('@/lib/map/styles');
-      const basemaps = ['streets', 'light', 'dark', 'satellite'] as const;
-      for (const b of basemaps) {
-        expect(typeof getMapStyle(b)).toBe('string');
-      }
-    });
+  it('retains the attributed OSM emergency fallback', async () => {
+    const { getOsmFallbackStyle } = await import('@/lib/map/styles');
+    const style = getOsmFallbackStyle() as { version: number; sources: { osm: { tiles: string[] } } };
+    expect(style.version).toBe(8);
+    expect(style.sources.osm.tiles[0]).toContain('openstreetmap.org');
   });
 });

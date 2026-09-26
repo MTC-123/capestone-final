@@ -14,14 +14,14 @@ import ReactMapGL, {
   type MapRef,
   type MapLayerMouseEvent,
 } from 'react-map-gl/maplibre';
-import { MapboxOverlay } from '@deck.gl/mapbox';
-import type { MapboxOverlayProps } from '@deck.gl/mapbox/typed';
+import { MapLibreOverlay } from '@deck.gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useMapStore } from '@/store/useMapStore';
 import { useDispatchStore } from '@/store/useDispatchStore';
 import { useToastStore } from '@/store/useToastStore';
 import MapControls from '@/components/map/MapControls';
+import { MapTaskPresets } from '@/components/map/MapTaskPresets';
 import MapLegend from './MapLegend';
 import WeatherWidget from '@/components/map/WeatherWidget';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -127,11 +127,11 @@ function DeckGLOverlay({
   animated,
   animate,
 }: {
-  layers: MapboxOverlayProps['layers'];
+  layers: any[];
   animated: (phase: number) => any[];
   animate: boolean;
 }) {
-  const overlay = useControl(() => new (MapboxOverlay as any)({ layers: [] })) as any;
+  const overlay = useControl(() => new MapLibreOverlay({ layers: [] })) as MapLibreOverlay;
   const layersRef = useRef(layers);
   const animatedRef = useRef(animated);
   useLayoutEffect(() => {
@@ -2819,6 +2819,7 @@ export default function RicerMap({ weather = null, weatherLoading = false }: Ric
       </ReactMapGL>
 
       {/* ═══ Overlay controls ═══ */}
+      <MapTaskPresets />
       <MapControls
         mobileOpen={mobilePanel === 'layers'}
         onMobileOpenChange={(open) => setMobilePanel(open ? 'layers' : null)}

@@ -73,7 +73,7 @@ export function LandingPage({ signedInHref }: { signedInHref: string | null }) {
               <p className="mt-6 max-w-xl text-[17px] leading-relaxed text-muted-foreground">{t('landingLead')}</p>
               <div className="mt-9 flex flex-col gap-3 sm:flex-row">
                 <Link
-                  href={signedInHref ? '/report' : '/signup'}
+                  href="/report"
                   className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-accent-fire px-6 text-[15px] font-semibold text-on-accent-fire shadow-glow-fire transition hover:brightness-110"
                 >
                   <Icon name="fire" size={18} />

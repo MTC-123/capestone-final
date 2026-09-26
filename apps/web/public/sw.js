@@ -13,12 +13,13 @@
  *    auth cookies and IndexedDB logic live in the page, not here.
  */
 
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = 'v3';
 const SHELL_CACHE = `ricer-shell-${CACHE_VERSION}`;
 const STATIC_CACHE = `ricer-static-${CACHE_VERSION}`;
 const TILE_CACHE = `ricer-tiles-${CACHE_VERSION}`;
 const UPLOAD_CACHE = `ricer-uploads-${CACHE_VERSION}`;
-const CURRENT_CACHES = [SHELL_CACHE, STATIC_CACHE, TILE_CACHE, UPLOAD_CACHE];
+const MAP_CACHE = `ricer-map-${CACHE_VERSION}`;
+const CURRENT_CACHES = [SHELL_CACHE, STATIC_CACHE, TILE_CACHE, MAP_CACHE];
 
 const APP_SHELL_URLS = [
   '/',
@@ -34,8 +35,16 @@ const APP_SHELL_URLS = [
   '/android-chrome-512x512.png',
 ];
 
-const TILE_HOSTS = ['api.maptiler.com', 'basemaps.cartocdn.com', 'tile.openstreetmap.org'];
+const TILE_HOSTS = ['api.maptiler.com', 'tile.openstreetmap.org'];
 const TILE_CACHE_MAX_ENTRIES = 300;
+const MAP_ARCHIVE = '/maps/ifrane.pmtiles';
+let savedMapBytes;
+const MAP_OFFLINE_ASSETS = [
+  '/maplibre/maplibre-gl-worker.mjs',
+  ...['light', 'dark'].flatMap((theme) => ['', '@2x'].flatMap((scale) => [`/maps/sprites/${theme}${scale}.json`, `/maps/sprites/${theme}${scale}.png`])),
+  ...['Noto Sans Regular', 'Noto Sans Medium', 'Noto Sans Italic'].flatMap((font) =>
+    [0, 256, 512, 768, 1536, 1792, 2048].map((start) => `/maps/fonts/${encodeURIComponent(font)}/${start}-${start + 255}.pbf`)),
+];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -76,6 +85,30 @@ self.addEventListener('message', (event) => {
   const sourceUrl = event.source && 'url' in event.source ? event.source.url : '';
   if (!sourceUrl || new URL(sourceUrl).origin !== self.location.origin) return;
   if (event.data?.type === 'skipWaiting') self.skipWaiting();
+  if (event.data?.type === 'saveIfrane') {
+    event.waitUntil((async () => {
+      const reply = (message) => event.source?.postMessage({ type: 'saveIfraneStatus', ...message });
+      try {
+        const cache = await caches.open(MAP_CACHE);
+        const archive = await fetch(MAP_ARCHIVE);
+        if (!archive.ok || archive.status !== 200) throw new Error('Map archive unavailable');
+        await cache.put(MAP_ARCHIVE, archive);
+        savedMapBytes = undefined;
+        reply({ state: 'assets', completed: 1, total: MAP_OFFLINE_ASSETS.length + 1 });
+        let completed = 1;
+        for (const asset of MAP_OFFLINE_ASSETS) {
+          const response = await fetch(asset);
+          if (!response.ok) throw new Error(`Map asset unavailable: ${asset}`);
+          await cache.put(asset, response);
+          completed += 1;
+          reply({ state: 'assets', completed, total: MAP_OFFLINE_ASSETS.length + 1 });
+        }
+        reply({ state: 'saved', completed, total: completed });
+      } catch (error) {
+        reply({ state: 'error', message: error instanceof Error ? error.message : 'Offline map failed' });
+      }
+    })());
+  }
 });
 
 self.addEventListener('sync', (event) => {
@@ -99,12 +132,22 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // API: only GET /api/uploads/* (immutable photo bytes) is cacheable.
+  // API responses can contain personal or operational data; do not cache them.
   if (url.pathname.startsWith('/api/')) {
-    if (url.pathname.startsWith('/api/uploads/')) {
-      event.respondWith(cacheFirst(request, UPLOAD_CACHE));
-    }
-    return; // everything else under /api/ goes straight to the network, uncached
+    return;
+  }
+
+  if (url.origin === self.location.origin && url.pathname === MAP_ARCHIVE) {
+    event.respondWith(serveMapArchive(request));
+    return;
+  }
+  if (url.origin === self.location.origin && (url.pathname.startsWith('/maps/fonts/') || url.pathname.startsWith('/maps/sprites/'))) {
+    event.respondWith(cacheFirst(request, MAP_CACHE));
+    return;
+  }
+  if (url.origin === self.location.origin && url.pathname.startsWith('/maplibre/')) {
+    event.respondWith(cacheFirst(request, MAP_CACHE));
+    return;
   }
 
   if (TILE_HOSTS.includes(url.hostname)) {
@@ -122,6 +165,26 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 });
+
+async function serveMapArchive(request) {
+  const cache = await caches.open(MAP_CACHE);
+  const saved = await cache.match(MAP_ARCHIVE);
+  if (!saved) return fetch(request);
+  const range = request.headers.get('range');
+  if (!range) return saved;
+  const bytes = savedMapBytes || (savedMapBytes = await saved.arrayBuffer());
+  const match = /^bytes=(\d+)-(\d*)$/.exec(range);
+  if (!match) return new Response(null, { status: 416 });
+  const start = Number(match[1]);
+  const end = match[2] ? Math.min(Number(match[2]), bytes.byteLength - 1) : bytes.byteLength - 1;
+  if (start > end || start >= bytes.byteLength) return new Response(null, { status: 416 });
+  return new Response(bytes.slice(start, end + 1), { status: 206, headers: {
+    'Content-Type': 'application/octet-stream',
+    'Accept-Ranges': 'bytes',
+    'Content-Range': `bytes ${start}-${end}/${bytes.byteLength}`,
+    'Content-Length': String(end - start + 1),
+  } });
+}
 
 async function cacheFirst(request, cacheName) {
   const cache = await caches.open(cacheName);

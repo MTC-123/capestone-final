@@ -15,9 +15,13 @@ export type SubmissionState =
 
 /** Report fields the offline engine persists, minus images (handled separately as photos). */
 export interface SubmissionPayload {
-  latitude: number;
-  longitude: number;
+  latitude?: number;
+  longitude?: number;
+  accuracyMeters?: number;
   description: string;
+  observation?: 'FIRE' | 'SMOKE' | 'UNSURE';
+  locationBasis?: 'FIRE' | 'OBSERVER' | 'APPROXIMATE' | 'LANDMARK';
+  locationText?: string;
   cause?: string;
   anonymous?: boolean;
   contactPhone?: string;
@@ -33,6 +37,7 @@ export interface LastSyncError {
 
 export interface SubmissionRecord {
   clientSubmissionId: string;
+  source?: 'GUEST' | 'AUTHENTICATED';
   /** ISO timestamp: when the submission was queued on this device. */
   createdAt: string;
   /** ISO timestamp: when the report was actually captured (may predate createdAt if queued while offline). */
@@ -50,6 +55,7 @@ export interface SubmissionRecord {
   nextAttemptAt?: string;
   serverReportId?: string;
   referenceNumber?: string;
+  receipt?: string;
   /** ISO timestamp: when the server accepted the report. */
   sentAt?: string;
 }
@@ -65,9 +71,14 @@ export interface PhotoRecord {
 
 /** Input accepted by enqueueReport — everything createReportSchema needs except clientSubmissionId/images. */
 export interface EnqueueReportInput {
-  latitude: number;
-  longitude: number;
+  latitude?: number;
+  longitude?: number;
+  accuracyMeters?: number;
   description: string;
+  source?: 'GUEST' | 'AUTHENTICATED';
+  observation?: 'FIRE' | 'SMOKE' | 'UNSURE';
+  locationBasis?: 'FIRE' | 'OBSERVER' | 'APPROXIMATE' | 'LANDMARK';
+  locationText?: string;
   cause?: string;
   anonymous?: boolean;
   contactPhone?: string;

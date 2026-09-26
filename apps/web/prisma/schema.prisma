@@ -138,10 +138,16 @@ model RefreshToken {
 
 model Report {
   id              String    @id @default(auto()) @map("_id") @db.ObjectId
-  userId          String    @db.ObjectId
-  user            User      @relation(fields: [userId], references: [id])
-  latitude        Float
-  longitude       Float
+  userId          String?   @db.ObjectId
+  user            User?     @relation(fields: [userId], references: [id])
+  latitude        Float?
+  longitude       Float?
+  source          String?   @default("AUTHENTICATED") // Legacy reports may not have this field yet.
+  observation     String?   // FIRE, SMOKE, or UNSURE
+  locationBasis   String?   // FIRE, OBSERVER, APPROXIMATE, or LANDMARK
+  accuracyMeters  Float?    // GPS accuracy radius; null for manual pins or landmarks
+  locationText    String?
+  capturedAt      DateTime?
   description     String
   images          String[]
   status          Status    @default(PENDING)
@@ -849,7 +855,8 @@ model Debriefing {
 /// (blobUrl), otherwise inline in `data` so local and key-less demos work.
 model Upload {
   id             String   @id @default(auto()) @map("_id") @db.ObjectId
-  ownerId        String   @db.ObjectId
+  ownerId        String?  @db.ObjectId
+  guestSubmissionId String?
   /// Client-supplied key (e.g. "<clientSubmissionId>:0") so retried uploads
   /// from the offline queue return the same record instead of duplicating.
   idempotencyKey String   @unique
@@ -863,5 +870,6 @@ model Upload {
   createdAt      DateTime @default(now())
 
   @@index([ownerId, createdAt])
+  @@index([guestSubmissionId])
   @@index([sha256])
 }

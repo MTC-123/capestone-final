@@ -58,14 +58,3 @@ declare module '@deck.gl/layers' {
     });
   }
 }
-
-declare module '@deck.gl/mapbox' {
-  import type { ReactNode } from 'react';
-
-  export interface MapboxOverlayProps {
-    layers?: unknown[];
-    children?: ReactNode;
-  }
-
-  export function MapboxOverlay(props: MapboxOverlayProps): ReactNode;
-}
